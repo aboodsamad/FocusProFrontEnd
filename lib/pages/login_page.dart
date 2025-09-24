@@ -8,7 +8,7 @@ class HomeScreen extends StatelessWidget {
       title: 'Animated Login',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Roboto'),
       home: LoginPage(),
-      debugShowCheckedModeBanner: true,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
