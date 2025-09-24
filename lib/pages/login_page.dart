@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import './google_login.dart';
+import '../services/loginservice.dart'; // Import your API service
+import './homePage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class HomeScreen extends StatelessWidget {
+class LogInPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -110,30 +113,63 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // log in process
+  // Updated login process to connect with backend
   Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      // Simulate login process
-      await Future.delayed(Duration(seconds: 2));
+    setState(() => _isLoading = true);
 
-      setState(() {
-        _isLoading = false;
-      });
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Login Successful!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+    print('Attempting login for username: "$username"');
+
+    // FIRST: quick ping to check connectivity (will throw if unreachable or timeout)
+    // try {
+    //   await ApiService.pingServer();
+    //   print('Ping OK - server reachable (or returned something). Proceeding with login...');
+    // } catch (e) {
+    //   setState(() => _isLoading = false);
+    //   final msg = e.toString().replaceAll('Exception: ', '');
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text('Cannot reach server: $msg'), backgroundColor: Colors.red),
+    //   );
+    //   return;
+    // }
+
+    // THEN perform login as before
+    try {
+      final result = await ApiService.login(username, password);
+      setState(() => _isLoading = false);
+
+      final token = result['token']?.toString() ?? '';
+      if (token.isNotEmpty) {
+        await ApiService.saveToken(token);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login Successful!'),
+            backgroundColor: Colors.green,
           ),
-        ),
+        );
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
+        return;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: no token received'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e, st) {
+      setState(() => _isLoading = false);
+      print('EXCEPTION in _login: $e');
+      print(st);
+      String errorMessage = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     }
   }
@@ -324,6 +360,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 16),
 
+                              // Add this inside your build() where you had the InkWell:
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
@@ -346,14 +383,74 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   color: Colors.transparent,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(4),
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              GoogleLogin(), // Replace with your Google login page widget
-                                        ),
+
+                                    // 👇 FULL BUTTON LOGIC
+                                    onTap: () async {
+                                      // Your backend Google OAuth URL
+                                      final Uri url = Uri.parse(
+                                        'http://localhost:8080/oauth2/authorization/google',
                                       );
+
+                                      try {
+                                        final can = await canLaunchUrl(url);
+                                        if (!can) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Cannot open URL on this device: $url',
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        final launched = await launchUrl(
+                                          url,
+                                          mode: LaunchMode
+                                              .externalApplication, // opens in Chrome/Safari
+                                        );
+
+                                        if (!launched) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to open browser.',
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Opening Google sign-in...',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+                                      } catch (e, st) {
+                                        print('Error launching URL: $e\n$st');
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Error launching URL: $e',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
                                     },
+
                                     child: Container(
                                       height: 40,
                                       padding: EdgeInsets.symmetric(
@@ -371,7 +468,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                               fit: BoxFit.contain,
                                               errorBuilder:
                                                   (context, error, stackTrace) {
-                                                    // Fallback Google "G" icon if image fails to load
+                                                    // fallback Google "G" icon if image fails to load
                                                     return Container(
                                                       width: 18,
                                                       height: 18,
@@ -405,10 +502,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                             'Sign in with Google',
                                             style: TextStyle(
                                               color: Color(0xFF3C4043),
-                                              fontSize: 14,
+                                              fontSize: 14, 
                                               fontWeight: FontWeight.w500,
-                                              fontFamily:
-                                                  'Roboto', // Use Roboto font if available
+                                              fontFamily: 'Roboto',
                                             ),
                                           ),
                                         ],

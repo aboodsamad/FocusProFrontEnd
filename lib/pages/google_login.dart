@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/login_services.dart';
+import '../services/signup.dart';
 
 class GoogleLogin extends StatefulWidget {
   const GoogleLogin({super.key});
@@ -30,7 +30,7 @@ class _GoogleLoginState extends State<GoogleLogin> {
         _isLoading = true;
       });
       
-      // Simulate checking email
+      
       await Future.delayed(Duration(milliseconds: 800));
       
       setState(() {

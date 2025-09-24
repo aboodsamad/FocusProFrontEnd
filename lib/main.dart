@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'pages/login_page.dart';
 import './providers/app_provider.dart';
 
-void main() {
+void main() async {
+  // Ensure plugin binding is initialized before runApp (important for some plugins)
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => Edit(),
@@ -18,8 +21,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'My App',
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: HomeScreen(),
+        body: LoginPage(),
       ),
     );
   }
