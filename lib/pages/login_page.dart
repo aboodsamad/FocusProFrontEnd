@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import './google_login.dart';
-import '../services/loginservice.dart'; // Import your API service
+import 'package:google_sign_in/google_sign_in.dart';
+import '../services/loginservice.dart';
 import './homePage.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'dart:html' as html;
 
 class LogInPage extends StatelessWidget {
   @override
@@ -26,6 +26,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _scaleController;
@@ -43,7 +45,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Initialize animation controllers
     _fadeController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
@@ -64,7 +65,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       vsync: this,
     );
 
-    // Initialize animations
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
@@ -82,20 +82,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       CurvedAnimation(parent: _rotationController, curve: Curves.easeInOut),
     );
 
-    // Start animations
     _startAnimations();
   }
 
   void _startAnimations() async {
-    // the whole login widget
     await Future.delayed(Duration(milliseconds: 300));
     _fadeController.forward();
 
-    // the login all scallar from bottom up
     await Future.delayed(Duration(milliseconds: 200));
     _slideController.forward();
 
-    //  the lock icon
     await Future.delayed(Duration(milliseconds: 400));
     _scaleController.forward();
 
@@ -113,7 +109,56 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Updated login process to connect with backend
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Sign out first to ensure clean state
+      await _googleSignIn.signOut();
+
+      // Sign in with Google
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+
+      if (account == null) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Google Sign-In cancelled')));
+        return;
+      }
+
+      // Get authentication tokens
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final idToken = auth.idToken;
+
+      print('Google Sign-In successful');
+      print('ID Token: ${idToken?.substring(0, 20)}...');
+
+      // Your backend OAuth endpoint will handle this token
+      // The backend redirects to: http://localhost:5000/oauth-callback?token=JWT_TOKEN
+      // We need to listen for this redirect
+
+      // For now, show success and redirect will happen via backend
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign-In successful! Redirecting...'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      print('Google Sign-In error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign-In failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -124,20 +169,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     print('Attempting login for username: "$username"');
 
-    // FIRST: quick ping to check connectivity (will throw if unreachable or timeout)
-    // try {
-    //   await ApiService.pingServer();
-    //   print('Ping OK - server reachable (or returned something). Proceeding with login...');
-    // } catch (e) {
-    //   setState(() => _isLoading = false);
-    //   final msg = e.toString().replaceAll('Exception: ', '');
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(content: Text('Cannot reach server: $msg'), backgroundColor: Colors.red),
-    //   );
-    //   return;
-    // }
-
-    // THEN perform login as before
     try {
       final result = await ApiService.login(username, password);
       setState(() => _isLoading = false);
@@ -217,7 +248,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Logo/Icon with rotation animation
                               ScaleTransition(
                                 scale: _scaleAnimation,
                                 child: AnimatedBuilder(
@@ -262,7 +292,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 24),
 
-                              // Welcome text
                               Text(
                                 'Welcome Back!',
                                 style: TextStyle(
@@ -284,7 +313,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 32),
 
-                              // Username field with animation
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 child: TextFormField(
@@ -314,7 +342,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 16),
 
-                              // Password field with animation
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 child: TextFormField(
@@ -360,7 +387,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 16),
 
-                              // Add this inside your build() where you had the InkWell:
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
@@ -383,74 +409,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   color: Colors.transparent,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(4),
-
-                                    // 👇 FULL BUTTON LOGIC
-                                    onTap: () async {
-                                      // Your backend Google OAuth URL
-                                      final Uri url = Uri.parse(
-                                        'http://localhost:8080/oauth2/authorization/google',
-                                      );
-
-                                      try {
-                                        final can = await canLaunchUrl(url);
-                                        if (!can) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Cannot open URL on this device: $url',
-                                              ),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        final launched = await launchUrl(
-                                          url,
-                                          mode: LaunchMode
-                                              .externalApplication, // opens in Chrome/Safari
-                                        );
-
-                                        if (!launched) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Failed to open browser.',
-                                              ),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                        } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Opening Google sign-in...',
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-                                        }
-                                      } catch (e, st) {
-                                        print('Error launching URL: $e\n$st');
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Error launching URL: $e',
-                                            ),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
+                                    onTap: () {
+                                      final url =
+                                          'http://localhost:8080/oauth2/authorization/google';
+                                      html.window.open(url, '_self');
                                     },
-
                                     child: Container(
                                       height: 40,
                                       padding: EdgeInsets.symmetric(
@@ -459,7 +422,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          // Google Logo
                                           Container(
                                             width: 18,
                                             height: 18,
@@ -468,7 +430,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                               fit: BoxFit.contain,
                                               errorBuilder:
                                                   (context, error, stackTrace) {
-                                                    // fallback Google "G" icon if image fails to load
                                                     return Container(
                                                       width: 18,
                                                       height: 18,
@@ -497,12 +458,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                             ),
                                           ),
                                           SizedBox(width: 24),
-                                          // Text
                                           Text(
                                             'Sign in with Google',
                                             style: TextStyle(
                                               color: Color(0xFF3C4043),
-                                              fontSize: 14, 
+                                              fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                               fontFamily: 'Roboto',
                                             ),
@@ -516,7 +476,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 24),
 
-                              // Login button with loading animation
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 width: double.infinity,
@@ -556,7 +515,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 16),
 
-                              // Forgot password link
                               TextButton(
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -580,7 +538,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               SizedBox(height: 24),
 
-                              // Sign up link
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

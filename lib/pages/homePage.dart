@@ -12,7 +12,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Card(
       child: Center(
-        child: Text('Welcome to the Home Page!',style: TextStyle(fontSize: 60),),
+        child: Text('Welcome to the Home Page!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',style: TextStyle(fontSize: 60),),
       ),
     );
   }
