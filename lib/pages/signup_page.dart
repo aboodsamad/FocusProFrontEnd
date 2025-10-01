@@ -1,33 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../services/loginservice.dart';
+import './login_page.dart';
 import './homePage.dart';
-import 'dart:html' as html;
-import './signup_page.dart';
 
-class LogInPage extends StatelessWidget {
+class SignupPage extends StatefulWidget {
+  const SignupPage({super.key});
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Animated Login',
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Roboto'),
-      home: LoginPage(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+  State<SignupPage> createState() => _SignupPageState();
 }
 
-class LoginPage extends StatefulWidget {
-  @override
-  _LoginPageState createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final _confirmPasswordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _dobController = TextEditingController();
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -40,7 +30,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   late Animation<double> _rotationAnimation;
 
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _consentUsage = false;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
@@ -106,98 +99,96 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _scaleController.dispose();
     _rotationController.dispose();
     _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    _dobController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Color(0xFF667eea),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF333333),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
 
-    try {
-      // Sign out first to ensure clean state
-      await _googleSignIn.signOut();
-
-      // Sign in with Google
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-
-      if (account == null) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Google Sign-In cancelled')));
-        return;
-      }
-
-      // Get authentication tokens
-      final GoogleSignInAuthentication auth = await account.authentication;
-      final idToken = auth.idToken;
-
-      print('Google Sign-In successful');
-      print('ID Token: ${idToken?.substring(0, 20)}...');
-
-      // Your backend OAuth endpoint will handle this token
-      // The backend redirects to: http://localhost:5000/oauth-callback?token=JWT_TOKEN
-      // We need to listen for this redirect
-
-      // For now, show success and redirect will happen via backend
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In successful! Redirecting...'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
-      print('Google Sign-In error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dobController.text =
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
     }
   }
 
-  Future<void> _login() async {
+  Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select your date of birth'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+    final signupData = {
+      'username': _usernameController.text.trim(),
+      'email': _emailController.text.trim(),
+      'password': _passwordController.text.trim(),
+      'name': _nameController.text.trim(),
+      'dob': _dobController.text.trim(),
+      'consentUsage': _consentUsage,
+    };
 
-    print('Attempting login for username: "$username"');
+    print('Attempting signup for username: "${signupData['username']}"');
 
     try {
-      final result = await ApiService.login(username, password);
+      final result = await ApiService.signup(signupData);
       setState(() => _isLoading = false);
 
-      final token = result['token']?.toString() ?? '';
-      if (token.isNotEmpty) {
+      // Get token from response
+      final token = result['token']?.toString() ?? result.toString();
+      
+      if (token.isNotEmpty && !token.contains('Exception')) {
         await ApiService.saveToken(token);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login Successful!'),
+            content: Text('Signup Successful! Welcome!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
-        return;
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: no token received'),
-            backgroundColor: Colors.red,
-          ),
+
+        // Navigate to home page
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => HomeScreen()),
         );
+      } else {
+        throw Exception('Signup failed: No token received');
       }
     } catch (e, st) {
       setState(() => _isLoading = false);
-      print('EXCEPTION in _login: $e');
+      print('EXCEPTION in _signup: $e');
       print(st);
       String errorMessage = e.toString().replaceAll('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,10 +246,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   animation: _rotationAnimation,
                                   builder: (context, child) {
                                     return Transform.rotate(
-                                      angle:
-                                          _rotationAnimation.value *
-                                          2 *
-                                          3.14159,
+                                      angle: _rotationAnimation.value * 2 * 3.14159,
                                       child: Container(
                                         width: 80,
                                         height: 80,
@@ -272,16 +260,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.blue.withOpacity(
-                                                0.3,
-                                              ),
+                                              color: Colors.blue.withOpacity(0.3),
                                               blurRadius: 15,
                                               spreadRadius: 2,
                                             ),
                                           ],
                                         ),
                                         child: Icon(
-                                          Icons.lock_outline,
+                                          Icons.person_add_outlined,
                                           color: Colors.white,
                                           size: 40,
                                         ),
@@ -290,30 +276,55 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   },
                                 ),
                               ),
-
                               SizedBox(height: 24),
-
                               Text(
-                                'Welcome Back!',
+                                'Create Account',
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF333333),
                                 ),
                               ),
-
                               SizedBox(height: 8),
-
                               Text(
-                                'Sign in to continue',
+                                'Sign up to get started',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[600],
                                 ),
                               ),
-
                               SizedBox(height: 32),
 
+                              // Full Name Field
+                              AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                child: TextFormField(
+                                  controller: _nameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Full Name',
+                                    prefixIcon: Icon(Icons.badge_outlined),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your full name';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Username Field
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 child: TextFormField(
@@ -334,15 +345,83 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your username';
+                                      return 'Please enter a username';
+                                    }
+                                    if (value.length < 3) {
+                                      return 'Username must be at least 3 characters';
                                     }
                                     return null;
                                   },
                                 ),
                               ),
-
                               SizedBox(height: 16),
 
+                              // Email Field
+                              AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                child: TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(Icons.email_outlined),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your email';
+                                    }
+                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                        .hasMatch(value)) {
+                                      return 'Please enter a valid email';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Date of Birth Field
+                              AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                child: TextFormField(
+                                  controller: _dobController,
+                                  readOnly: true,
+                                  onTap: () => _selectDate(context),
+                                  decoration: InputDecoration(
+                                    labelText: 'Date of Birth',
+                                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please select your date of birth';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Password Field
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 child: TextFormField(
@@ -376,7 +455,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
+                                      return 'Please enter a password';
                                     }
                                     if (value.length < 6) {
                                       return 'Password must be at least 6 characters';
@@ -385,104 +464,86 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   },
                                 ),
                               ),
-
                               SizedBox(height: 16),
 
+                              // Confirm Password Field
                               AnimatedContainer(
-                                duration: Duration(milliseconds: 200),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(
-                                    color: Color(0xFFDDDDDD),
-                                    width: 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      spreadRadius: 0,
-                                      blurRadius: 2,
-                                      offset: Offset(0, 1),
+                                duration: Duration(milliseconds: 300),
+                                child: TextFormField(
+                                  controller: _confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Confirm Password',
+                                    prefixIcon: Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureConfirmPassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword;
+                                        });
+                                      },
                                     ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(4),
-                                    onTap: () {
-                                      final url =
-                                          'http://localhost:8080/oauth2/authorization/google';
-                                      html.window.open(url, '_self');
-                                    },
-                                    child: Container(
-                                      height: 40,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 18,
-                                            height: 18,
-                                            child: Image.network(
-                                              'https://developers.google.com/identity/images/g-logo.png',
-                                              fit: BoxFit.contain,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                    return Container(
-                                                      width: 18,
-                                                      height: 18,
-                                                      decoration: BoxDecoration(
-                                                        color: Color(
-                                                          0xFF4285F4,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              2,
-                                                            ),
-                                                      ),
-                                                      child: Center(
-                                                        child: Text(
-                                                          'G',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                            ),
-                                          ),
-                                          SizedBox(width: 24),
-                                          Text(
-                                            'Sign in with Google',
-                                            style: TextStyle(
-                                              color: Color(0xFF3C4043),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: 'Roboto',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
                                     ),
                                   ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please confirm your password';
+                                    }
+                                    if (value != _passwordController.text) {
+                                      return 'Passwords do not match';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
+                              SizedBox(height: 16),
 
+                              // Consent Checkbox
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _consentUsage,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _consentUsage = value ?? false;
+                                      });
+                                    },
+                                    activeColor: Color(0xFF667eea),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      'I agree to data usage terms',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                               SizedBox(height: 24),
 
+                              // Sign Up Button
                               AnimatedContainer(
                                 duration: Duration(milliseconds: 300),
                                 width: double.infinity,
                                 height: 50,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _login,
+                                  onPressed: _isLoading ? null : _signup,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Color(0xFF667eea),
                                     foregroundColor: Colors.white,
@@ -500,12 +561,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
+                                              Colors.white,
+                                            ),
                                           ),
                                         )
                                       : Text(
-                                          'Sign In',
+                                          'Sign Up',
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -513,49 +574,26 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                         ),
                                 ),
                               ),
-
-                              SizedBox(height: 16),
-
-                              TextButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Forgot Password clicked!'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(
-                                    color: Color(0xFF667eea),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-
                               SizedBox(height: 24),
 
+                              // Already have account
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    "Don't have an account? ",
+                                    'Already have an account? ',
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                                   TextButton(
                                     onPressed: () {
-                                      Navigator.of(context).push(
+                                      Navigator.of(context).pushReplacement(
                                         MaterialPageRoute(
-                                          builder: (_) => SignupPage(),
+                                          builder: (_) => LoginPage(),
                                         ),
                                       );
                                     },
                                     child: Text(
-                                      'Sign Up',
+                                      'Sign In',
                                       style: TextStyle(
                                         color: Color(0xFF667eea),
                                         fontWeight: FontWeight.bold,
