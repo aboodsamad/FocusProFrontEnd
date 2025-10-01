@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'My App',
-      initialRoute: '/',
+      initialRoute: '/home',
       onGenerateRoute: (settings) {
         // Check if URL contains oauth-callback
         final hash = html.window.location.hash;
