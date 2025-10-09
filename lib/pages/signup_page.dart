@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/loginservice.dart';
 import './login_page.dart';
-import './homePage.dart';
+import './Question_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -168,10 +168,10 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
 
       // Get token from response
       final token = result['token']?.toString() ?? result.toString();
-      
+
       if (token.isNotEmpty && !token.contains('Exception')) {
         await ApiService.saveToken(token);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Signup Successful! Welcome!'),
@@ -180,9 +180,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
         );
 
         // Navigate to home page
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => QuestionPage()));
       } else {
         throw Exception('Signup failed: No token received');
       }
@@ -246,7 +246,10 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   animation: _rotationAnimation,
                                   builder: (context, child) {
                                     return Transform.rotate(
-                                      angle: _rotationAnimation.value * 2 * 3.14159,
+                                      angle:
+                                          _rotationAnimation.value *
+                                          2 *
+                                          3.14159,
                                       child: Container(
                                         width: 80,
                                         height: 80,
@@ -260,7 +263,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.blue.withOpacity(0.3),
+                                              color: Colors.blue.withOpacity(
+                                                0.3,
+                                              ),
                                               blurRadius: 15,
                                               spreadRadius: 2,
                                             ),
@@ -380,8 +385,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                     if (value == null || value.isEmpty) {
                                       return 'Please enter your email';
                                     }
-                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                        .hasMatch(value)) {
+                                    if (!RegExp(
+                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                    ).hasMatch(value)) {
                                       return 'Please enter a valid email';
                                     }
                                     return null;
@@ -399,7 +405,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   onTap: () => _selectDate(context),
                                   decoration: InputDecoration(
                                     labelText: 'Date of Birth',
-                                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                                    prefixIcon: Icon(
+                                      Icons.calendar_today_outlined,
+                                    ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide.none,
@@ -561,8 +569,8 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : Text(
@@ -617,3 +625,317 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import '../services/loginservice.dart';
+// import './login_page.dart';
+// import './homePage.dart';
+// import './Question_page.dart';
+
+// class SignupPage extends StatefulWidget {
+//   const SignupPage({super.key});
+
+//   @override
+//   State<SignupPage> createState() => _SignupPageState();
+// }
+
+// class _SignupPageState extends State<SignupPage> {
+//   final _formKey = GlobalKey<FormState>();
+//   final _usernameController = TextEditingController();
+//   final _emailController = TextEditingController();
+//   final _passwordController = TextEditingController();
+//   final _confirmPasswordController = TextEditingController();
+//   final _nameController = TextEditingController();
+//   final _dobController = TextEditingController();
+
+//   bool _obscurePassword = true;
+//   bool _obscureConfirmPassword = true;
+//   bool _isLoading = false;
+//   bool _consentUsage = false;
+//   DateTime? _selectedDate;
+
+//   @override
+//   void dispose() {
+//     _usernameController.dispose();
+//     _emailController.dispose();
+//     _passwordController.dispose();
+//     _confirmPasswordController.dispose();
+//     _nameController.dispose();
+//     _dobController.dispose();
+//     super.dispose();
+//   }
+
+//   Future<void> _selectDate(BuildContext context) async {
+//     final DateTime? picked = await showDatePicker(
+//       context: context,
+//       initialDate: DateTime.now().subtract(Duration(days: 365 * 18)),
+//       firstDate: DateTime(1900),
+//       lastDate: DateTime.now(),
+//     );
+
+//     if (picked != null && picked != _selectedDate) {
+//       setState(() {
+//         _selectedDate = picked;
+//         _dobController.text =
+//             '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+//       });
+//     }
+//   }
+
+//   Future<void> _signup() async {
+//     if (!_formKey.currentState!.validate()) return;
+
+//     if (_selectedDate == null) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Please select your date of birth')),
+//       );
+//       return;
+//     }
+
+//     setState(() => _isLoading = true);
+
+//     final signupData = {
+//       'username': _usernameController.text.trim(),
+//       'email': _emailController.text.trim(),
+//       'password': _passwordController.text.trim(),
+//       'name': _nameController.text.trim(),
+//       'dob': _dobController.text.trim(),
+//       'consentUsage': _consentUsage,
+//     };
+
+//     print('Attempting signup for username: "${signupData['username']}"');
+
+//     try {
+//       final result = await ApiService.signup(signupData);
+//       setState(() => _isLoading = false);
+
+//       final token = result['token']?.toString() ?? result.toString();
+
+//       if (token.isNotEmpty && !token.contains('Exception')) {
+//         await ApiService.saveToken(token);
+
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text('Signup Successful! Welcome!')),
+//         );
+
+//         Navigator.of(context).pushReplacement(
+//           MaterialPageRoute(builder: (_) => QuestionPage()),
+//         );
+//       } else {
+//         throw Exception('Signup failed: No token received');
+//       }
+//     } catch (e, st) {
+//       setState(() => _isLoading = false);
+//       print('EXCEPTION in _signup: $e');
+//       print(st);
+//       String errorMessage = e.toString().replaceAll('Exception: ', '');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text(errorMessage)),
+//       );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: SafeArea(
+//         child: Center(
+//           child: SingleChildScrollView(
+//             padding: EdgeInsets.all(24.0),
+//             child: Form(
+//               key: _formKey,
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 children: [
+//                   // Simple heading (no styling)
+//                   Text('Create Account'),
+//                   SizedBox(height: 12),
+
+//                   // Full Name
+//                   TextFormField(
+//                     controller: _nameController,
+//                     decoration: InputDecoration(labelText: 'Full Name'),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please enter your full name';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Username
+//                   TextFormField(
+//                     controller: _usernameController,
+//                     decoration: InputDecoration(labelText: 'Username'),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please enter a username';
+//                       }
+//                       if (value.length < 3) {
+//                         return 'Username must be at least 3 characters';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Email
+//                   TextFormField(
+//                     controller: _emailController,
+//                     keyboardType: TextInputType.emailAddress,
+//                     decoration: InputDecoration(labelText: 'Email'),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please enter your email';
+//                       }
+//                       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+//                           .hasMatch(value)) {
+//                         return 'Please enter a valid email';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Date of Birth (readOnly)
+//                   TextFormField(
+//                     controller: _dobController,
+//                     readOnly: true,
+//                     onTap: () => _selectDate(context),
+//                     decoration: InputDecoration(labelText: 'Date of Birth'),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please select your date of birth';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Password
+//                   TextFormField(
+//                     controller: _passwordController,
+//                     obscureText: _obscurePassword,
+//                     decoration: InputDecoration(
+//                       labelText: 'Password',
+//                       suffixIcon: IconButton(
+//                         icon: Icon(
+//                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
+//                         ),
+//                         onPressed: () {
+//                           setState(() {
+//                             _obscurePassword = !_obscurePassword;
+//                           });
+//                         },
+//                       ),
+//                     ),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please enter a password';
+//                       }
+//                       if (value.length < 6) {
+//                         return 'Password must be at least 6 characters';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Confirm Password
+//                   TextFormField(
+//                     controller: _confirmPasswordController,
+//                     obscureText: _obscureConfirmPassword,
+//                     decoration: InputDecoration(
+//                       labelText: 'Confirm Password',
+//                       suffixIcon: IconButton(
+//                         icon: Icon(
+//                           _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+//                         ),
+//                         onPressed: () {
+//                           setState(() {
+//                             _obscureConfirmPassword = !_obscureConfirmPassword;
+//                           });
+//                         },
+//                       ),
+//                     ),
+//                     validator: (value) {
+//                       if (value == null || value.isEmpty) {
+//                         return 'Please confirm your password';
+//                       }
+//                       if (value != _passwordController.text) {
+//                         return 'Passwords do not match';
+//                       }
+//                       return null;
+//                     },
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Consent checkbox
+//                   Row(
+//                     children: [
+//                       Checkbox(
+//                         value: _consentUsage,
+//                         onChanged: (value) {
+//                           setState(() {
+//                             _consentUsage = value ?? false;
+//                           });
+//                         },
+//                       ),
+//                       Expanded(child: Text('I agree to data usage terms')),
+//                     ],
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Sign Up button (keeps functionality)
+//                   SizedBox(
+//                     width: double.infinity,
+//                     height: 48,
+//                     child: ElevatedButton(
+//                       onPressed: _isLoading ? null : _signup,
+//                       child: _isLoading
+//                           ? SizedBox(
+//                               width: 20,
+//                               height: 20,
+//                               child: CircularProgressIndicator(strokeWidth: 2),
+//                             )
+//                           : Text('Sign Up'),
+//                     ),
+//                   ),
+//                   SizedBox(height: 12),
+
+//                   // Sign In navigation
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       Text('Already have an account? '),
+//                       TextButton(
+//                         onPressed: () {
+//                           Navigator.of(context).pushReplacement(
+//                             MaterialPageRoute(builder: (_) => LoginPage()),
+//                           );
+//                         },
+//                         child: Text('Sign In'),
+//                       ),
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+

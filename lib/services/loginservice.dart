@@ -9,26 +9,26 @@ class ApiService {
   static String get baseUrl =>
       kIsWeb ? 'http://localhost:8080' : 'http://10.0.2.2:8080';
 
-  // Exchange OAuth code for JWT token
-  static Future<String?> exchangeOAuthCode(String code) async {
-    try {
-      print('Exchanging code: $code');
-      final response = await http
-          .get(Uri.parse('$baseUrl/oauth/exchange/$code'))
-          .timeout(Duration(seconds: 10));
+  // // Exchange OAuth code for JWT token
+  // static Future<String?> exchangeOAuthCode(String code) async {
+  //   try {
+  //     print('Exchanging code: $code');
+  //     final response = await http
+  //         .get(Uri.parse('$baseUrl/oauth/exchange/$code'))
+  //         .timeout(Duration(seconds: 10));
 
-      print('Exchange response: ${response.statusCode} - ${response.body}');
+  //     print('Exchange response: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['token'];
-      }
-      return null;
-    } catch (e) {
-      print('Exchange error: $e');
-      return null;
-    }
-  }
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       return data['token'];
+  //     }
+  //     return null;
+  //   } catch (e) {
+  //     print('Exchange error: $e');
+  //     return null;
+  //   }
+  // }
 
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -40,6 +40,9 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
   }
+
+
+  
 
   static Future<Map<String, dynamic>> login(
     String username,
@@ -73,7 +76,6 @@ class ApiService {
     }
   }
 
-  // Add this method to your ApiService class
   static Future<Map<String, dynamic>> signup(
     Map<String, dynamic> signupData,
   ) async {
@@ -104,4 +106,6 @@ class ApiService {
       throw Exception('Signup error: $e');
     }
   }
+
+
 }

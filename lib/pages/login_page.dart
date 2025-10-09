@@ -110,56 +110,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    try {
-      // Sign out first to ensure clean state
-      await _googleSignIn.signOut();
-
-      // Sign in with Google
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-
-      if (account == null) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Google Sign-In cancelled')));
-        return;
-      }
-
-      // Get authentication tokens
-      final GoogleSignInAuthentication auth = await account.authentication;
-      final idToken = auth.idToken;
-
-      print('Google Sign-In successful');
-      print('ID Token: ${idToken?.substring(0, 20)}...');
-
-      // Your backend OAuth endpoint will handle this token
-      // The backend redirects to: http://localhost:5000/oauth-callback?token=JWT_TOKEN
-      // We need to listen for this redirect
-
-      // For now, show success and redirect will happen via backend
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In successful! Redirecting...'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
-      print('Google Sign-In error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -579,3 +529,281 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//   // Future<void> _handleGoogleSignIn() async {
+//   //   setState(() => _isLoading = true);
+
+//   //   try {
+//   //     // Sign out first to ensure clean state
+//   //     await _googleSignIn.signOut();
+
+//   //     // Sign in with Google
+//   //     final GoogleSignInAccount? account = await _googleSignIn.signIn();
+
+//   //     if (account == null) {
+//   //       setState(() => _isLoading = false);
+//   //       ScaffoldMessenger.of(
+//   //         context,
+//   //       ).showSnackBar(SnackBar(content: Text('Google Sign-In cancelled')));
+//   //       return;
+//   //     }
+
+//   //     // Get authentication tokens
+//   //     final GoogleSignInAuthentication auth = await account.authentication;
+//   //     final idToken = auth.idToken;
+
+//   //     print('Google Sign-In successful');
+//   //     print('ID Token: ${idToken?.substring(0, 20)}...');
+
+//   //     // Your backend OAuth endpoint will handle this token
+//   //     // The backend redirects to: http://localhost:5000/oauth-callback?token=JWT_TOKEN
+//   //     // We need to listen for this redirect
+
+//   //     // For now, show success and redirect will happen via backend
+//   //     ScaffoldMessenger.of(context).showSnackBar(
+//   //       SnackBar(
+//   //         content: Text('Google Sign-In successful! Redirecting...'),
+//   //         backgroundColor: Colors.green,
+//   //       ),
+//   //     );
+
+//   //     setState(() => _isLoading = false);
+//   //   } catch (e) {
+//   //     setState(() => _isLoading = false);
+//   //     print('Google Sign-In error: $e');
+//   //     ScaffoldMessenger.of(context).showSnackBar(
+//   //       SnackBar(
+//   //         content: Text('Google Sign-In failed: $e'),
+//   //         backgroundColor: Colors.red,
+//   //       ),
+//   //     );
+//   //   }
+//   // }
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
+// import '../services/loginservice.dart';
+// import './homePage.dart';
+// import 'dart:html' as html;
+// import './signup_page.dart';
+
+// class LogInPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Login',
+//       home: LoginPage(),
+//       debugShowCheckedModeBanner: false,
+//     );
+//   }
+// }
+
+// class LoginPage extends StatefulWidget {
+//   @override
+//   _LoginPageState createState() => _LoginPageState();
+// }
+
+// class _LoginPageState extends State<LoginPage> {
+//   final _formKey = GlobalKey<FormState>();
+//   final _usernameController = TextEditingController();
+//   final _passwordController = TextEditingController();
+
+//   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+
+//   bool _obscurePassword = true;
+//   bool _isLoading = false;
+
+//   @override
+//   void dispose() {
+//     _usernameController.dispose();
+//     _passwordController.dispose();
+//     super.dispose();
+//   }
+
+//   Future<void> _login() async {
+//     if (!_formKey.currentState!.validate()) return;
+
+//     setState(() => _isLoading = true);
+
+//     final username = _usernameController.text.trim();
+//     final password = _passwordController.text.trim();
+
+//     print('Attempting login for username: "$username"');
+
+//     try {
+//       final result = await ApiService.login(username, password);
+//       setState(() => _isLoading = false);
+
+//       final token = result['token']?.toString() ?? '';
+//       if (token.isNotEmpty) {
+//         await ApiService.saveToken(token);
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text('Login Successful!')),
+//         );
+//         Navigator.of(context).pushReplacement(
+//           MaterialPageRoute(builder: (_) => HomeScreen()),
+//         );
+//         return;
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text('Login failed: no token received')),
+//         );
+//       }
+//     } catch (e, st) {
+//       setState(() => _isLoading = false);
+//       print('EXCEPTION in _login: $e');
+//       print(st);
+//       String errorMessage = e.toString().replaceAll('Exception: ', '');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text(errorMessage)),
+//       );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text('Login')),
+//       body: Center(
+//         child: SingleChildScrollView(
+//           padding: EdgeInsets.all(24.0),
+//           child: Form(
+//             key: _formKey,
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 Text('Welcome Back!', style: TextStyle(fontSize: 24)),
+//                 SizedBox(height: 32),
+
+//                 TextFormField(
+//                   controller: _usernameController,
+//                   decoration: InputDecoration(
+//                     labelText: 'Username',
+//                     border: OutlineInputBorder(),
+//                   ),
+//                   validator: (value) {
+//                     if (value == null || value.isEmpty) {
+//                       return 'Please enter your username';
+//                     }
+//                     return null;
+//                   },
+//                 ),
+
+//                 SizedBox(height: 16),
+
+//                 TextFormField(
+//                   controller: _passwordController,
+//                   obscureText: _obscurePassword,
+//                   decoration: InputDecoration(
+//                     labelText: 'Password',
+//                     border: OutlineInputBorder(),
+//                     suffixIcon: IconButton(
+//                       icon: Icon(
+//                         _obscurePassword ? Icons.visibility_off : Icons.visibility,
+//                       ),
+//                       onPressed: () {
+//                         setState(() {
+//                           _obscurePassword = !_obscurePassword;
+//                         });
+//                       },
+//                     ),
+//                   ),
+//                   validator: (value) {
+//                     if (value == null || value.isEmpty) {
+//                       return 'Please enter your password';
+//                     }
+//                     if (value.length < 6) {
+//                       return 'Password must be at least 6 characters';
+//                     }
+//                     return null;
+//                   },
+//                 ),
+
+//                 SizedBox(height: 16),
+
+//                 ElevatedButton(
+//                   onPressed: () {
+//                     final url = 'http://localhost:8080/oauth2/authorization/google';
+//                     html.window.open(url, '_self');
+//                   },
+//                   child: Text('Sign in with Google'),
+//                 ),
+
+//                 SizedBox(height: 16),
+
+//                 ElevatedButton(
+//                   onPressed: _isLoading ? null : _login,
+//                   child: _isLoading
+//                       ? CircularProgressIndicator()
+//                       : Text('Sign In'),
+//                 ),
+
+//                 SizedBox(height: 16),
+
+//                 TextButton(
+//                   onPressed: () {
+//                     ScaffoldMessenger.of(context).showSnackBar(
+//                       SnackBar(content: Text('Forgot Password clicked!')),
+//                     );
+//                   },
+//                   child: Text('Forgot Password?'),
+//                 ),
+
+//                 SizedBox(height: 16),
+
+//                 Row(
+//                   mainAxisAlignment: MainAxisAlignment.center,
+//                   children: [
+//                     Text("Don't have an account? "),
+//                     TextButton(
+//                       onPressed: () {
+//                         Navigator.of(context).push(
+//                           MaterialPageRoute(builder: (_) => SignupPage()),
+//                         );
+//                       },
+//                       child: Text('Sign Up'),
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+
