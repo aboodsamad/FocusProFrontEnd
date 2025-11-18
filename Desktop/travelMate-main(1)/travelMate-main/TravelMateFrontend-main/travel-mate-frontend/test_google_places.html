@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Places API Test - Lebanon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            color: #721c24;
+        }
+        .loading {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        .results {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        .place-card {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 3px solid #4285f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Google Places API Test</h1>
+        <p>Testing Google Places API for Lebanon Tourism App</p>
+        
+        <div id="status" class="status loading">⏳ Initializing...</div>
+        
+        <button onclick="testConnection()">Test API Connection</button>
+        <button onclick="searchRestaurants()">Search Beirut Restaurants</button>
+        <button onclick="searchTouristSpots()">Search Tourist Attractions</button>
+        
+        <div id="map"></div>
+        <div id="results" class="results" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyBfhArL3nc5UxL31qILqOS_1H0JTNiXj_o";
+        let map;
+        let service;
+        let markers = [];
+
+        function initMap() {
+            // Center on Beirut
+            const beirut = { lat: 33.8886, lng: 35.4955 };
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: beirut,
+                zoom: 12,
+            });
+            
+            service = new google.maps.places.PlacesService(map);
+            
+            // Add marker for Beirut
+            new google.maps.Marker({
+                position: beirut,
+                map: map,
+                title: "Beirut, Lebanon",
+                icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+            });
+            
+            showStatus("✅ Map loaded successfully! API key is working.", "success");
+        }
+
+        function showStatus(message, type = "loading") {
+            const statusDiv = document.getElementById("status");
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+        }
+
+        function displayResults(places) {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.style.display = "block";
+            resultsDiv.innerHTML = `<h3>Found ${places.length} places:</h3>`;
+            
+            places.forEach((place, index) => {
+                const card = document.createElement("div");
+                card.className = "place-card";
+                card.innerHTML = `
+                    <strong>${index + 1}. ${place.name}</strong><br>
+                    📍 ${place.vicinity || "N/A"}<br>
+                    ⭐ Rating: ${place.rating || "N/A"} (${place.user_ratings_total || 0} reviews)<br>
+                    💰 Price Level: ${place.price_level ? "$".repeat(place.price_level) : "N/A"}
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+
+        function testConnection() {
+            showStatus("🔍 Testing API connection...", "loading");
+            
+            const request = {
+                location: { lat: 33.8886, lng: 35.4955 },
+                radius: 5000,
+                type: "restaurant",
+            };
+
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    showStatus(`✅ API Working! Found ${results.length} restaurants in Beirut.`, "success");
+                } else {
+                    showStatus(`❌ API Error: ${status}`, "error");
+                }
+            });
+        }
+
+        function searchRestaurants() {
+            showStatus("🍽️ Searching for restaurants in Beirut...", "loading");
+            clearMarkers();
+            
+            const request = {
+                location: { lat: 33.8886, lng: 35.4955 },
+                radius: 5000,
+                type: "restaurant",
+            };
+
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    showStatus(`✅ Found ${results.length} restaurants!`, "success");
+                    displayResults(results);
+                    
+                    // Add markers
+                    results.forEach(place => {
+                        const marker = new google.maps.Marker({
+                            position: place.geometry.location,
+                            map: map,
+                            title: place.name,
+                        });
+                        markers.push(marker);
+                    });
+                    
+                    // Fit bounds to show all markers
+                    const bounds = new google.maps.LatLngBounds();
+                    results.forEach(place => bounds.extend(place.geometry.location));
+                    map.fitBounds(bounds);
+                } else {
+                    showStatus(`❌ Error: ${status}`, "error");
+                }
+            });
+        }
+
+        function searchTouristSpots() {
+            showStatus("🏛️ Searching for tourist attractions in Lebanon...", "loading");
+            clearMarkers();
+            
+            const request = {
+                location: { lat: 33.8886, lng: 35.4955 },
+                radius: 50000,
+                type: "tourist_attraction",
+            };
+
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    showStatus(`✅ Found ${results.length} tourist attractions!`, "success");
+                    displayResults(results);
+                    
+                    // Add markers
+                    results.forEach(place => {
+                        const marker = new google.maps.Marker({
+                            position: place.geometry.location,
+                            map: map,
+                            title: place.name,
+                            icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                        });
+                        markers.push(marker);
+                    });
+                    
+                    // Fit bounds
+                    const bounds = new google.maps.LatLngBounds();
+                    results.forEach(place => bounds.extend(place.geometry.location));
+                    map.fitBounds(bounds);
+                } else {
+                    showStatus(`❌ Error: ${status}`, "error");
+                }
+            });
+        }
+
+        // Handle API load errors
+        function handleError() {
+            showStatus("❌ Failed to load Google Maps API. Check your API key and billing.", "error");
+        }
+    </script>
+    
+    <!-- Load Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfhArL3nc5UxL31qILqOS_1H0JTNiXj_o&libraries=places&callback=initMap" 
+            async defer onerror="handleError()"></script>
+</body>
+</html>
