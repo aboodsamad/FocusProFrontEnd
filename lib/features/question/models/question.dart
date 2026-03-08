@@ -1,8 +1,9 @@
 class Question {
-  int id;
-  String text;
-  List<String> options;
-  int correctIndex;
+  final int id;
+  final String text;
+  final List<String> options;
+  final int correctIndex;
+
   Question({
     required this.id,
     required this.text,

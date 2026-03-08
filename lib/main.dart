@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'pages/login_page.dart';
-import 'pages/homePage.dart';
-import './providers/app_provider.dart';
-import './services/oath_redirect.dart';
 import 'dart:html' as html;
+import 'features/auth/pages/login_page.dart';
+import 'features/auth/pages/oauth_callback_page.dart';
+import 'features/home/pages/home_page.dart';
 
+// AppProvider removed — it was empty. Add it back here when you
+// need real cross-page state (e.g. logged-in user, theme, etc.)
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(ChangeNotifierProvider(create: (_) => Edit(), child: const MyApp()));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -18,17 +19,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My App',
-      debugShowCheckedModeBanner: false, 
+      title: 'FocusPro',
+      debugShowCheckedModeBanner: false,
       initialRoute: '/',
       onGenerateRoute: (settings) {
-        // Check if URL contains oauth-callback
+        // Handle Google OAuth callback
         final hash = html.window.location.hash;
         if (hash.contains('/oauth-callback')) {
           return MaterialPageRoute(builder: (_) => OAuthCallbackPage());
         }
-        
-        // Regular routes
+
         switch (settings.name) {
           case '/':
             return MaterialPageRoute(builder: (_) => LoginPage());
@@ -41,4 +41,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
