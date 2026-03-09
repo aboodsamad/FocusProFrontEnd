@@ -1,11 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../services/user_service.dart';
-import '../widgets/focus_circle.dart';
-import '../widgets/component_bar.dart';
-import '../widgets/action_card.dart';
-import '../widgets/score_breakdown_sheet.dart';
 import '../../question/pages/question_page.dart';
 import '../../games/sudoku/pages/sudoku_page.dart';
 
@@ -17,495 +14,744 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _loading = true;
   String _name = 'User';
   double _focusScore = 0.0;
-  Map<String, double> _components = {'T': 0, 'G': 0, 'S': 0, 'H': 0};
-  int _distractingMinutes = 0;
-  List<Map<String, dynamic>> _habits = [];
-  List<Map<String, dynamic>> _recentGames = [];
-  String _recommendation = '';
+  int _distractingMinutes = 42;
 
+  final List<Map<String, dynamic>> _habits = [
+    {'title': 'Morning 10-min reading',  'done': true,  'streak': 3,  'icon': Icons.menu_book_outlined},
+    {'title': 'Daily reaction game',     'done': false, 'streak': 1,  'icon': Icons.videogame_asset_outlined},
+    {'title': 'No social before 9 AM',   'done': false, 'streak': 7,  'icon': Icons.phone_locked_outlined},
+  ];
+
+  late AnimationController _scoreAnimController;
+  late Animation<double> _scoreAnim;
   late AnimationController _pulseController;
+  late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
+    _scoreAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
-      lowerBound: 0.0,
-      upperBound: 0.06,
+      duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
     _load();
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
-
     final token = await AuthService.getToken();
-    if (token != null) {
-      await UserService.fetchAndSaveProfile(token);
-    }
+    if (token != null) await UserService.fetchAndSaveProfile(token);
 
-    final storedProfile = await UserService.getStoredProfile();
-    if (storedProfile != null) {
-      _name       = storedProfile['name'] ?? 'User';
-      _focusScore = (storedProfile['focusScore'] ?? 0.0).toDouble();
-    }
+    final name  = await UserService.getStoredName() ?? 'User';
+    final score = await UserService.getStoredFocusScore() ?? 70.0;
 
-    final data = await _fetchHomeData();
-    setState(() {
-      if (_name == 'User') _name = data['name'] ?? _name;
-      if (_focusScore == 0.0) {
-        _focusScore = (data['focusScore'] as num).toDouble();
-      }
-      _components         = Map<String, double>.from(data['components']);
-      _distractingMinutes = data['distractingMinutesToday'] ?? 0;
-      _habits             = List<Map<String, dynamic>>.from(data['habitList']);
-      _recentGames        = List<Map<String, dynamic>>.from(data['recentGames']);
-      _recommendation     = data['recommendation'] ?? '';
-      _loading            = false;
-    });
-  }
-
-  // Mock data — will be replaced with a real API call later
-  Future<Map<String, dynamic>> _fetchHomeData() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final focusScore = await UserService.getStoredFocusScore() ?? 0.0;
-    final name       = await UserService.getStoredName() ?? 'Abd';
-    return {
-      'name':       name,
-      'focusScore': focusScore,
-      'components': {'T': 70.0, 'G': 60.0, 'S': 70.0, 'H': 80.0},
-      'distractingMinutesToday': 42,
-      'habitList': [
-        {'id': 'h1', 'title': 'Morning 10-min reading',  'done': true,  'streak': 3},
-        {'id': 'h2', 'title': 'Daily reaction game',     'done': false, 'streak': 1},
-        {'id': 'h3', 'title': 'No social before 9AM',    'done': false, 'streak': 7},
-      ],
-      'recentGames': [
-        {'game': 'Reaction', 'score': 78, 'time': '10m'},
-        {'game': 'N-back',   'score': 62, 'time': '6m'},
-      ],
-      'recommendation':
-          'Do 2 reaction tasks + 10m TTS for 3 days to boost score by ~5 pts.',
-    };
+    _scoreAnim = Tween<double>(begin: 0, end: score).animate(
+      CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
+    );
+    setState(() { _name = name; _focusScore = score; _loading = false; });
+    _scoreAnimController.forward();
   }
 
   @override
   void dispose() {
+    _scoreAnimController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
-
-  void _openTest() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Open Test (TODO)')),
-    );
+  Color get _scoreColor {
+    if (_focusScore >= 80) return const Color(0xFF10B981);
+    if (_focusScore >= 65) return AppColors.primaryA;
+    if (_focusScore >= 50) return const Color(0xFFF97316);
+    return const Color(0xFFEF4444);
   }
 
-  void _openGames() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const SudokuApp()),
-    );
+  String get _scoreLabel {
+    if (_focusScore >= 80) return 'Excellent';
+    if (_focusScore >= 65) return 'Good';
+    if (_focusScore >= 50) return 'Fair';
+    return 'Needs Work';
   }
 
-  void _openReader() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Open Reader (TODO)')),
-    );
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
   }
-
-  // ── Habit actions ──────────────────────────────────────────────────────────
-
-  void _toggleHabitDone(int index) {
-    setState(() {
-      _habits[index]['done'] = !_habits[index]['done'];
-      if (_habits[index]['done']) {
-        _habits[index]['streak'] = (_habits[index]['streak'] ?? 0) + 1;
-      } else {
-        _habits[index]['streak'] = 0;
-      }
-    });
-  }
-
-  void _manualUsageEntry() {
-    showDialog<int>(
-      context: context,
-      builder: (context) {
-        final ctl = TextEditingController();
-        return AlertDialog(
-          title: const Text('Manual usage minutes'),
-          content: TextField(
-            controller: ctl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: 'Enter minutes spent on distracting apps',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final val = int.tryParse(ctl.text) ?? 0;
-                Navigator.pop(context, val);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    ).then((minutes) {
-      if (minutes != null) {
-        setState(() => _distractingMinutes = minutes);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Saved $minutes minutes')),
-        );
-      }
-    });
-  }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.softBg,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        toolbarHeight: 86,
-        title: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [AppColors.primaryA, AppColors.primaryB],
-                ),
-              ),
-              child: CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.transparent,
-                child: Text(
-                  _name.isNotEmpty ? _name[0].toUpperCase() : 'U',
-                  style: const TextStyle(color: Colors.white, fontSize: 20),
-                ),
+      backgroundColor: const Color(0xFF080D1A),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryA))
+          : SafeArea(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildAppBar()),
+                  SliverToBoxAdapter(child: _buildHeroScore()),
+                  SliverToBoxAdapter(child: _buildQuickActions()),
+                  SliverToBoxAdapter(child: _buildStatsRow()),
+                  SliverToBoxAdapter(child: _buildHabitsSection()),
+                  SliverToBoxAdapter(child: _buildRecommendationCard()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        children: [
+          Container(
+            width: 46, height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                  colors: [AppColors.primaryA, AppColors.primaryB]),
+              boxShadow: [BoxShadow(
+                  color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
+            ),
+            child: Center(
+              child: Text(
+                _name.isNotEmpty ? _name[0].toUpperCase() : 'U',
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_greeting,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              Text(_name,
+                  style: const TextStyle(color: Colors.white,
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const Spacer(),
+          _IconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+          const SizedBox(width: 8),
+          _IconBtn(
+            icon: Icons.settings_outlined,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings (TODO)'))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroScore() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: const Color(0xFF0F1624),
+          border: Border.all(color: _scoreColor.withOpacity(0.2), width: 1.5),
+          boxShadow: [BoxShadow(
+              color: _scoreColor.withOpacity(0.08),
+              blurRadius: 24, spreadRadius: 2)],
+        ),
+        child: Row(
+          children: [
+            // Left: label + bar
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Good day,', style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-                  Text(
-                    _name,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _scoreColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(_scoreLabel,
+                        style: TextStyle(color: _scoreColor,
+                            fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Your Focus Score',
+                      style: TextStyle(color: Colors.white,
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('From your diagnostic + weekly activity',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  const SizedBox(height: 18),
+                  AnimatedBuilder(
+                    animation: _scoreAnim,
+                    builder: (_, __) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: _scoreAnim.value / 100,
+                            minHeight: 8,
+                            backgroundColor: Colors.white.withOpacity(0.07),
+                            valueColor:
+                                AlwaysStoppedAnimation(_scoreColor),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('0',
+                                style: TextStyle(
+                                    color: Colors.grey[600], fontSize: 10)),
+                            Text('100',
+                                style: TextStyle(
+                                    color: Colors.grey[600], fontSize: 10)),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Settings',
-              icon: Icon(Icons.settings_outlined, color: Colors.grey[700]),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Open Settings (TODO)')),
+
+            const SizedBox(width: 20),
+
+            // Right: animated ring
+            AnimatedBuilder(
+              animation: Listenable.merge([_scoreAnim, _pulseAnim]),
+              builder: (_, __) => Transform.scale(
+                scale: _pulseAnim.value,
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 96, height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(
+                              color: _scoreColor.withOpacity(0.3),
+                              blurRadius: 20, spreadRadius: 4)],
+                        ),
+                      ),
+                      CustomPaint(
+                        size: const Size(96, 96),
+                        painter: _ScoreRingPainter(
+                          progress: _scoreAnim.value / 100,
+                          color: _scoreColor,
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _scoreAnim.value.toStringAsFixed(0),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          Text('pts',
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 11)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                children: [
+    );
+  }
 
-                  // ── Focus Score Card ───────────────────────────────────
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+  Widget _buildQuickActions() {
+    final actions = [
+      _ActionItem(icon: Icons.assessment_outlined, label: 'Test',
+          sub: '5–8 min', color: AppColors.primaryA,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const QuestionPage()))),
+      _ActionItem(icon: Icons.videogame_asset_outlined, label: 'Games',
+          sub: '2–6 min', color: const Color(0xFF10B981),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SudokuApp()))),
+      _ActionItem(icon: Icons.menu_book_outlined, label: 'Reader',
+          sub: 'TTS/Text', color: const Color(0xFFF97316),
+          onTap: () => ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Reader (TODO)')))),
+      _ActionItem(icon: Icons.headphones_outlined, label: 'Audio',
+          sub: 'Focus mode', color: const Color(0xFFEC4899),
+          onTap: () => ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Audio (TODO)')))),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel(label: 'Quick Actions'),
+          const SizedBox(height: 12),
+          Row(
+            children: actions.map((a) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _QuickActionCard(item: a),
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel(label: "Today's Stats"),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _StatCard(
+                label: 'Distracted', value: '${_distractingMinutes}m',
+                icon: Icons.phonelink_off_outlined,
+                color: const Color(0xFFEF4444),
+                sub: 'scroll time', onTap: _editUsage)),
+              const SizedBox(width: 8),
+              Expanded(child: _StatCard(
+                label: 'Streak', value: '7 days',
+                icon: Icons.local_fire_department_outlined,
+                color: const Color(0xFFF97316), sub: 'keep going!')),
+              const SizedBox(width: 8),
+              Expanded(child: _StatCard(
+                label: 'Sessions', value: '3',
+                icon: Icons.bar_chart_rounded,
+                color: AppColors.primaryA, sub: 'today')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editUsage() {
+    showDialog<int>(
+      context: context,
+      builder: (_) {
+        final ctl = TextEditingController(text: '$_distractingMinutes');
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1624),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Distracted Minutes',
+              style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: ctl, keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Minutes on distracting apps',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true, fillColor: Colors.white.withOpacity(0.05),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: TextStyle(color: Colors.grey[500]))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryA,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              onPressed: () => Navigator.pop(context, int.tryParse(ctl.text) ?? 0),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    ).then((v) { if (v != null) setState(() => _distractingMinutes = v); });
+  }
+
+  Widget _buildHabitsSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const _SectionLabel(label: "Today's Habits"),
+              TextButton(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Manage habits (TODO)'))),
+                child: Text('Manage',
+                    style: TextStyle(color: AppColors.primaryA,
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1624),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: Column(
+              children: _habits.asMap().entries.map((e) {
+                final i = e.key;
+                final isLast = i == _habits.length - 1;
+                return _HabitTile(
+                  habit: _habits[i],
+                  isLast: isLast,
+                  onToggle: () => setState(() {
+                    _habits[i]['done'] = !_habits[i]['done'];
+                    if (_habits[i]['done'])
+                      _habits[i]['streak'] = (_habits[i]['streak'] ?? 0) + 1;
+                  }),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(colors: [
+            AppColors.primaryB.withOpacity(0.3),
+            AppColors.primaryA.withOpacity(0.12),
+          ]),
+          border: Border.all(color: AppColors.primaryA.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppColors.primaryA.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.auto_awesome,
+                    color: AppColors.primaryA, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text('AI Recommendation',
+                  style: TextStyle(color: Colors.white,
+                      fontWeight: FontWeight.bold, fontSize: 14)),
+            ]),
+            const SizedBox(height: 12),
+            Text(
+              'Do 2 reaction tasks + 10 min reading for 3 days to boost your score by ~5 pts.',
+              style: TextStyle(color: Colors.grey[300], fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const QuestionPage())),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [AppColors.primaryA, AppColors.primaryB]),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    elevation: 6,
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          FocusCircle(
-                            score:           _focusScore,
-                            pulseController: _pulseController,
-                            primaryA:        AppColors.primaryA,
-                            primaryB:        AppColors.primaryB,
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Weekly FocusScore',
-                                    style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-                                const SizedBox(height: 8),
-                                Text('Your explainable attention metric',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    ComponentBar(label: 'Test',   value: _components['T'] ?? 0, primaryA: AppColors.primaryA, primaryB: AppColors.primaryB),
-                                    const SizedBox(width: 8),
-                                    ComponentBar(label: 'Games',  value: _components['G'] ?? 0, primaryA: AppColors.primaryA, primaryB: AppColors.primaryB),
-                                    const SizedBox(width: 8),
-                                    ComponentBar(label: 'Screen', value: _components['S'] ?? 0, primaryA: AppColors.primaryA, primaryB: AppColors.primaryB),
-                                    const SizedBox(width: 8),
-                                    ComponentBar(label: 'Habits', value: _components['H'] ?? 0, primaryA: AppColors.primaryA, primaryB: AppColors.primaryB),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.analytics_outlined),
-                                      label: const Text('Details'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primaryA,
-                                      ),
-                                      onPressed: () => showModalBottomSheet(
-                                        context: context,
-                                        builder: (_) => ScoreBreakdownSheet(
-                                          components: _components,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    OutlinedButton(
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const QuestionPage(),
-                                        ),
-                                      ),
-                                      child: const Text('Quick Test'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: const Center(child: Text('Quick Test',
+                        style: TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.bold, fontSize: 13))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Auto-plan (TODO)'))),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.07),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
+                    child: const Center(child: Text('Auto-plan',
+                        style: TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.bold, fontSize: 13))),
                   ),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                  const SizedBox(height: 12),
+// ── Score ring painter ─────────────────────────────────────────────────────
 
-                  // ── Quick Actions ──────────────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(child: ActionCard(icon: Icons.assessment_outlined,     title: 'Start Test', subtitle: '5-8 min',  onTap: _openTest,   primaryB: AppColors.primaryB)),
-                      const SizedBox(width: 10),
-                      Expanded(child: ActionCard(icon: Icons.videogame_asset_outlined, title: 'Play Game', subtitle: '2-6 min',  onTap: _openGames,  primaryB: AppColors.primaryB)),
-                      const SizedBox(width: 10),
-                      Expanded(child: ActionCard(icon: Icons.menu_book_outlined,       title: 'Reader',    subtitle: 'TTS/Text', onTap: _openReader, primaryB: AppColors.primaryB)),
-                    ],
+class _ScoreRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  _ScoreRingPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r  = size.width / 2 - 6;
+
+    canvas.drawCircle(Offset(cx, cy), r, Paint()
+      ..color = Colors.white.withOpacity(0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7);
+
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        -math.pi / 2, 2 * math.pi * progress, false,
+        Paint()
+          ..color = color.withOpacity(0.2)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 12
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        -math.pi / 2, 2 * math.pi * progress, false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 7
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ScoreRingPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+// ── Reusable widgets ───────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+  @override
+  Widget build(BuildContext context) => Text(label,
+      style: const TextStyle(color: Colors.white,
+          fontSize: 16, fontWeight: FontWeight.bold));
+}
+
+class _IconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _IconBtn({required this.icon, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 40, height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Icon(icon, color: Colors.grey[400], size: 20),
+    ),
+  );
+}
+
+class _ActionItem {
+  final IconData icon;
+  final String label, sub;
+  final Color color;
+  final VoidCallback onTap;
+  _ActionItem({required this.icon, required this.label,
+    required this.sub, required this.color, required this.onTap});
+}
+
+class _QuickActionCard extends StatelessWidget {
+  final _ActionItem item;
+  const _QuickActionCard({required this.item});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: item.onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+      decoration: BoxDecoration(
+        color: item.color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: item.color.withOpacity(0.18)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: item.color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(item.icon, color: item.color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(item.label,
+              style: const TextStyle(color: Colors.white,
+                  fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(item.sub,
+              style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _StatCard extends StatelessWidget {
+  final String label, value, sub;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+  const _StatCard({required this.label, required this.value,
+    required this.icon, required this.color,
+    required this.sub, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1624),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 10),
+          Text(value, style: TextStyle(
+              color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(sub, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _HabitTile extends StatelessWidget {
+  final Map<String, dynamic> habit;
+  final bool isLast;
+  final VoidCallback onToggle;
+  const _HabitTile(
+      {required this.habit, required this.isLast, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final done   = habit['done'] as bool;
+    final streak = habit['streak'] as int;
+    return Column(
+      children: [
+        InkWell(
+          onTap: onToggle,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 26, height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: done
+                        ? const LinearGradient(
+                            colors: [AppColors.primaryA, AppColors.primaryB])
+                        : null,
+                    color: done ? null : Colors.transparent,
+                    border: done
+                        ? null
+                        : Border.all(color: Colors.grey[600]!, width: 2),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Habits + Usage ─────────────────────────────────────
-                  Row(
+                  child: done
+                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        flex: 2,
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Habits', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 8),
-                                ..._habits.asMap().entries.map((e) {
-                                  final idx = e.key;
-                                  final h   = e.value;
-                                  return ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: Checkbox(
-                                      value: h['done'] as bool,
-                                      onChanged: (_) => _toggleHabitDone(idx),
-                                      activeColor: AppColors.primaryA,
-                                    ),
-                                    title:    Text(h['title']),
-                                    subtitle: Text('Streak: ${h['streak']}'),
-                                    trailing: const Icon(Icons.chevron_right),
-                                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Habit: ${h['title']} (TODO)')),
-                                    ),
-                                  );
-                                }).toList(),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Open Habits (TODO)')),
-                                    ),
-                                    child: const Text('Manage Habits'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      Text(
+                        habit['title'],
+                        style: TextStyle(
+                          color: done ? Colors.grey[600] : Colors.white,
+                          fontSize: 14, fontWeight: FontWeight.w500,
+                          decoration: done ? TextDecoration.lineThrough : null,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 1,
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Usage Today', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.watch_later_outlined, color: AppColors.primaryB),
-                                    const SizedBox(width: 8),
-                                    const Expanded(child: Text('Distracting minutes:')),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '$_distractingMinutes min',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 8),
-                                ElevatedButton(
-                                  onPressed: _manualUsageEntry,
-                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryB),
-                                  child: const Text('Edit'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        const Icon(Icons.local_fire_department,
+                            color: Colors.orange, size: 12),
+                        const SizedBox(width: 3),
+                        Text('$streak day streak',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 11)),
+                      ]),
                     ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Recent Games ───────────────────────────────────────
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text('Recent Games', style: TextStyle(fontWeight: FontWeight.bold)),
-                              const Spacer(),
-                              TextButton(onPressed: _openGames, child: const Text('See all')),
-                            ],
-                          ),
-                          ..._recentGames.map((g) {
-                            return ListTile(
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.videogame_asset_outlined),
-                              ),
-                              title:    Text(g['game']),
-                              subtitle: Text('${g['score']} pts • ${g['time']}'),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Open game session (TODO)')),
-                              ),
-                            );
-                          }).toList(),
-                          const Divider(),
-                          ListTile(
-                            leading: const Icon(Icons.psychology_outlined),
-                            title:    const Text('Mini IQ Practice'),
-                            subtitle: const Text('Short pattern & verbal tasks'),
-                            trailing: ElevatedButton(
-                              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Open Mini IQ (TODO)')),
-                              ),
-                              child: const Text('Start'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Recommendation ─────────────────────────────────────
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Recommendation', style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text(_recommendation, style: TextStyle(color: Colors.grey[800])),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('Auto-plan'),
-                                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Plan applied (TODO)')),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              OutlinedButton(
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const QuestionPage()),
-                                ),
-                                child: const Text('Quick Test'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
+                ),
+                Icon(habit['icon'] as IconData,
+                    color: done ? Colors.grey[700] : Colors.grey[500],
+                    size: 18),
+              ],
             ),
+          ),
+        ),
+        if (!isLast) Divider(
+            height: 1, color: Colors.white.withOpacity(0.05), indent: 56),
+      ],
     );
   }
 }

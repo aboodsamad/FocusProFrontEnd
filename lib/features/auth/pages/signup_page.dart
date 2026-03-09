@@ -6,6 +6,7 @@ import '../widgets/animated_logo.dart';
 import '../widgets/auth_text_field.dart';
 import './login_page.dart';
 import '../../question/pages/question_page.dart';
+import '../../diagnostic/pages/diagnostic_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -175,7 +176,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
           ),
         );
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const QuestionPage()),
+          MaterialPageRoute(builder: (_) => const DiagnosticPage()),
         );
       } else {
         throw Exception('Signup failed: No token received');
