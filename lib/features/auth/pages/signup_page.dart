@@ -5,7 +5,6 @@ import '../../../core/widgets/auth_background.dart';
 import '../widgets/animated_logo.dart';
 import '../widgets/auth_text_field.dart';
 import './login_page.dart';
-import '../../question/pages/question_page.dart';
 import '../../diagnostic/pages/diagnostic_page.dart';
 
 class SignupPage extends StatefulWidget {
@@ -166,17 +165,17 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       final result = await AuthService.signup(signupData);
       setState(() => _isLoading = false);
 
-      final token = result['token']?.toString() ?? result.toString();
-      if (token.isNotEmpty && !token.contains('Exception')) {
+      // Backend returns raw JWT string wrapped as {'token': '...'}
+      final token = result['token']?.toString() ?? '';
+      if (token.isNotEmpty) {
         await AuthService.saveToken(token);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signup Successful! Welcome!'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Welcome! Let\'s set up your focus profile.'),
+              backgroundColor: Colors.green),
         );
+        // Navigate to diagnostic — this sets the initial focus score
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DiagnosticPage()),
+          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
         );
       } else {
         throw Exception('Signup failed: No token received');

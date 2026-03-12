@@ -13,8 +13,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _loading = true;
   String _name = 'User';
   double _focusScore = 0.0;
@@ -34,14 +33,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _scoreAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    _scoreAnimController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -50,12 +44,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final localScore = await UserService.getStoredFocusScore() ?? 0.0;
     final token = await AuthService.getToken();
     if (token != null) await UserService.fetchAndSaveProfile(token);
-
-    final name  = await UserService.getStoredName() ?? 'User';
-    final score = await UserService.getStoredFocusScore() ?? 70.0;
-
+    final name    = await UserService.getStoredName() ?? 'User';
+    final dbScore = await UserService.getStoredFocusScore() ?? 0.0;
+    final score   = (dbScore > 1.0) ? dbScore : (localScore > 1.0 ? localScore : 70.0);
     _scoreAnim = Tween<double>(begin: 0, end: score).animate(
       CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
     );
@@ -123,16 +117,13 @@ class _HomeScreenState extends State<HomeScreen>
             width: 46, height: 46,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                  colors: [AppColors.primaryA, AppColors.primaryB]),
-              boxShadow: [BoxShadow(
-                  color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
+              gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
+              boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
             ),
             child: Center(
               child: Text(
                 _name.isNotEmpty ? _name[0].toUpperCase() : 'U',
-                style: const TextStyle(color: Colors.white,
-                    fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -140,11 +131,8 @@ class _HomeScreenState extends State<HomeScreen>
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              Text(_name,
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(_greeting, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              Text(_name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
           const Spacer(),
@@ -152,8 +140,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(width: 8),
           _IconBtn(
             icon: Icons.settings_outlined,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings (TODO)'))),
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings (TODO)'))),
           ),
         ],
       ),
@@ -163,38 +150,27 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHeroScore() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: const Color(0xFF0F1624),
-          border: Border.all(color: _scoreColor.withOpacity(0.2), width: 1.5),
-          boxShadow: [BoxShadow(
-              color: _scoreColor.withOpacity(0.08),
-              blurRadius: 24, spreadRadius: 2)],
-        ),
+      child: _HoverContainer(
+        borderColor: _scoreColor,
+        glowColor: _scoreColor,
         child: Row(
           children: [
-            // Left: label + bar
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _scoreColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(_scoreLabel,
-                        style: TextStyle(color: _scoreColor,
-                            fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: TextStyle(color: _scoreColor, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 12),
                   const Text('Your Focus Score',
-                      style: TextStyle(color: Colors.white,
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text('From your diagnostic + weekly activity',
                       style: TextStyle(color: Colors.grey[500], fontSize: 11)),
@@ -210,20 +186,15 @@ class _HomeScreenState extends State<HomeScreen>
                             value: _scoreAnim.value / 100,
                             minHeight: 8,
                             backgroundColor: Colors.white.withOpacity(0.07),
-                            valueColor:
-                                AlwaysStoppedAnimation(_scoreColor),
+                            valueColor: AlwaysStoppedAnimation(_scoreColor),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('0',
-                                style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 10)),
-                            Text('100',
-                                style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 10)),
+                            Text('0', style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+                            Text('100', style: TextStyle(color: Colors.grey[600], fontSize: 10)),
                           ],
                         ),
                       ],
@@ -232,17 +203,13 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-
             const SizedBox(width: 20),
-
-            // Right: animated ring
             AnimatedBuilder(
               animation: Listenable.merge([_scoreAnim, _pulseAnim]),
               builder: (_, __) => Transform.scale(
                 scale: _pulseAnim.value,
                 child: SizedBox(
-                  width: 96,
-                  height: 96,
+                  width: 96, height: 96,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -250,31 +217,19 @@ class _HomeScreenState extends State<HomeScreen>
                         width: 96, height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(
-                              color: _scoreColor.withOpacity(0.3),
-                              blurRadius: 20, spreadRadius: 4)],
+                          boxShadow: [BoxShadow(color: _scoreColor.withOpacity(0.3), blurRadius: 20, spreadRadius: 4)],
                         ),
                       ),
                       CustomPaint(
                         size: const Size(96, 96),
-                        painter: _ScoreRingPainter(
-                          progress: _scoreAnim.value / 100,
-                          color: _scoreColor,
-                        ),
+                        painter: _ScoreRingPainter(progress: _scoreAnim.value / 100, color: _scoreColor),
                       ),
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            _scoreAnim.value.toStringAsFixed(0),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          Text('pts',
-                              style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 11)),
+                          Text(_scoreAnim.value.toStringAsFixed(0),
+                              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                          Text('pts', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
                         ],
                       ),
                     ],
@@ -290,22 +245,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildQuickActions() {
     final actions = [
-      _ActionItem(icon: Icons.assessment_outlined, label: 'Test',
-          sub: '5–8 min', color: AppColors.primaryA,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const QuestionPage()))),
-      _ActionItem(icon: Icons.videogame_asset_outlined, label: 'Games',
-          sub: '2–6 min', color: const Color(0xFF10B981),
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SudokuApp()))),
-      _ActionItem(icon: Icons.menu_book_outlined, label: 'Reader',
-          sub: 'TTS/Text', color: const Color(0xFFF97316),
-          onTap: () => ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Reader (TODO)')))),
-      _ActionItem(icon: Icons.headphones_outlined, label: 'Audio',
-          sub: 'Focus mode', color: const Color(0xFFEC4899),
-          onTap: () => ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Audio (TODO)')))),
+      _ActionItem(icon: Icons.assessment_outlined,      label: 'Test',   sub: '5–8 min',    color: AppColors.primaryA,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuestionPage()))),
+      _ActionItem(icon: Icons.videogame_asset_outlined, label: 'Games',  sub: '2–6 min',    color: const Color(0xFF10B981),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SudokuApp()))),
+      _ActionItem(icon: Icons.menu_book_outlined,       label: 'Reader', sub: 'TTS/Text',   color: const Color(0xFFF97316),
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reader (TODO)')))),
+      _ActionItem(icon: Icons.headphones_outlined,      label: 'Audio',  sub: 'Focus mode', color: const Color(0xFFEC4899),
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio (TODO)')))),
     ];
 
     return Padding(
@@ -368,8 +315,7 @@ class _HomeScreenState extends State<HomeScreen>
         return AlertDialog(
           backgroundColor: const Color(0xFF0F1624),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Distracted Minutes',
-              style: TextStyle(color: Colors.white)),
+          title: const Text('Distracted Minutes', style: TextStyle(color: Colors.white)),
           content: TextField(
             controller: ctl, keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white),
@@ -377,9 +323,7 @@ class _HomeScreenState extends State<HomeScreen>
               hintText: 'Minutes on distracting apps',
               hintStyle: TextStyle(color: Colors.grey[600]),
               filled: true, fillColor: Colors.white.withOpacity(0.05),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             ),
           ),
           actions: [
@@ -408,11 +352,10 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               const _SectionLabel(label: "Today's Habits"),
               TextButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Manage habits (TODO)'))),
+                onPressed: () => ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('Manage habits (TODO)'))),
                 child: Text('Manage',
-                    style: TextStyle(color: AppColors.primaryA,
-                        fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: TextStyle(color: AppColors.primaryA, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -447,16 +390,10 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildRecommendationCard() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(colors: [
-            AppColors.primaryB.withOpacity(0.3),
-            AppColors.primaryA.withOpacity(0.12),
-          ]),
-          border: Border.all(color: AppColors.primaryA.withOpacity(0.2)),
-        ),
+      child: _HoverContainer(
+        borderColor: AppColors.primaryA,
+        glowColor: AppColors.primaryA,
+        useGradientBg: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -466,13 +403,11 @@ class _HomeScreenState extends State<HomeScreen>
                 decoration: BoxDecoration(
                     color: AppColors.primaryA.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.auto_awesome,
-                    color: AppColors.primaryA, size: 18),
+                child: const Icon(Icons.auto_awesome, color: AppColors.primaryA, size: 18),
               ),
               const SizedBox(width: 10),
               const Text('AI Recommendation',
-                  style: TextStyle(color: Colors.white,
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
             ]),
             const SizedBox(height: 12),
             Text(
@@ -483,26 +418,23 @@ class _HomeScreenState extends State<HomeScreen>
             Row(children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const QuestionPage())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuestionPage())),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 11),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                          colors: [AppColors.primaryA, AppColors.primaryB]),
+                      gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Center(child: Text('Quick Test',
-                        style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.bold, fontSize: 13))),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Auto-plan (TODO)'))),
+                  onTap: () => ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('Auto-plan (TODO)'))),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 11),
                     decoration: BoxDecoration(
@@ -511,13 +443,75 @@ class _HomeScreenState extends State<HomeScreen>
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: const Center(child: Text('Auto-plan',
-                        style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.bold, fontSize: 13))),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
                   ),
                 ),
               ),
             ]),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Generic hover container ────────────────────────────────────────────────
+
+class _HoverContainer extends StatefulWidget {
+  final Widget child;
+  final Color borderColor;
+  final Color glowColor;
+  final bool useGradientBg;
+  final VoidCallback? onTap;
+
+  const _HoverContainer({
+    required this.child,
+    required this.borderColor,
+    required this.glowColor,
+    this.useGradientBg = false,
+    this.onTap,
+  });
+
+  @override
+  State<_HoverContainer> createState() => _HoverContainerState();
+}
+
+class _HoverContainerState extends State<_HoverContainer> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit:  (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: widget.useGradientBg ? null : const Color(0xFF0F1624),
+            gradient: widget.useGradientBg
+                ? LinearGradient(colors: [
+                    AppColors.primaryB.withOpacity(_hovered ? 0.45 : 0.3),
+                    AppColors.primaryA.withOpacity(_hovered ? 0.22 : 0.12),
+                  ])
+                : null,
+            border: Border.all(
+              color: widget.borderColor.withOpacity(_hovered ? 0.55 : 0.2),
+              width: _hovered ? 1.8 : 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.glowColor.withOpacity(_hovered ? 0.18 : 0.08),
+                blurRadius: _hovered ? 32 : 24,
+                spreadRadius: _hovered ? 4 : 2,
+              ),
+            ],
+          ),
+          child: widget.child,
         ),
       ),
     );
@@ -577,25 +571,38 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});
   @override
   Widget build(BuildContext context) => Text(label,
-      style: const TextStyle(color: Colors.white,
-          fontSize: 16, fontWeight: FontWeight.bold));
+      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold));
 }
 
-class _IconBtn extends StatelessWidget {
+class _IconBtn extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
   const _IconBtn({required this.icon, required this.onTap});
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40, height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+  State<_IconBtn> createState() => _IconBtnState();
+}
+
+class _IconBtnState extends State<_IconBtn> {
+  bool _hovered = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit:  (_) => setState(() => _hovered = false),
+    child: GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: _hovered ? AppColors.primaryA.withOpacity(0.15) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _hovered ? AppColors.primaryA.withOpacity(0.5) : Colors.white.withOpacity(0.08),
+          ),
+        ),
+        child: Icon(widget.icon,
+            color: _hovered ? AppColors.primaryA : Colors.grey[400], size: 20),
       ),
-      child: Icon(icon, color: Colors.grey[400], size: 20),
     ),
   );
 }
@@ -609,148 +616,193 @@ class _ActionItem {
     required this.sub, required this.color, required this.onTap});
 }
 
-class _QuickActionCard extends StatelessWidget {
+class _QuickActionCard extends StatefulWidget {
   final _ActionItem item;
   const _QuickActionCard({required this.item});
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: item.onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-      decoration: BoxDecoration(
-        color: item.color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: item.color.withOpacity(0.18)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: item.color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(item.icon, color: item.color, size: 20),
+  State<_QuickActionCard> createState() => _QuickActionCardState();
+}
+
+class _QuickActionCardState extends State<_QuickActionCard> {
+  bool _hovered = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit:  (_) => setState(() => _hovered = false),
+    child: GestureDetector(
+      onTap: widget.item.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: widget.item.color.withOpacity(_hovered ? 0.22 : 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: widget.item.color.withOpacity(_hovered ? 0.55 : 0.18),
+            width: _hovered ? 1.8 : 1.0,
           ),
-          const SizedBox(height: 8),
-          Text(item.label,
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(item.sub,
-              style: TextStyle(color: Colors.grey[600], fontSize: 10)),
-        ],
+          boxShadow: _hovered
+              ? [BoxShadow(color: widget.item.color.withOpacity(0.25), blurRadius: 16, spreadRadius: 1)]
+              : [],
+        ),
+        child: Column(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: widget.item.color.withOpacity(_hovered ? 0.30 : 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(widget.item.icon, color: widget.item.color, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(widget.item.label,
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text(widget.item.sub, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+          ],
+        ),
       ),
     ),
   );
 }
 
-class _StatCard extends StatelessWidget {
+class _StatCard extends StatefulWidget {
   final String label, value, sub;
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
   const _StatCard({required this.label, required this.value,
-    required this.icon, required this.color,
-    required this.sub, this.onTap});
-
+    required this.icon, required this.color, required this.sub, this.onTap});
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1624),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(height: 10),
-          Text(value, style: TextStyle(
-              color: color, fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(sub, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
-        ],
+  State<_StatCard> createState() => _StatCardState();
+}
+
+class _StatCardState extends State<_StatCard> {
+  bool _hovered = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit:  (_) => setState(() => _hovered = false),
+    child: GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _hovered ? widget.color.withOpacity(0.1) : const Color(0xFF0F1624),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hovered ? widget.color.withOpacity(0.45) : Colors.white.withOpacity(0.06),
+            width: _hovered ? 1.5 : 1.0,
+          ),
+          boxShadow: _hovered
+              ? [BoxShadow(color: widget.color.withOpacity(0.2), blurRadius: 14, spreadRadius: 1)]
+              : [],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(widget.icon, color: widget.color, size: 18),
+            const SizedBox(height: 10),
+            Text(widget.value,
+                style: TextStyle(color: widget.color, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text(widget.sub, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+          ],
+        ),
       ),
     ),
   );
 }
 
-class _HabitTile extends StatelessWidget {
+class _HabitTile extends StatefulWidget {
   final Map<String, dynamic> habit;
   final bool isLast;
   final VoidCallback onToggle;
-  const _HabitTile(
-      {required this.habit, required this.isLast, required this.onToggle});
+  const _HabitTile({required this.habit, required this.isLast, required this.onToggle});
+  @override
+  State<_HabitTile> createState() => _HabitTileState();
+}
 
+class _HabitTileState extends State<_HabitTile> {
+  bool _hovered = false;
   @override
   Widget build(BuildContext context) {
-    final done   = habit['done'] as bool;
-    final streak = habit['streak'] as int;
+    final done   = widget.habit['done'] as bool;
+    final streak = widget.habit['streak'] as int;
     return Column(
       children: [
-        InkWell(
-          onTap: onToggle,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 26, height: 26,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: done
-                        ? const LinearGradient(
-                            colors: [AppColors.primaryA, AppColors.primaryB])
-                        : null,
-                    color: done ? null : Colors.transparent,
-                    border: done
-                        ? null
-                        : Border.all(color: Colors.grey[600]!, width: 2),
-                  ),
-                  child: done
-                      ? const Icon(Icons.check, color: Colors.white, size: 14)
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        habit['title'],
-                        style: TextStyle(
-                          color: done ? Colors.grey[600] : Colors.white,
-                          fontSize: 14, fontWeight: FontWeight.w500,
-                          decoration: done ? TextDecoration.lineThrough : null,
+        MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit:  (_) => setState(() => _hovered = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: _hovered ? AppColors.primaryA.withOpacity(0.06) : Colors.transparent,
+              borderRadius: widget.isLast
+                  ? const BorderRadius.vertical(bottom: Radius.circular(16))
+                  : BorderRadius.zero,
+            ),
+            child: InkWell(
+              onTap: widget.onToggle,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 26, height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: done
+                            ? const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB])
+                            : null,
+                        color: done ? null : Colors.transparent,
+                        border: done ? null : Border.all(
+                          color: _hovered ? AppColors.primaryA.withOpacity(0.6) : Colors.grey[600]!,
+                          width: 2,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Row(children: [
-                        const Icon(Icons.local_fire_department,
-                            color: Colors.orange, size: 12),
-                        const SizedBox(width: 3),
-                        Text('$streak day streak',
+                      child: done ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.habit['title'],
                             style: TextStyle(
-                                color: Colors.grey[600], fontSize: 11)),
-                      ]),
-                    ],
-                  ),
+                              color: done ? Colors.grey[600] : (_hovered ? Colors.white : Colors.white70),
+                              fontSize: 14, fontWeight: FontWeight.w500,
+                              decoration: done ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(children: [
+                            const Icon(Icons.local_fire_department, color: Colors.orange, size: 12),
+                            const SizedBox(width: 3),
+                            Text('$streak day streak',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    Icon(widget.habit['icon'] as IconData,
+                        color: done ? Colors.grey[700] : (_hovered ? AppColors.primaryA.withOpacity(0.7) : Colors.grey[500]),
+                        size: 18),
+                  ],
                 ),
-                Icon(habit['icon'] as IconData,
-                    color: done ? Colors.grey[700] : Colors.grey[500],
-                    size: 18),
-              ],
+              ),
             ),
           ),
         ),
-        if (!isLast) Divider(
-            height: 1, color: Colors.white.withOpacity(0.05), indent: 56),
+        if (!widget.isLast) Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 56),
       ],
     );
   }

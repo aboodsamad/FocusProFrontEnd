@@ -1,9 +1,8 @@
-/// Dimension types — each drives a different UI widget
 enum DiagnosticDimension {
-  screenHabits, // slider UI
-  attention,    // interactive task UI
-  lifestyle,    // option cards
-  learning,     // option cards
+  screenHabits,
+  attention,
+  lifestyle,
+  learning,
 }
 
 class DiagnosticQuestion {
@@ -38,8 +37,9 @@ class DiagnosticQuestion {
   List<String> get options => [optionA, optionB, optionC, optionD];
   List<int> get points => [pointsA, pointsB, pointsC, pointsD];
 
-  factory DiagnosticQuestion.fromJson(Map<String, dynamic> json) {
-    final dimMap = {
+  // Used only for the fallback hardcoded list (snake_case map keys)
+  factory DiagnosticQuestion.fromFallback(Map<String, dynamic> json) {
+    const dimMap = {
       'screen_habits': DiagnosticDimension.screenHabits,
       'attention':     DiagnosticDimension.attention,
       'lifestyle':     DiagnosticDimension.lifestyle,
@@ -60,9 +60,40 @@ class DiagnosticQuestion {
       displayOrder: json['display_order'],
     );
   }
+
+  // Used when parsing the API response (camelCase keys from Spring Boot)
+  // Points are injected separately since DiagnosticQuestionDTO doesn't expose them
+  factory DiagnosticQuestion.fromApi(
+    Map<String, dynamic> json, {
+    required int pointsA,
+    required int pointsB,
+    required int pointsC,
+    required int pointsD,
+  }) {
+    const dimMap = {
+      'screen_habits': DiagnosticDimension.screenHabits,
+      'attention':     DiagnosticDimension.attention,
+      'lifestyle':     DiagnosticDimension.lifestyle,
+      'learning':      DiagnosticDimension.learning,
+    };
+    return DiagnosticQuestion(
+      id:           json['id'],
+      questionText: json['questionText'],
+      optionA:      json['optionA'],
+      optionB:      json['optionB'],
+      optionC:      json['optionC'],
+      optionD:      json['optionD'],
+      pointsA:      pointsA,
+      pointsB:      pointsB,
+      pointsC:      pointsC,
+      pointsD:      pointsD,
+      dimension:    dimMap[json['dimension']] ?? DiagnosticDimension.lifestyle,
+      displayOrder: (json['displayOrder'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
-/// What the frontend sends back for each answered question
+// ── What Flutter sends back per answered question ─────────────────────────────
 class DiagnosticAnswer {
   final int questionId;
   final String selectedOption; // 'A' | 'B' | 'C' | 'D'
@@ -74,9 +105,11 @@ class DiagnosticAnswer {
     required this.pointsEarned,
   });
 
+  // MUST match Java DiagnosticAnswerDTO field names exactly (camelCase)
+  // Java fields: questionId, selectedOption, pointsEarned
   Map<String, dynamic> toJson() => {
-    'question_id':     questionId,
-    'selected_option': selectedOption,
-    'points_earned':   pointsEarned,
+    'questionId':     questionId,
+    'selectedOption': selectedOption,
+    'pointsEarned':   pointsEarned,
   };
 }

@@ -10,15 +10,11 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../home/pages/home_page.dart';
 
-/// One-time onboarding diagnostic page shown after signup.
-/// Walks the user through all 15 questions, each rendered with
-/// a different UI based on its dimension:
-///   screen_habits → SliderQuestionWidget
-///   attention     → AttentionTaskWidget (timer/re-read/cards)
-///   lifestyle     → OptionCardQuestionWidget
-///   learning      → OptionCardQuestionWidget
 class DiagnosticPage extends StatefulWidget {
-  const DiagnosticPage({super.key});
+  /// Pass the JWT token directly from signup so we don't rely on
+  /// SharedPreferences flushing before the first API call fires.
+  final String? token;
+  const DiagnosticPage({super.key, this.token});
 
   @override
   State<DiagnosticPage> createState() => _DiagnosticPageState();
@@ -62,7 +58,9 @@ class _DiagnosticPageState extends State<DiagnosticPage>
   }
 
   Future<void> _load() async {
-    _cachedToken = await AuthService.getToken();
+    // Use the token passed directly from signup first.
+    // Fall back to SharedPreferences only if not provided (e.g. deep link).
+    _cachedToken = widget.token ?? await AuthService.getToken();
     if (_cachedToken == null) {
       setState(() => _loading = false);
       return;
@@ -75,34 +73,28 @@ class _DiagnosticPageState extends State<DiagnosticPage>
     _slideController.forward();
   }
 
-  // Called by each widget when the user confirms their answer
   void _onAnswered(DiagnosticAnswer answer) {
     _answers.add(answer);
-
     if (_currentIndex < _questions.length - 1) {
-      // Animate to next question
       _slideController.reverse().then((_) {
         if (!mounted) return;
         setState(() => _currentIndex++);
         _slideController.forward();
       });
     } else {
-      // All 15 answered — submit
       _submitSession();
     }
   }
 
   Future<void> _submitSession() async {
     setState(() => _submitting = true);
-
     final focusScore = await DiagnosticService.submitSession(
       _answers,
+      _questions,
       _cachedToken!,
     );
-
     if (!mounted) return;
     setState(() => _submitting = false);
-
     _showResultDialog(focusScore ?? 70.0);
   }
 
@@ -114,14 +106,12 @@ class _DiagnosticPageState extends State<DiagnosticPage>
     ).then((_) {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => HomeScreen()),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );
       }
     });
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +121,7 @@ class _DiagnosticPageState extends State<DiagnosticPage>
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _submitting
-                ? _SubmittingView()
+                ? const _SubmittingView()
                 : _buildQuestionView(),
       ),
     );
@@ -144,9 +134,7 @@ class _DiagnosticPageState extends State<DiagnosticPage>
             style: TextStyle(color: Colors.white)),
       );
     }
-
     final q = _questions[_currentIndex];
-
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
@@ -156,61 +144,35 @@ class _DiagnosticPageState extends State<DiagnosticPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ── Header ─────────────────────────────────────────────────
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppColors.primaryA, AppColors.primaryB],
-                      ),
+                          colors: [AppColors.primaryA, AppColors.primaryB]),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'Focus Assessment',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: const Text('Focus Assessment',
+                        style: TextStyle(color: Colors.white,
+                            fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                   const Spacer(),
-                  Text(
-                    'One-time setup',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
+                  Text('One-time setup',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
                 ],
               ),
-
               const SizedBox(height: 20),
-
-              // ── Progress bar ────────────────────────────────────────────
               DiagnosticProgressBar(
-                current:   _currentIndex,
-                total:     _questions.length,
+                current: _currentIndex,
+                total: _questions.length,
                 dimension: q.dimension,
               ),
-
               const SizedBox(height: 28),
-
-              // ── Question text ───────────────────────────────────────────
-              Text(
-                q.questionText,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  height: 1.4,
-                ),
-              ),
-
+              Text(q.questionText,
+                  style: const TextStyle(color: Colors.white,
+                      fontSize: 20, fontWeight: FontWeight.bold, height: 1.4)),
               const SizedBox(height: 24),
-
-              // ── Dimension-specific widget ───────────────────────────────
               _buildWidget(q),
             ],
           ),
@@ -222,34 +184,18 @@ class _DiagnosticPageState extends State<DiagnosticPage>
   Widget _buildWidget(DiagnosticQuestion q) {
     switch (q.dimension) {
       case DiagnosticDimension.screenHabits:
-        return SliderQuestionWidget(
-          key: ValueKey(q.id),
-          question: q,
-          onAnswered: _onAnswered,
-        );
-
+        return SliderQuestionWidget(key: ValueKey(q.id), question: q, onAnswered: _onAnswered);
       case DiagnosticDimension.attention:
-        return AttentionTaskWidget(
-          key: ValueKey(q.id),
-          question: q,
-          onAnswered: _onAnswered,
-        );
-
+        return AttentionTaskWidget(key: ValueKey(q.id), question: q, onAnswered: _onAnswered);
       case DiagnosticDimension.lifestyle:
       case DiagnosticDimension.learning:
-        return OptionCardQuestionWidget(
-          key: ValueKey(q.id),
-          question: q,
-          onAnswered: _onAnswered,
-        );
+        return OptionCardQuestionWidget(key: ValueKey(q.id), question: q, onAnswered: _onAnswered);
     }
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Submitting overlay
-// ─────────────────────────────────────────────────────────────────────────────
 class _SubmittingView extends StatelessWidget {
+  const _SubmittingView();
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -258,28 +204,17 @@ class _SubmittingView extends StatelessWidget {
         children: [
           const CircularProgressIndicator(color: AppColors.primaryA),
           const SizedBox(height: 24),
-          const Text(
-            'Calculating your Focus Score...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          const Text('Calculating your Focus Score...',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Text(
-            'This only takes a moment',
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
-          ),
+          Text('This only takes a moment',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13)),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Result dialog shown after submission
-// ─────────────────────────────────────────────────────────────────────────────
 class _ResultDialog extends StatelessWidget {
   final double score;
   const _ResultDialog({required this.score});
@@ -315,86 +250,45 @@ class _ResultDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Score circle
             Container(
-              width: 110,
-              height: 110,
+              width: 110, height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [_color.withOpacity(0.8), _color],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _color.withOpacity(0.4),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
+                    colors: [_color.withOpacity(0.8), _color],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight),
+                boxShadow: [BoxShadow(
+                    color: _color.withOpacity(0.4), blurRadius: 20, spreadRadius: 2)],
               ),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      score.toStringAsFixed(0),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Focus Score',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 11,
-                      ),
-                    ),
+                    Text(score.toStringAsFixed(0),
+                        style: const TextStyle(color: Colors.white,
+                            fontSize: 38, fontWeight: FontWeight.bold)),
+                    Text('Focus Score',
+                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            Text(
-              _label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(_label, style: const TextStyle(color: Colors.white,
+                fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              _sub,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-
+            Text(_sub, textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[400], fontSize: 14)),
             const SizedBox(height: 28),
-
             SizedBox(
-              width: double.infinity,
-              height: 50,
+              width: double.infinity, height: 50,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryA,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text(
-                  'Go to Dashboard',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                    backgroundColor: AppColors.primaryA,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                child: const Text('Go to Dashboard',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ],
