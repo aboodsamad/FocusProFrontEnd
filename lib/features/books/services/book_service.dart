@@ -72,6 +72,23 @@ class BookService {
     throw Exception('Failed to load snippets');
   }
 
+  /// GET /book/{bookId}/completed-snippets
+  /// Returns the list of snippet IDs the user has already completed.
+  static Future<Set<int>> getCompletedSnippetIds(int bookId) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_base/book/$bookId/completed-snippets'),
+        headers: await _authHeaders(),
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(resp.body);
+        return data.map<int>((e) => (e['snippetId'] ?? e['id'] ?? 0) as int).toSet();
+      }
+    } catch (_) {}
+    return {};
+  }
+
   /// POST /book/snippet/{snippetId}/complete
   static Future<void> markSnippetComplete(int snippetId) async {
     await http.post(

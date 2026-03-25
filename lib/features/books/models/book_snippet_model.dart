@@ -7,6 +7,7 @@ class BookSnippetModel {
   final int? pageNumber;
   final int? durationSeconds;
   final int? sequenceOrder;
+  final bool isCompleted;
 
   BookSnippetModel({
     required this.id,
@@ -17,6 +18,7 @@ class BookSnippetModel {
     this.pageNumber,
     this.durationSeconds,
     this.sequenceOrder,
+    this.isCompleted = false,
   });
 
   factory BookSnippetModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,21 @@ class BookSnippetModel {
       pageNumber: json['pageNumber'],
       durationSeconds: json['durationSeconds'],
       sequenceOrder: json['sequenceOrder'],
+      isCompleted: json['isCompleted'] ?? false,
+    );
+  }
+
+  BookSnippetModel copyWith({bool? isCompleted}) {
+    return BookSnippetModel(
+      id: id,
+      bookId: bookId,
+      snippetTitle: snippetTitle,
+      snippetText: snippetText,
+      snippetAudioUrl: snippetAudioUrl,
+      pageNumber: pageNumber,
+      durationSeconds: durationSeconds,
+      sequenceOrder: sequenceOrder,
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 

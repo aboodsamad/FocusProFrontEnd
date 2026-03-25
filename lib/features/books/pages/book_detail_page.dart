@@ -176,8 +176,28 @@ class _BookDetailPageState extends State<BookDetailPage>
   Future<void> _loadSnippets() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final snippets = await BookService.getSnippets(widget.book.id);
-      setState(() { _snippets = snippets; _loading = false; });
+      final results = await Future.wait([
+        BookService.getSnippets(widget.book.id),
+        BookService.getCompletedSnippetIds(widget.book.id),
+      ]);
+      final snippets = results[0] as List<BookSnippetModel>;
+      final completedIds = results[1] as Set<int>;
+
+      // Build the completed set using indices (matching existing UI logic)
+      final completedIndices = <int>{};
+      for (int i = 0; i < snippets.length; i++) {
+        if (completedIds.contains(snippets[i].id) || snippets[i].isCompleted) {
+          completedIndices.add(i);
+        }
+      }
+
+      setState(() {
+        _snippets = snippets;
+        _completedChapters
+          ..clear()
+          ..addAll(completedIndices);
+        _loading = false;
+      });
       _enterCtrl.forward();
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
