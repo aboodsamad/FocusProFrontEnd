@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'game_item.dart';
+import '../../memory_matrix/pages/memory_matrix_page.dart';
+import '../../sudoku/pages/sudoku_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -109,13 +111,9 @@ class GameRegistry {
     // They are imported inside the switch to avoid circular deps.
     switch (id) {
       case 'memory_matrix':
-        // import '../../memory_matrix/pages/memory_matrix_page.dart';
-        // return const MemoryMatrixPage();
-        return null; // replace null with the widget above after importing
+        return const MemoryMatrixPage();
       case 'sudoku':
-        // import '../../sudoku/pages/sudoku_page.dart';
-        // return const SudokuApp();
-        return null; // replace null with the widget above after importing
+        return const SudokuApp();
       default:
         return null;
     }

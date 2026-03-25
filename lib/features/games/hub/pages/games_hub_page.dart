@@ -4,7 +4,6 @@ import '../../../../core/constants/app_colors.dart';
 import '../models/game_item.dart';
 import '../models/game_registry.dart';
 import '../widgets/game_hub_card.dart';
-import '../../memory_matrix/pages/memory_matrix_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GamesHubPage
@@ -63,7 +62,7 @@ class _GamesHubPageState extends State<GamesHubPage>
     if (page == null) return; // coming soon — button is disabled anyway
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const MemoryMatrixPage()),
+      MaterialPageRoute(builder: (_) => page),
     );
   }
 
