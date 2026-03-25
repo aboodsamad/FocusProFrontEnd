@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/user_provider.dart';
 import '../../question/pages/question_page.dart';
-import '../../games/sudoku/pages/sudoku_page.dart';
+import '../../games/hub/pages/games_hub_page.dart';
 import '../../books/pages/books_page.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _ActionItem(icon: Icons.videogame_asset_outlined, label: 'Games',
           sub: '2–6 min', color: const Color(0xFF10B981),
           onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SudokuApp()))),
+              MaterialPageRoute(builder: (_) => const GamesHubPage()))),
       _ActionItem(icon: Icons.menu_book_outlined, label: 'Reader',
           sub: 'TTS/Text', color: const Color(0xFFF97316),
           onTap: () => Navigator.push(context,
