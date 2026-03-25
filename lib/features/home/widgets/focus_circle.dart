@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 
 /// Animated pulsing circle that displays the user's focus score.
 /// Extracted from `_buildFocusCircle` in [HomeScreen].
+/// 
+/// 
+/// this file is not usedddddddd inthis project
 class FocusCircle extends StatelessWidget {
   final double score;
   final AnimationController pulseController;

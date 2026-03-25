@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 /// Single labelled progress bar for one focus-score component (T / G / S / H).
 /// Extracted from `_componentBar` in [HomeScreen].
 /// Must be placed inside a [Row] since it wraps itself in [Expanded].
+/// 
+/// 
+/// 
+/// this file is also not usde ion this projetc 
 class ComponentBar extends StatelessWidget {
   final String label;
   final double value;

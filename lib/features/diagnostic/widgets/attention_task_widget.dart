@@ -227,6 +227,7 @@ class _FocusTimerTaskState extends State<_FocusTimerTask> {
   }
 }
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Q6 — Re-read Tracker Task
 // Show a short paragraph. User taps "Re-read" every time they lose focus.

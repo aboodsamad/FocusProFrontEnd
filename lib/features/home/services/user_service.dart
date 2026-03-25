@@ -45,6 +45,8 @@ class UserService {
         );
       }
 
+      
+
       final roleName = profile['role'] is Map
           ? profile['role']['name']?.toString()
           : null;

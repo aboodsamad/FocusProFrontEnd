@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
+import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/services/auth_service.dart';
 
 class OAuthCallbackPage extends StatefulWidget {
@@ -23,7 +23,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
   void _handleCallback() async {
     try {
-      final hashPart = html.window.location.hash;
+      final hashPart = getLocationHash(); 
       print('Hash part: $hashPart');
 
       String? token;
@@ -33,32 +33,26 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       print('Extracted token: $token');
 
       if (token == null || token.isEmpty) {
-        print('No token found in callback, redirecting to /');
         if (mounted) Navigator.of(context).pushReplacementNamed('/');
         return;
       }
 
       final existing = await AuthService.getToken();
       if (existing != null && existing == token) {
-        html.window.history.replaceState(
-          null,
-          '',
-          '${html.window.location.pathname}${html.window.location.search}',
+        replaceState(                        // ← replaced
+          '${getLocationPathname()}${getLocationSearch()}',
         );
         if (mounted) Navigator.of(context).pushReplacementNamed('/home');
         return;
       }
 
       await AuthService.saveToken(token);
-      html.window.history.replaceState(
-        null,
-        '',
-        '${html.window.location.pathname}${html.window.location.search}',
+      replaceState(                          // ← replaced
+        '${getLocationPathname()}${getLocationSearch()}',
       );
 
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
+      if (mounted) Navigator.of(context).pushReplacementNamed('/home');
+
     } catch (e, st) {
       print('Error handling oauth callback: $e');
       print(st);
@@ -68,7 +62,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       body: Center(child: CircularProgressIndicator()),
     );
   }
