@@ -31,7 +31,7 @@ class BookSnippetModel {
       pageNumber: json['pageNumber'],
       durationSeconds: json['durationSeconds'],
       sequenceOrder: json['sequenceOrder'],
-      isCompleted: json['isCompleted'] ?? false,
+      isCompleted: json['completed'] ?? json['isCompleted'] ?? false,
     );
   }
 

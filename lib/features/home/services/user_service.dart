@@ -9,13 +9,7 @@ class UserService {
     final url = Uri.parse('${AuthService.baseUrl}/user/profile');
     try {
       final resp = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
+          .get(url, headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'})
           .timeout(Duration(seconds: 8));
 
       if (resp.statusCode != 200) return false;
@@ -39,17 +33,10 @@ class UserService {
         prefs.setString('dob', profile['dob'].toString());
       }
       if (profile['focusScore'] != null) {
-        prefs.setDouble(
-          'focus_score',
-          double.parse(profile['focusScore'].toString()),
-        );
+        prefs.setDouble('focus_score', double.parse(profile['focusScore'].toString()));
       }
 
-      
-
-      final roleName = profile['role'] is Map
-          ? profile['role']['name']?.toString()
-          : null;
+      final roleName = profile['role'] is Map ? profile['role']['name']?.toString() : null;
       if (roleName != null) prefs.setString('role_name', roleName);
       if (profile['authorities'] != null) {
         prefs.setString('authorities', jsonEncode(profile['authorities']));

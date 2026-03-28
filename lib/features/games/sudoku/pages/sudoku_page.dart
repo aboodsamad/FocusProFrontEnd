@@ -329,6 +329,7 @@ class _SudokuHomePageState extends State<SudokuHomePage>
       ),
       body: Column(
         children: [
+          _BackButton(onTap: () => Navigator.pop(context)),
           // ── Top controls ────────────────────────────────────────────────
           Container(
             color: Colors.white,
@@ -404,4 +405,29 @@ class _SudokuHomePageState extends State<SudokuHomePage>
       ),
     );
   }
+}
+
+
+class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width:  40,
+      height: 40,
+      decoration: BoxDecoration(
+        color:        const Color(0xFF0F1420),
+        borderRadius: BorderRadius.circular(12),
+        border:       Border.all(color: const Color(0xFF1E2840)),
+      ),
+      child: const Icon(
+        Icons.arrow_back_ios_new_rounded,
+        color: Colors.white,
+        size:  16,
+      ),
+    ),
+  );
 }

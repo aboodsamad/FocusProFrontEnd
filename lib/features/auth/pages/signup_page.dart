@@ -147,6 +147,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
           backgroundColor: Colors.red,
         ),
       );
+      
       return;
     }
 
