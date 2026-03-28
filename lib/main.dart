@@ -9,7 +9,6 @@ import 'features/home/pages/home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Init provider before runApp so first frame already has data
   final userProvider = UserProvider();
   await userProvider.init();
 
@@ -26,6 +25,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.read<UserProvider>();
+
     return MaterialApp(
       title: 'FocusPro',
       debugShowCheckedModeBanner: false,
@@ -39,11 +40,19 @@ class MyApp extends StatelessWidget {
         }
         switch (settings.name) {
           case '/':
-            return MaterialPageRoute(builder: (_) => LoginPage());
+            return MaterialPageRoute(
+              builder: (_) => userProvider.isLoggedIn
+                  ? const HomeScreen()
+                  : LoginPage(),
+            );
           case '/home':
-            return MaterialPageRoute(builder: (_) => HomeScreen());
+            return MaterialPageRoute(builder: (_) => const HomeScreen());
           default:
-            return MaterialPageRoute(builder: (_) => LoginPage());
+            return MaterialPageRoute(
+              builder: (_) => userProvider.isLoggedIn
+                  ? const HomeScreen()
+                  : LoginPage(),
+            );
         }
       },
     );
