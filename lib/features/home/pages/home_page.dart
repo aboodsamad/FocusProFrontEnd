@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../../question/pages/question_page.dart';
 import '../../games/hub/pages/games_hub_page.dart';
@@ -67,6 +68,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (h < 12) return 'Good morning';
     if (h < 18) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1624),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Log out', style: TextStyle(color: Colors.white)),
+        content: Text('Are you sure you want to log out?',
+            style: TextStyle(color: Colors.grey[400])),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await AuthService.logout();
+    if (!mounted) return;
+    await context.read<UserProvider>().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
   }
   @override
   Widget build(BuildContext context) {
@@ -134,6 +169,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Settings (TODO)'))),
         ),
+        const SizedBox(width: 8),
+        _IconBtn(icon: Icons.logout_rounded, onTap: _logout),
       ]),
     );
   }

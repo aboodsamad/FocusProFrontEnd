@@ -60,11 +60,15 @@ class UserProvider extends ChangeNotifier {
   Future<void> _refreshFromApi() async {
     final token = await AuthService.getToken();
     if (token == null) return;
-    final success = await UserService.fetchAndSaveProfile(token);
-    if (success) {
+    final status = await UserService.fetchAndSaveProfile(token);
+    if (status == 200) {
       await _loadFromPrefs();  // re-read updated values
       notifyListeners();       // widgets rebuild with fresh data
+    } else if (status == 401 || status == 403) {
+      // Token is expired or invalid — log out so routing sends user to login
+      await logout();
     }
+    // null (network/timeout) or other status: keep current auth state
   }
 
   /// Call after login to trigger a fresh load.

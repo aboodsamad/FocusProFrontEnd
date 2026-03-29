@@ -21,15 +21,22 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
     });
   }
 
+  /// Pull `token=` out of any URL fragment/query string segment.
+  String? _extractToken(String source) {
+    if (!source.contains('token=')) return null;
+    final raw = source.split('token=')[1].split('&')[0];
+    if (raw.isEmpty) return null;
+    return Uri.decodeComponent(raw);
+  }
+
   void _handleCallback() async {
     try {
-      final hashPart = getLocationHash(); 
-      print('Hash part: $hashPart');
+      final hashPart   = getLocationHash();
+      final searchPart = getLocationSearch();
+      print('OAuth callback — hash: $hashPart  search: $searchPart');
 
-      String? token;
-      if (hashPart.contains('token=')) {
-        token = hashPart.split('token=')[1].split('&')[0];
-      }
+      // Try hash first, fall back to query string.
+      final token = _extractToken(hashPart) ?? _extractToken(searchPart);
       print('Extracted token: $token');
 
       if (token == null || token.isEmpty) {
@@ -37,22 +44,11 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
         return;
       }
 
-      final existing = await AuthService.getToken();
-      if (existing != null && existing == token) {
-        replaceState(                        // ← replaced
-          '${getLocationPathname()}${getLocationSearch()}',
-        );
-        if (mounted) Navigator.of(context).pushReplacementNamed('/home');
-        return;
-      }
-
       await AuthService.saveToken(token);
-      replaceState(                          // ← replaced
-        '${getLocationPathname()}${getLocationSearch()}',
-      );
+      // Clean the token out of the URL bar.
+      replaceState(getLocationPathname());
 
       if (mounted) Navigator.of(context).pushReplacementNamed('/home');
-
     } catch (e, st) {
       print('Error handling oauth callback: $e');
       print(st);

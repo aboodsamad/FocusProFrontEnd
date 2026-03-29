@@ -32,8 +32,15 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       onGenerateRoute: (settings) {
-        final hash = getLocationHash();
-        if (hash.contains('/oauth-callback')) {
+        final hash   = getLocationHash();
+        final search = getLocationSearch();
+        // Detect OAuth redirect regardless of where the token/callback lands:
+        // – hash contains "/oauth-callback"  (#/oauth-callback?token=…)
+        // – hash contains "token=" directly  (#token=…)
+        // – query string contains "token="   (?token=…)
+        if (hash.contains('/oauth-callback') ||
+            hash.contains('token=') ||
+            search.contains('token=')) {
           return MaterialPageRoute(
             builder: (_) => OAuthCallbackPage(),
           );
@@ -46,7 +53,11 @@ class MyApp extends StatelessWidget {
                   : LoginPage(),
             );
           case '/home':
-            return MaterialPageRoute(builder: (_) => const HomeScreen());
+            return MaterialPageRoute(
+              builder: (_) => userProvider.isLoggedIn
+                  ? const HomeScreen()
+                  : LoginPage(),
+            );
           default:
             return MaterialPageRoute(
               builder: (_) => userProvider.isLoggedIn

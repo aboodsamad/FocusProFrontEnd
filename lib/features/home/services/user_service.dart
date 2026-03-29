@@ -5,14 +5,15 @@ import '../../../core/services/auth_service.dart';
 
 class UserService {
   // ── Fetch profile from API and save locally ──────────────
-  static Future<bool> fetchAndSaveProfile(String token) async {
+  /// Returns the HTTP status code on a server response, or null on network error.
+  static Future<int?> fetchAndSaveProfile(String token) async {
     final url = Uri.parse('${AuthService.baseUrl}/user/profile');
     try {
       final resp = await http
           .get(url, headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'})
           .timeout(Duration(seconds: 8));
 
-      if (resp.statusCode != 200) return false;
+      if (resp.statusCode != 200) return resp.statusCode;
 
       final Map<String, dynamic> profile = jsonDecode(resp.body);
       final prefs = await SharedPreferences.getInstance();
@@ -43,10 +44,10 @@ class UserService {
       }
 
       prefs.setString('profile_json', jsonEncode(profile));
-      return true;
+      return 200;
     } catch (e) {
       print('fetchAndSaveProfile error: $e');
-      return false;
+      return null; // network/timeout error — keep current auth state
     }
   }
 
