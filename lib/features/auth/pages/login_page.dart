@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/widgets/auth_background.dart';
 import '../widgets/animated_logo.dart';
 import '../../home/pages/home_page.dart';
+import '../../home/providers/user_provider.dart';
 import './signup_page.dart';
-
+ 
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() =>
       _LoginPageState();
 }
-
+ 
 class _LoginPageState extends State<LoginPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
@@ -20,26 +22,26 @@ class _LoginPageState extends State<LoginPage>
       TextEditingController();
   final _passwordController =
       TextEditingController();
-
+ 
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _scaleController;
   late AnimationController _rotationController;
-
+ 
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
-
+ 
   bool _obscurePassword = true;
   bool _isLoading = false;
-
+ 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
-
+ 
   @override
   void initState() {
     super.initState();
-
+ 
     _fadeController = AnimationController(
       duration: const Duration(
         milliseconds: 1500,
@@ -62,7 +64,7 @@ class _LoginPageState extends State<LoginPage>
       ),
       vsync: this,
     );
-
+ 
     _fadeAnimation =
         Tween<double>(
           begin: 0.0,
@@ -103,11 +105,11 @@ class _LoginPageState extends State<LoginPage>
             curve: Curves.easeInOut,
           ),
         );
-
+ 
     _startAnimations();
   }
-
-  // do not start everything at once this time look good 
+ 
+  // do not start everything at once this time look good
   void _startAnimations() async {
     await Future.delayed(
       const Duration(milliseconds: 300),
@@ -123,7 +125,7 @@ class _LoginPageState extends State<LoginPage>
     _scaleController.forward();
     _rotationController.repeat();
   }
-
+ 
   @override
   void dispose() {
     _fadeController.dispose();
@@ -134,25 +136,31 @@ class _LoginPageState extends State<LoginPage>
     _passwordController.dispose();
     super.dispose();
   }
-
+ 
   // ── Login logic ────────────────────────────────────────────────────────────
-
+ 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate())
       return;
     setState(() => _isLoading = true);
-
+ 
     try {
       final result = await AuthService.login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
       setState(() => _isLoading = false);
-
+ 
       final token =
           result['token']?.toString() ?? '';
       if (token.isNotEmpty) {
         await AuthService.saveToken(token);
+        // Flush stale profile data and reload the correct user's data
+        // BEFORE navigating — HomeScreen will show a spinner while it loads.
+        if (mounted) {
+          await context.read<UserProvider>().reloadAfterLogin();
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(
@@ -193,9 +201,9 @@ class _LoginPageState extends State<LoginPage>
       );
     }
   }
-
+ 
   // ── Build ──────────────────────────────────────────────────────────────────
-
+ 
   @override
   Widget build(BuildContext context) {
     return AuthBackground(
@@ -238,7 +246,7 @@ class _LoginPageState extends State<LoginPage>
                           _rotationAnimation,
                       icon: Icons.lock_outline,
                     ),
-
+ 
                     const SizedBox(height: 24),
                     const Text(
                       'Welcome Back!',
@@ -258,7 +266,7 @@ class _LoginPageState extends State<LoginPage>
                       ),
                     ),
                     const SizedBox(height: 32),
-
+ 
                     // ── Username field ───────────────────────────────────
                     TextFormField(
                       controller:
@@ -293,9 +301,9 @@ class _LoginPageState extends State<LoginPage>
                         return null;
                       },
                     ),
-
+ 
                     const SizedBox(height: 16),
-
+ 
                     // ── Password field ───────────────────────────────────
                     TextFormField(
                       controller:
@@ -348,9 +356,9 @@ class _LoginPageState extends State<LoginPage>
                         return null;
                       },
                     ),
-
+ 
                     const SizedBox(height: 16),
-
+ 
                     // ── Google Sign In Button ────────────────────────────
                     Container(
                       decoration: BoxDecoration(
@@ -462,9 +470,9 @@ class _LoginPageState extends State<LoginPage>
                         ),
                       ),
                     ),
-
+ 
                     const SizedBox(height: 24),
-
+ 
                     // ── Sign In button ───────────────────────────────────
                     SizedBox(
                       width: double.infinity,
@@ -514,9 +522,9 @@ class _LoginPageState extends State<LoginPage>
                               ),
                       ),
                     ),
-
+ 
                     const SizedBox(height: 16),
-
+ 
                     TextButton(
                       onPressed: () {
                         ScaffoldMessenger.of(
@@ -542,9 +550,9 @@ class _LoginPageState extends State<LoginPage>
                         ),
                       ),
                     ),
-
+ 
                     const SizedBox(height: 24),
-
+ 
                     Row(
                       mainAxisAlignment:
                           MainAxisAlignment

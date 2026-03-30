@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../features/home/services/user_service.dart';
+import '../../../features/home/providers/user_provider.dart';
+import '../../../features/home/pages/home_page.dart';
+import '../../../features/diagnostic/pages/diagnostic_page.dart';
 
 class OAuthCallbackPage extends StatefulWidget {
   @override
@@ -45,13 +50,46 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       }
 
       await AuthService.saveToken(token);
+      print('[OAuth] Token saved to SharedPreferences');
       // Clean the token out of the URL bar.
       replaceState(getLocationPathname());
 
-      if (mounted) Navigator.of(context).pushReplacementNamed('/home');
+      // Fetch profile to determine if this is a new user (no focus score yet).
+      final profileStatus = await UserService.fetchAndSaveProfile(token);
+      print('[OAuth] fetchAndSaveProfile status: $profileStatus');
+
+      final profile = await UserService.getStoredProfile();
+      print('[OAuth] Raw profile from storage: $profile');
+
+      final rawFocusScore = profile?['focusScore'];
+      print('[OAuth] raw focusScore field: $rawFocusScore (type: ${rawFocusScore?.runtimeType})');
+
+      final focusScore = rawFocusScore != null ? double.tryParse(rawFocusScore.toString()) : null;
+      print('[OAuth] parsed focusScore: $focusScore');
+
+      final isNewUser = focusScore == null || focusScore == 0.0;
+      print('[OAuth] isNewUser: $isNewUser → routing to ${isNewUser ? "DiagnosticPage" : "HomeScreen"}');
+
+      if (!mounted) return;
+
+      // Notify the provider so the rest of the app sees the user as logged in.
+      await Provider.of<UserProvider>(context, listen: false).reloadAfterLogin();
+      print('[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}');
+
+      if (!mounted) return;
+
+      if (isNewUser) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
     } catch (e, st) {
-      print('Error handling oauth callback: $e');
-      print(st);
+      print('[OAuth] ERROR: $e');
+      print('[OAuth] STACKTRACE: $st');
       if (mounted) Navigator.of(context).pushReplacementNamed('/');
     }
   }
