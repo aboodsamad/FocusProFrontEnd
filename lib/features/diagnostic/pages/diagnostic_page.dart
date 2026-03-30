@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/diagnostic_question.dart';
 import '../services/diagnostic_service.dart';
 import '../widgets/diagnostic_progress_bar.dart';
@@ -9,6 +10,7 @@ import '../widgets/option_card_question_widget.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../home/pages/home_page.dart';
+import '../../home/providers/user_provider.dart';
 
 class DiagnosticPage extends StatefulWidget {
   /// Pass the JWT token directly from signup so we don't rely on
@@ -105,6 +107,9 @@ class _DiagnosticPageState extends State<DiagnosticPage>
       builder: (_) => _ResultDialog(score: score),
     ).then((_) {
       if (mounted) {
+        // Push the new score into the provider immediately so the
+        // home screen shows the correct number without needing a reload.
+        context.read<UserProvider>().updateFocusScore(score);
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
