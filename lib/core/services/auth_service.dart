@@ -24,6 +24,26 @@ class AuthService {
     await prefs.remove('auth_token');
   }
 
+  // ── Consent ───────────────────────────────────────────────────────────────
+  static Future<void> activateConsent(String token) async {
+    final url = Uri.parse('$baseUrl/user/update-profile');
+    print('[Consent] Calling PUT $url');
+    print('[Consent] Token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) : token}...');
+    try {
+      final resp = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 8));
+      print('[Consent] Response status: ${resp.statusCode}');
+      print('[Consent] Response body: ${resp.body}');
+    } catch (e) {
+      print('[Consent] ERROR: $e');
+    }
+  }
+
   // ── Logout ─────────────────────────────────────────────────────────────────
   static Future<void> logout() async {
     try {

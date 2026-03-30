@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../features/home/services/user_service.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../../../features/home/pages/home_page.dart';
@@ -68,7 +69,8 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       print('[OAuth] parsed focusScore: $focusScore');
 
       final isNewUser = focusScore == null || focusScore == 0.0;
-      print('[OAuth] isNewUser: $isNewUser → routing to ${isNewUser ? "DiagnosticPage" : "HomeScreen"}');
+      final hasConsented = profile?['consentUsage'] == true;
+      print('[OAuth] isNewUser: $isNewUser, hasConsented: $hasConsented → routing to ${isNewUser ? "DiagnosticPage" : "HomeScreen"}');
 
       if (!mounted) return;
 
@@ -79,6 +81,15 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       if (!mounted) return;
 
       if (isNewUser) {
+        // Show consent only if this Google user hasn't consented yet.
+        if (!hasConsented) {
+          final consented = await _showConsentDialog();
+          if (!mounted) return;
+          if (consented == true) {
+            await AuthService.activateConsent(token);
+            print('[OAuth] Consent activated');
+          }
+        }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
         );
@@ -92,6 +103,65 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       print('[OAuth] STACKTRACE: $st');
       if (mounted) Navigator.of(context).pushReplacementNamed('/');
     }
+  }
+
+  Future<bool?> _showConsentDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primaryA, AppColors.primaryB],
+                  ),
+                ),
+                child: const Icon(Icons.privacy_tip_outlined, color: Colors.white, size: 32),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Data Usage Consent',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'FocusPro collects focus-related data (session activity, diagnostic results, and usage patterns) to personalise your experience and improve the app.\n\nYour data is never sold and is handled in accordance with our privacy policy.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryA,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('I Agree', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text('Decline', style: TextStyle(color: Colors.grey[500])),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
