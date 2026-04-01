@@ -113,7 +113,7 @@ class GameRegistry {
       case 'memory_matrix':
         return const MemoryMatrixPage();
       case 'sudoku':
-        return const SudokuApp();
+        return const SudokuHomePage();
       default:
         return null;
     }

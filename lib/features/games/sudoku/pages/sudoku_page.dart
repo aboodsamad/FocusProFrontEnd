@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_service.dart';
 import '../models/sudoku_model.dart';
 import '../widgets/sudoku_board.dart';
 import '../widgets/sudoku_header.dart';
@@ -227,6 +230,7 @@ class _SudokuHomePageState extends State<SudokuHomePage>
         gameWon = true;
         _stopTimer();
         _showWinDialog();
+        _submitGameResult();
       }
     });
   }
@@ -249,6 +253,7 @@ class _SudokuHomePageState extends State<SudokuHomePage>
         gameWon = true;
         _stopTimer();
         _showWinDialog();
+        _submitGameResult();
       }
     });
   }
@@ -260,6 +265,21 @@ class _SudokuHomePageState extends State<SudokuHomePage>
       }
     }
     return true;
+  }
+
+  // ── Submit result to backend ───────────────────────────────────────────────
+
+  Future<void> _submitGameResult() async {
+    final result = await GameService.submitResult(
+      gameType:          'sudoku',
+      score:             0,
+      timePlayedSeconds: seconds,
+      completed:         true,
+      mistakes:          mistakes,
+    );
+    if (result != null && mounted) {
+      context.read<UserProvider>().updateFocusScore(result.newFocusScore);
+    }
   }
 
   // ── Win dialog ─────────────────────────────────────────────────────────────

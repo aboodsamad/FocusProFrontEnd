@@ -3,7 +3,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_service.dart';
 import '../models/memory_matrix_model.dart';
 import '../widgets/memory_matrix_grid.dart';
 import '../widgets/memory_matrix_header.dart';
@@ -38,6 +41,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   // ── State ──────────────────────────────────────────────────────────────────
 
   late MemoryMatrixState _game;
+  DateTime? _gameStartTime;
 
   // ── Animations ─────────────────────────────────────────────────────────────
 
@@ -93,6 +97,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
   void _startGame() {
     HapticFeedback.mediumImpact();
+    _gameStartTime = DateTime.now();
     setState(() {
       _game = MemoryMatrixState.initial(_gridSize).copyWith(
         phase: MemoryMatrixPhase.countdown,
@@ -237,6 +242,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           highlightedCells: {},
         ));
         _fadeCtrl.forward(from: 0.0);
+        _submitGameResult();
       } else {
         setState(() => _game = _game.copyWith(
           lives:            newLives,
@@ -244,6 +250,24 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
         ));
         _startRound();
       }
+    }
+  }
+
+  // ── Submit result to backend ───────────────────────────────────────────────
+
+  Future<void> _submitGameResult() async {
+    final timePlayed = _gameStartTime != null
+        ? DateTime.now().difference(_gameStartTime!).inSeconds
+        : 0;
+    final result = await GameService.submitResult(
+      gameType:          'memory_matrix',
+      score:             _game.score,
+      timePlayedSeconds: timePlayed,
+      completed:         false,
+      levelReached:      _game.level,
+    );
+    if (result != null && mounted) {
+      context.read<UserProvider>().updateFocusScore(result.newFocusScore);
     }
   }
 
