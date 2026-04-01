@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/auth_service.dart';
 import '../services/user_service.dart';
-
+ 
 class UserProvider extends ChangeNotifier {
   // ── State ──────────────────────────────────────────────────────────────────
   bool _isLoading = true;
   bool _isLoggedIn = false;
-
+ 
   String _name = '';
   String _username = '';
   String _email = '';
@@ -15,7 +15,7 @@ class UserProvider extends ChangeNotifier {
   int? _userId;
   double _focusScore = 0.0;
   String _roleName = '';
-
+ 
   // ── Getters ────────────────────────────────────────────────────────────────
   bool get isLoading   => _isLoading;
   bool get isLoggedIn  => _isLoggedIn;
@@ -26,10 +26,10 @@ class UserProvider extends ChangeNotifier {
   int?   get userId    => _userId;
   double get focusScore => _focusScore;
   String get roleName  => _roleName;
-
+ 
   String get displayInitial =>
       _name.isNotEmpty ? _name[0].toUpperCase() : 'U';
-
+ 
   // ── Boot: call this once from main() ──────────────────────────────────────
   /// Loads from SharedPreferences immediately (instant),
   /// then refreshes from the API in the background.
@@ -39,13 +39,13 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     await _refreshFromApi();       // background refresh
   }
-
+ 
   // ── Load from local storage ────────────────────────────────────────────────
   Future<void> _loadFromPrefs() async {
     final token = await AuthService.getToken();
     _isLoggedIn = token != null;
     if (!_isLoggedIn) return;
-
+ 
     final prefs = await SharedPreferences.getInstance();
     _name       = prefs.getString('name')        ?? '';
     _username   = prefs.getString('username')    ?? '';
@@ -55,7 +55,7 @@ class UserProvider extends ChangeNotifier {
     _focusScore = prefs.getDouble('focus_score') ?? 0.0;
     _roleName   = prefs.getString('role_name')   ?? '';
   }
-
+ 
   // ── Refresh from API ───────────────────────────────────────────────────────
   Future<void> _refreshFromApi() async {
     final token = await AuthService.getToken();
@@ -70,7 +70,7 @@ class UserProvider extends ChangeNotifier {
     }
     // null (network/timeout) or other status: keep current auth state
   }
-
+ 
   /// Call after login to trigger a fresh load.
   Future<void> reloadAfterLogin() async {
     _isLoading = true;
@@ -80,7 +80,7 @@ class UserProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
-
+ 
   /// Update focus score locally (e.g. after a diagnostic).
   void updateFocusScore(double score) {
     _focusScore = score;
@@ -90,7 +90,7 @@ class UserProvider extends ChangeNotifier {
       (p) => p.setDouble('focus_score', score),
     );
   }
-
+ 
   /// Clear everything on logout.
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -105,3 +105,4 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+ 
