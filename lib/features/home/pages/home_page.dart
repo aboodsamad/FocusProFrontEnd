@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../../question/pages/question_page.dart';
 import '../../games/hub/pages/games_hub_page.dart';
 import '../../books/pages/books_page.dart';
+import '../../profile/pages/profile_page.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
   @override
@@ -136,20 +137,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(children: [
-        Container(
-          width: 46, height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-                colors: [AppColors.primaryA, AppColors.primaryB]),
-            boxShadow: [BoxShadow(
-                color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
-          ),
-          child: Center(
-            child: Text(
-              user.displayInitial,
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 18, fontWeight: FontWeight.bold),
+        GestureDetector(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ProfilePage())),
+          child: Container(
+            width: 46, height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                  colors: [AppColors.primaryA, AppColors.primaryB]),
+              boxShadow: [BoxShadow(
+                  color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
+            ),
+            child: Center(
+              child: Text(
+                user.displayInitial,
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ),
