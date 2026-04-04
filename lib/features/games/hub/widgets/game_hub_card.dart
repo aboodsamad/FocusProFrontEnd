@@ -73,8 +73,7 @@ class _GameHubCardState extends State<GameHubCard> {
                         ),
                       ),
                       child: Icon(
-                        IconData(widget.game.iconCodePoint,
-                            fontFamily: 'MaterialIcons'),
+                        widget.game.icon,
                         color: _color.withOpacity(available ? 1.0 : 0.4),
                         size: 24,
                       ),
@@ -245,8 +244,7 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(
-                          IconData(game.iconCodePoint,
-                              fontFamily: 'MaterialIcons'),
+                          game.icon,
                           color: Colors.white,
                           size: 22,
                         ),
