@@ -34,7 +34,7 @@ class HabitProvider extends ChangeNotifier {
 
   // ── Toggle done today ─────────────────────────────────────────────────────
   Future<void> toggle(Habit habit) async {
-    final idx = _habits.indexOf(habit);
+    final idx = _habits.indexWhere((h) => h.id == habit.id);
     if (idx < 0) return;
 
     // Optimistic update
@@ -48,7 +48,7 @@ class HabitProvider extends ChangeNotifier {
 
     try {
       final token = await AuthService.getToken() ?? '';
-      final updated = await HabitService.toggleHabit(token, habit);
+      final updated = await HabitService.logHabit(token, habit);
       _habits[idx] = updated;
       notifyListeners();
     } catch (_) {
@@ -71,7 +71,7 @@ class HabitProvider extends ChangeNotifier {
 
   // ── Edit ──────────────────────────────────────────────────────────────────
   Future<void> edit(Habit old, Habit updated) async {
-    final idx = _habits.indexOf(old);
+    final idx = _habits.indexWhere((h) => h.id == old.id);
     if (idx < 0) return;
 
     _habits[idx] = updated;
@@ -87,7 +87,7 @@ class HabitProvider extends ChangeNotifier {
 
   // ── Delete ────────────────────────────────────────────────────────────────
   Future<void> delete(Habit habit) async {
-    _habits.remove(habit);
+    _habits.removeWhere((h) => h.id == habit.id);
     notifyListeners();
 
     try {

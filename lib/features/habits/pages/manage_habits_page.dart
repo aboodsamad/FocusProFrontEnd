@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/habit.dart';
@@ -15,12 +16,14 @@ class ManageHabitsPage extends StatelessWidget {
         backgroundColor: const Color(0xFF080D1A),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'My Habits',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
           Padding(
@@ -28,7 +31,8 @@ class ManageHabitsPage extends StatelessWidget {
             child: GestureDetector(
               onTap: () => _showHabitDialog(context, null),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                       colors: [AppColors.primaryA, AppColors.primaryB]),
@@ -39,8 +43,11 @@ class ManageHabitsPage extends StatelessWidget {
                   children: [
                     Icon(Icons.add, color: Colors.white, size: 16),
                     SizedBox(width: 4),
-                    Text('Add', style: TextStyle(color: Colors.white,
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('Add',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
                   ],
                 ),
               ),
@@ -62,7 +69,7 @@ class ManageHabitsPage extends StatelessWidget {
 
           return Column(
             children: [
-              _ProgressHeader(provider: provider),
+              _AllHabitsHeader(total: provider.totalCount),
               Expanded(
                 child: ListView.builder(
                   physics: const BouncingScrollPhysics(),
@@ -72,9 +79,9 @@ class ManageHabitsPage extends StatelessWidget {
                     final habit = provider.habits[i];
                     return _HabitCard(
                       habit: habit,
-                      onToggle: () => provider.toggle(habit),
                       onEdit: () => _showHabitDialog(context, habit),
-                      onDelete: () => _confirmDelete(context, provider, habit),
+                      onDelete: () =>
+                          _confirmDelete(context, provider, habit),
                     );
                   },
                 ),
@@ -91,13 +98,16 @@ class ManageHabitsPage extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, HabitProvider provider, Habit habit) {
+  void _confirmDelete(
+      BuildContext context, HabitProvider provider, Habit habit) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF0F1624),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Habit', style: TextStyle(color: Colors.white)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Habit',
+            style: TextStyle(color: Colors.white)),
         content: Text(
           'Delete "${habit.title}"? This cannot be undone.',
           style: TextStyle(color: Colors.grey[400]),
@@ -105,12 +115,14 @@ class ManageHabitsPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+            child:
+                Text('Cancel', style: TextStyle(color: Colors.grey[500])),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
               Navigator.pop(context);
@@ -143,20 +155,16 @@ class ManageHabitsPage extends StatelessWidget {
   }
 }
 
-// ── Progress header ──────────────────────────────────────────────────────────
-class _ProgressHeader extends StatelessWidget {
-  final HabitProvider provider;
-  const _ProgressHeader({required this.provider});
+// ── All habits header ─────────────────────────────────────────────────────────
+class _AllHabitsHeader extends StatelessWidget {
+  final int total;
+  const _AllHabitsHeader({required this.total});
 
   @override
   Widget build(BuildContext context) {
-    final done = provider.doneCount;
-    final total = provider.totalCount;
-    final pct = total == 0 ? 0.0 : done / total;
-
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1624),
         borderRadius: BorderRadius.circular(18),
@@ -164,71 +172,62 @@ class _ProgressHeader extends StatelessWidget {
         boxShadow: [
           BoxShadow(
               color: AppColors.primaryA.withOpacity(0.08),
-              blurRadius: 20, spreadRadius: 2)
+              blurRadius: 20,
+              spreadRadius: 2)
         ],
       ),
-      child: Column(children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("Today's Progress",
-                  style: TextStyle(color: Colors.white,
-                      fontWeight: FontWeight.bold, fontSize: 15)),
-              const SizedBox(height: 2),
-              Text('$done of $total habits completed',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            ]),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: pct == 1.0
-                    ? const Color(0xFF10B981).withOpacity(0.15)
-                    : AppColors.primaryA.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                pct == 1.0 ? '🎉 All done!' : '${(pct * 100).round()}%',
-                style: TextStyle(
-                  color: pct == 1.0 ? const Color(0xFF10B981) : AppColors.primaryA,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryA.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: pct),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, __) => LinearProgressIndicator(
-              value: value,
-              minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(0.06),
-              valueColor: AlwaysStoppedAnimation(
-                  pct == 1.0 ? const Color(0xFF10B981) : AppColors.primaryA),
+            child: const Icon(Icons.checklist_rounded,
+                color: AppColors.primaryA, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('All Habits',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15)),
+            const SizedBox(height: 2),
+            Text('$total habit${total == 1 ? '' : 's'} total',
+                style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          ]),
+          const Spacer(),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryA.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'View only',
+              style: TextStyle(
+                  color: AppColors.primaryA,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
 
-// ── Habit card ───────────────────────────────────────────────────────────────
+// ── Habit card (view-only — no completion toggle) ─────────────────────────────
 class _HabitCard extends StatefulWidget {
   final Habit habit;
-  final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _HabitCard({
     required this.habit,
-    required this.onToggle,
     required this.onEdit,
     required this.onDelete,
   });
@@ -240,10 +239,14 @@ class _HabitCard extends StatefulWidget {
 class _HabitCardState extends State<_HabitCard> {
   bool _hovered = false;
 
+  static const _dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
   @override
   Widget build(BuildContext context) {
     final h = widget.habit;
     final color = _categoryColor(h.category);
+    final today = DateTime.now().weekday; // 1=Mon … 7=Sun
+    final scheduledToday = h.days[today - 1];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -262,7 +265,7 @@ class _HabitCardState extends State<_HabitCard> {
         ),
         confirmDismiss: (_) async {
           widget.onDelete();
-          return false; // We handle removal ourselves via provider
+          return false;
         },
         child: MouseRegion(
           onEnter: (_) => setState(() => _hovered = true),
@@ -275,103 +278,124 @@ class _HabitCardState extends State<_HabitCard> {
                   : const Color(0xFF0F1624),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: h.doneToday
-                    ? color.withOpacity(0.35)
-                    : (_hovered
-                        ? AppColors.primaryA.withOpacity(0.25)
-                        : Colors.white.withOpacity(0.06)),
+                color: _hovered
+                    ? AppColors.primaryA.withOpacity(0.25)
+                    : Colors.white.withOpacity(0.06),
               ),
-              boxShadow: h.doneToday
-                  ? [BoxShadow(
-                      color: color.withOpacity(0.12),
-                      blurRadius: 12, spreadRadius: 1)]
-                  : [],
             ),
             child: InkWell(
-              onTap: widget.onToggle,
+              onTap: widget.onEdit,
               borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
                 child: Row(children: [
-                  // Checkbox
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: h.doneToday
-                          ? LinearGradient(colors: [color, color.withOpacity(0.7)])
-                          : null,
-                      color: h.doneToday ? null : Colors.transparent,
-                      border: h.doneToday
-                          ? null
-                          : Border.all(
-                              color: _hovered
-                                  ? AppColors.primaryA.withOpacity(0.6)
-                                  : Colors.grey[600]!,
-                              width: 2,
-                            ),
-                    ),
-                    child: h.doneToday
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-                  ),
-                  const SizedBox(width: 14),
                   // Icon
                   Container(
-                    width: 36, height: 36,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(h.doneToday ? 0.08 : 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(h.icon,
-                        color: h.doneToday
-                            ? color.withOpacity(0.4)
-                            : color,
-                        size: 18),
+                    child: Icon(h.icon, color: color, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  // Title + streak
+                  // Title + meta
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(h.title,
-                            style: TextStyle(
-                              color: h.doneToday
-                                  ? Colors.grey[600]
-                                  : Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              decoration: h.doneToday
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            )),
-                        const SizedBox(height: 4),
                         Row(children: [
-                          const Icon(Icons.local_fire_department,
-                              color: Colors.orange, size: 12),
+                          Flexible(
+                            child: Text(
+                              h.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (scheduledToday) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981)
+                                    .withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('Today',
+                                  style: TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ]),
+                        const SizedBox(height: 5),
+                        Row(children: [
+                          Icon(Icons.timer_outlined,
+                              color: Colors.grey[600], size: 11),
                           const SizedBox(width: 3),
-                          Text('${h.streak} day streak',
+                          Text('${h.durationMinutes} min',
                               style: TextStyle(
                                   color: Colors.grey[600], fontSize: 11)),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(h.category,
+                          if (h.streak > 0) ...[
+                            const SizedBox(width: 8),
+                            const Icon(Icons.local_fire_department,
+                                color: Colors.orange, size: 11),
+                            const SizedBox(width: 2),
+                            Text('${h.streak}d streak',
                                 style: TextStyle(
-                                    color: color, fontSize: 9,
-                                    fontWeight: FontWeight.bold)),
+                                    color: Colors.grey[600], fontSize: 11)),
+                          ],
+                          const SizedBox(width: 8),
+                          // Days dots
+                          Row(
+                            children: List.generate(7, (i) {
+                              final active = h.days[i];
+                              final isNow = i == today - 1;
+                              return Container(
+                                width: 14,
+                                height: 14,
+                                margin: const EdgeInsets.only(right: 2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: active
+                                      ? (isNow
+                                          ? color
+                                          : color.withOpacity(0.5))
+                                      : Colors.white.withOpacity(0.07),
+                                  border: isNow && active
+                                      ? Border.all(
+                                          color: Colors.white.withOpacity(0.4),
+                                          width: 1)
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _dayLabels[i],
+                                    style: TextStyle(
+                                      color: active
+                                          ? Colors.white
+                                          : Colors.grey[700],
+                                      fontSize: 7,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
                           ),
                         ]),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   // Actions
                   Row(children: [
                     _SmallBtn(
@@ -411,13 +435,15 @@ class _SmallBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _SmallBtn({required this.icon, required this.color, required this.onTap});
+  const _SmallBtn(
+      {required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 32, height: 32,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
@@ -438,7 +464,8 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: AppColors.primaryA.withOpacity(0.1),
                 shape: BoxShape.circle,
@@ -448,8 +475,10 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text('No habits yet',
-                style: TextStyle(color: Colors.white,
-                    fontSize: 18, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text('Add your first habit to start building streaks',
                 style: TextStyle(color: Colors.grey[500], fontSize: 13),
@@ -458,15 +487,18 @@ class _EmptyState extends StatelessWidget {
             GestureDetector(
               onTap: onAdd,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 14),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                       colors: [AppColors.primaryA, AppColors.primaryB]),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text('Add First Habit',
-                    style: TextStyle(color: Colors.white,
-                        fontWeight: FontWeight.bold, fontSize: 14)),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14)),
               ),
             ),
           ],
@@ -487,8 +519,13 @@ class _HabitFormSheet extends StatefulWidget {
 
 class _HabitFormSheetState extends State<_HabitFormSheet> {
   late TextEditingController _titleCtl;
+  late TextEditingController _descCtl;
+  late TextEditingController _durationCtl;
   String _selectedIcon = 'star';
   String _selectedCategory = 'general';
+  late List<bool> _days; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+
+  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   static const List<Map<String, dynamic>> _icons = [
     {'name': 'menu_book',  'label': 'Reading'},
@@ -523,26 +560,49 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
   @override
   void initState() {
     super.initState();
-    _titleCtl = TextEditingController(text: widget.existing?.title ?? '');
-    _selectedIcon = widget.existing?.iconName ?? 'star';
-    _selectedCategory = widget.existing?.category ?? 'general';
+    final e = widget.existing;
+    _titleCtl = TextEditingController(text: e?.title ?? '');
+    _descCtl = TextEditingController(text: e?.description ?? '');
+    _durationCtl =
+        TextEditingController(text: '${e?.durationMinutes ?? 10}');
+    _selectedIcon = e?.iconName ?? 'star';
+    _selectedCategory = e?.category ?? 'general';
+    _days = e != null
+        ? List<bool>.from(e.days)
+        : [true, true, true, true, true, false, false];
   }
 
   @override
   void dispose() {
     _titleCtl.dispose();
+    _descCtl.dispose();
+    _durationCtl.dispose();
     super.dispose();
   }
 
   void _save() {
     final title = _titleCtl.text.trim();
     if (title.isEmpty) return;
+    final duration = int.tryParse(_durationCtl.text.trim()) ?? 10;
+    final activeCount = _days.where((d) => d).length;
     widget.onSave(Habit(
       id: widget.existing?.id,
       title: title,
-      iconName: _selectedIcon,
+      description: _descCtl.text.trim().isEmpty
+          ? null
+          : _descCtl.text.trim(),
+      durationMinutes: duration.clamp(1, 480),
+      frequencyPerWeek: activeCount,
+      monday: _days[0],
+      tuesday: _days[1],
+      wednesday: _days[2],
+      thursday: _days[3],
+      friday: _days[4],
+      saturday: _days[5],
+      sunday: _days[6],
       doneToday: widget.existing?.doneToday ?? false,
       streak: widget.existing?.streak ?? 0,
+      iconName: _selectedIcon,
       category: _selectedCategory,
     ));
     Navigator.pop(context);
@@ -566,7 +626,8 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
             // Handle
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(2),
@@ -576,38 +637,102 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
             const SizedBox(height: 20),
             Text(
               widget.existing == null ? 'New Habit' : 'Edit Habit',
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            // Title input
+
+            // ── Title ──────────────────────────────────────────────────────
+            _fieldLabel('Habit Title'),
+            const SizedBox(height: 8),
             TextField(
               controller: _titleCtl,
               autofocus: true,
               style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'e.g. Morning 10-min reading',
-                hintStyle: TextStyle(color: Colors.grey[600]),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: AppColors.primaryA, width: 1.5),
-                ),
-                prefixIcon: const Icon(Icons.edit_outlined,
-                    color: AppColors.primaryA, size: 18),
-              ),
+              decoration: _inputDeco(
+                  hint: 'e.g. Morning 10-min reading',
+                  prefix: Icons.edit_outlined),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Description ────────────────────────────────────────────────
+            _fieldLabel('Description (optional)'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _descCtl,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              decoration: _inputDeco(
+                  hint: 'What is this habit about?',
+                  prefix: Icons.notes_rounded),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Duration ───────────────────────────────────────────────────
+            _fieldLabel('Duration (minutes)'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _durationCtl,
+              style: const TextStyle(color: Colors.white),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: _inputDeco(
+                  hint: '10', prefix: Icons.timer_outlined),
             ),
             const SizedBox(height: 20),
-            // Category picker
-            const Text('Category',
-                style: TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w600, fontSize: 13)),
+
+            // ── Days of week ───────────────────────────────────────────────
+            _fieldLabel('Days of the Week'),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(7, (i) {
+                final active = _days[i];
+                return GestureDetector(
+                  onTap: () => setState(() => _days[i] = !active),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: active
+                          ? const LinearGradient(colors: [
+                              AppColors.primaryA,
+                              AppColors.primaryB
+                            ])
+                          : null,
+                      color: active
+                          ? null
+                          : Colors.white.withOpacity(0.05),
+                      border: Border.all(
+                        color: active
+                            ? Colors.transparent
+                            : Colors.white.withOpacity(0.12),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _dayLabels[i].substring(0, 2),
+                        style: TextStyle(
+                          color: active ? Colors.white : Colors.grey[500],
+                          fontSize: 11,
+                          fontWeight: active
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Category ───────────────────────────────────────────────────
+            _fieldLabel('Category'),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -616,38 +741,48 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
                 final selected = _selectedCategory == cat['value'];
                 final color = cat['color'] as Color;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedCategory = cat['value'] as String),
+                  onTap: () =>
+                      setState(() => _selectedCategory = cat['value'] as String),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                      color: selected
+                          ? color.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: selected ? color : Colors.white.withOpacity(0.1),
+                        color: selected
+                            ? color
+                            : Colors.white.withOpacity(0.1),
                         width: selected ? 1.5 : 1,
                       ),
                     ),
-                    child: Text(cat['label'] as String,
-                        style: TextStyle(
-                          color: selected ? color : Colors.grey[400],
-                          fontSize: 12,
-                          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                        )),
+                    child: Text(
+                      cat['label'] as String,
+                      style: TextStyle(
+                        color: selected ? color : Colors.grey[400],
+                        fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
                   ),
                 );
               }).toList(),
             ),
             const SizedBox(height: 20),
-            // Icon picker
-            const Text('Icon',
-                style: TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w600, fontSize: 13)),
+
+            // ── Icon ───────────────────────────────────────────────────────
+            _fieldLabel('Icon'),
             const SizedBox(height: 10),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 6,
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
@@ -676,14 +811,17 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
                       ),
                     ),
                     child: Icon(icon,
-                        color: selected ? AppColors.primaryA : Colors.grey[500],
+                        color: selected
+                            ? AppColors.primaryA
+                            : Colors.grey[500],
                         size: 22),
                   ),
                 );
               },
             ),
             const SizedBox(height: 28),
-            // Save button
+
+            // ── Save button ────────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: GestureDetector(
@@ -697,7 +835,9 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
                   ),
                   child: Center(
                     child: Text(
-                      widget.existing == null ? 'Add Habit' : 'Save Changes',
+                      widget.existing == null
+                          ? 'Add Habit'
+                          : 'Save Changes',
                       style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -712,4 +852,28 @@ class _HabitFormSheetState extends State<_HabitFormSheet> {
       ),
     );
   }
+
+  Widget _fieldLabel(String text) => Text(
+        text,
+        style: const TextStyle(
+            color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+      );
+
+  InputDecoration _inputDeco({required String hint, required IconData prefix}) =>
+      InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[600]),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppColors.primaryA, width: 1.5),
+        ),
+        prefixIcon: Icon(prefix, color: AppColors.primaryA, size: 18),
+      );
 }

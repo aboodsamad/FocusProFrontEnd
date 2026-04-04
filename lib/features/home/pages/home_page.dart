@@ -9,6 +9,9 @@ import '../../games/hub/pages/games_hub_page.dart';
 import '../../books/pages/books_page.dart';
 import '../../profile/pages/profile_page.dart';
 import '../../focus_session/pages/focus_rooms_page.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../../habits/models/habit.dart';
+import '../../habits/pages/manage_habits_page.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
   @override
@@ -16,11 +19,6 @@ class HomeScreen extends StatefulWidget {
 }
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _distractingMinutes = 42;
-  final List<Map<String, dynamic>> _habits = [
-    {'title': 'Morning 10-min reading',  'done': true,  'streak': 3,  'icon': Icons.menu_book_outlined},
-    {'title': 'Daily reaction game',     'done': false, 'streak': 1,  'icon': Icons.videogame_asset_outlined},
-    {'title': 'No social before 9 AM',   'done': false, 'streak': 7,  'icon': Icons.phone_locked_outlined},
-  ];
   late AnimationController _scoreAnimController;
   late Animation<double> _scoreAnim;
   late AnimationController _pulseController;
@@ -387,34 +385,108 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const _SectionLabel(label: "Today's Habits"),
           TextButton(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Manage habits (TODO)'))),
-            child: Text('Manage', style: TextStyle(
-                color: AppColors.primaryA, fontSize: 12,
-                fontWeight: FontWeight.w600)),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageHabitsPage()),
+            ),
+            child: const Text('Manage',
+                style: TextStyle(
+                    color: AppColors.primaryA,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
           ),
         ]),
         const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1624),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
-          ),
-          child: Column(
-            children: _habits.asMap().entries.map((e) {
-              final i = e.key;
-              return _HabitTile(
-                habit: _habits[i],
-                isLast: i == _habits.length - 1,
-                onToggle: () => setState(() {
-                  _habits[i]['done'] = !_habits[i]['done'];
-                  if (_habits[i]['done'])
-                    _habits[i]['streak'] = (_habits[i]['streak'] ?? 0) + 1;
-                }),
+        Consumer<HabitProvider>(
+          builder: (context, provider, _) {
+            if (provider.isLoading) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: CircularProgressIndicator(
+                      color: AppColors.primaryA, strokeWidth: 2),
+                ),
               );
-            }).toList(),
-          ),
+            }
+            if (provider.habits.isEmpty) {
+              return GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ManageHabitsPage()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F1624),
+                    borderRadius: BorderRadius.circular(16),
+                    border:
+                        Border.all(color: Colors.white.withOpacity(0.06)),
+                  ),
+                  child: Center(
+                    child: Text('Tap to add your first habit',
+                        style:
+                            TextStyle(color: Colors.grey[500], fontSize: 13)),
+                  ),
+                ),
+              );
+            }
+            final todayIndex = DateTime.now().weekday - 1; // 0=Mon…6=Sun
+            final todayHabits = provider.habits
+                .where((h) => h.days[todayIndex])
+                .toList();
+
+            if (todayHabits.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1624),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.06)),
+                ),
+                child: Column(children: [
+                  Icon(Icons.event_available_outlined,
+                      color: Colors.grey[700], size: 28),
+                  const SizedBox(height: 8),
+                  Text('No habits scheduled for today',
+                      style: TextStyle(
+                          color: Colors.grey[500], fontSize: 13)),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ManageHabitsPage())),
+                    child: Text('Manage habits',
+                        style: TextStyle(
+                            color: AppColors.primaryA,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+              );
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F1624),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Column(
+                children: todayHabits.asMap().entries.map((e) {
+                  final i = e.key;
+                  final habit = todayHabits[i];
+                  return _HabitTile(
+                    habit: habit,
+                    isLast: i == todayHabits.length - 1,
+                    onToggle: () => provider.toggle(habit),
+                  );
+                }).toList(),
+              ),
+            );
+          },
         ),
       ]),
     );
@@ -738,24 +810,24 @@ class _StatCardState extends State<_StatCard> {
   );
 }
 class _HabitTile extends StatefulWidget {
-  final Map<String, dynamic> habit;
+  final Habit habit;
   final bool isLast;
   final VoidCallback onToggle;
-  const _HabitTile({required this.habit, required this.isLast,
-      required this.onToggle});
+  const _HabitTile(
+      {required this.habit, required this.isLast, required this.onToggle});
   @override
   State<_HabitTile> createState() => _HabitTileState();
 }
+
 class _HabitTileState extends State<_HabitTile> {
   bool _hovered = false;
   @override
   Widget build(BuildContext context) {
-    final done   = widget.habit['done'] as bool;
-    final streak = widget.habit['streak'] as int;
+    final h = widget.habit;
     return Column(children: [
       MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
-        onExit:  (_) => setState(() => _hovered = false),
+        onExit: (_) => setState(() => _hovered = false),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
@@ -770,64 +842,89 @@ class _HabitTileState extends State<_HabitTile> {
             onTap: widget.onToggle,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 26, height: 26,
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: done
+                    gradient: h.doneToday
                         ? const LinearGradient(
                             colors: [AppColors.primaryA, AppColors.primaryB])
                         : null,
-                    color: done ? null : Colors.transparent,
-                    border: done ? null : Border.all(
-                      color: _hovered
-                          ? AppColors.primaryA.withOpacity(0.6)
-                          : Colors.grey[600]!,
-                      width: 2,
-                    ),
+                    color: h.doneToday ? null : Colors.transparent,
+                    border: h.doneToday
+                        ? null
+                        : Border.all(
+                            color: _hovered
+                                ? AppColors.primaryA.withOpacity(0.6)
+                                : Colors.grey[600]!,
+                            width: 2,
+                          ),
                   ),
-                  child: done
+                  child: h.doneToday
                       ? const Icon(Icons.check, color: Colors.white, size: 14)
                       : null,
                 ),
                 const SizedBox(width: 14),
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(widget.habit['title'],
-                      style: TextStyle(
-                        color: done
-                            ? Colors.grey[600]
-                            : (_hovered ? Colors.white : Colors.white70),
-                        fontSize: 14, fontWeight: FontWeight.w500,
-                        decoration: done ? TextDecoration.lineThrough : null,
-                      )),
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    const Icon(Icons.local_fire_department,
-                        color: Colors.orange, size: 12),
-                    const SizedBox(width: 3),
-                    Text('$streak day streak',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-                  ]),
-                ])),
-                Icon(widget.habit['icon'] as IconData,
-                    color: done
-                        ? Colors.grey[700]
-                        : (_hovered
-                            ? AppColors.primaryA.withOpacity(0.7)
-                            : Colors.grey[500]),
-                    size: 18),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(
+                        h.title,
+                        style: TextStyle(
+                          color: h.doneToday
+                              ? Colors.grey[600]
+                              : (_hovered ? Colors.white : Colors.white70),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          decoration: h.doneToday
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        Icon(Icons.timer_outlined,
+                            color: Colors.grey[600], size: 11),
+                        const SizedBox(width: 3),
+                        Text('${h.durationMinutes} min',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 11)),
+                        if (h.streak > 0) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.local_fire_department,
+                              color: Colors.orange, size: 11),
+                          const SizedBox(width: 2),
+                          Text('${h.streak}',
+                              style: TextStyle(
+                                  color: Colors.grey[600], fontSize: 11)),
+                        ],
+                      ]),
+                    ])),
+                Icon(
+                  h.icon,
+                  color: h.doneToday
+                      ? Colors.grey[700]
+                      : (_hovered
+                          ? AppColors.primaryA.withOpacity(0.7)
+                          : Colors.grey[500]),
+                  size: 18,
+                ),
               ]),
             ),
           ),
         ),
       ),
       if (!widget.isLast)
-        Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 56),
+        Divider(
+            height: 1,
+            color: Colors.white.withOpacity(0.05),
+            indent: 56),
     ]);
   }
 }
