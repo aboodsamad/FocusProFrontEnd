@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../providers/user_provider.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../../habits/models/habit.dart';
+import '../../habits/pages/manage_habits_page.dart';
 import '../../question/pages/question_page.dart';
 import '../../games/hub/pages/games_hub_page.dart';
 import '../../books/pages/books_page.dart';
@@ -15,11 +18,6 @@ class HomeScreen extends StatefulWidget {
 }
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _distractingMinutes = 42;
-  final List<Map<String, dynamic>> _habits = [
-    {'title': 'Morning 10-min reading',  'done': true,  'streak': 3,  'icon': Icons.menu_book_outlined},
-    {'title': 'Daily reaction game',     'done': false, 'streak': 1,  'icon': Icons.videogame_asset_outlined},
-    {'title': 'No social before 9 AM',   'done': false, 'streak': 7,  'icon': Icons.phone_locked_outlined},
-  ];
   late AnimationController _scoreAnimController;
   late Animation<double> _scoreAnim;
   late AnimationController _pulseController;
@@ -375,42 +373,91 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ).then((v) { if (v != null) setState(() => _distractingMinutes = v); });
   }
   Widget _buildHabitsSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const _SectionLabel(label: "Today's Habits"),
-          TextButton(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Manage habits (TODO)'))),
-            child: Text('Manage', style: TextStyle(
-                color: AppColors.primaryA, fontSize: 12,
-                fontWeight: FontWeight.w600)),
-          ),
-        ]),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1624),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
-          ),
-          child: Column(
-            children: _habits.asMap().entries.map((e) {
-              final i = e.key;
-              return _HabitTile(
-                habit: _habits[i],
-                isLast: i == _habits.length - 1,
-                onToggle: () => setState(() {
-                  _habits[i]['done'] = !_habits[i]['done'];
-                  if (_habits[i]['done'])
-                    _habits[i]['streak'] = (_habits[i]['streak'] ?? 0) + 1;
-                }),
-              );
-            }).toList(),
-          ),
-        ),
-      ]),
+    return Consumer<HabitProvider>(
+      builder: (context, habitProvider, _) {
+        final habits = habitProvider.habits;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const _SectionLabel(label: "Today's Habits"),
+                if (habits.isNotEmpty)
+                  Text(
+                    '${habitProvider.doneCount}/${habitProvider.totalCount} done',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                  ),
+              ]),
+              TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ManageHabitsPage()),
+                ),
+                child: Text('Manage', style: TextStyle(
+                    color: AppColors.primaryA, fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            if (habitProvider.isLoading)
+              Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1624),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.primaryA, strokeWidth: 2),
+                ),
+              )
+            else if (habits.isEmpty)
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ManageHabitsPage()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F1624),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.primaryA.withOpacity(0.2)),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.add_circle_outline,
+                        color: AppColors.primaryA, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Add your first habit',
+                        style: TextStyle(
+                            color: Colors.grey[400], fontSize: 13)),
+                  ]),
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1624),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: Column(
+                  children: habits.asMap().entries.map((e) {
+                    final i = e.key;
+                    final habit = habits[i];
+                    return _HabitTile(
+                      habit: habit,
+                      isLast: i == habits.length - 1,
+                      onToggle: () => habitProvider.toggle(habit),
+                    );
+                  }).toList(),
+                ),
+              ),
+          ]),
+        );
+      },
     );
   }
   Widget _buildRecommendationCard() {
@@ -732,7 +779,7 @@ class _StatCardState extends State<_StatCard> {
   );
 }
 class _HabitTile extends StatefulWidget {
-  final Map<String, dynamic> habit;
+  final Habit habit;
   final bool isLast;
   final VoidCallback onToggle;
   const _HabitTile({required this.habit, required this.isLast,
@@ -744,8 +791,8 @@ class _HabitTileState extends State<_HabitTile> {
   bool _hovered = false;
   @override
   Widget build(BuildContext context) {
-    final done   = widget.habit['done'] as bool;
-    final streak = widget.habit['streak'] as int;
+    final done   = widget.habit.doneToday;
+    final streak = widget.habit.streak;
     return Column(children: [
       MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
@@ -791,7 +838,7 @@ class _HabitTileState extends State<_HabitTile> {
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(widget.habit['title'],
+                  Text(widget.habit.title,
                       style: TextStyle(
                         color: done
                             ? Colors.grey[600]
@@ -808,7 +855,7 @@ class _HabitTileState extends State<_HabitTile> {
                         style: TextStyle(color: Colors.grey[600], fontSize: 11)),
                   ]),
                 ])),
-                Icon(widget.habit['icon'] as IconData,
+                Icon(widget.habit.icon,
                     color: done
                         ? Colors.grey[700]
                         : (_hovered

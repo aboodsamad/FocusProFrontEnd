@@ -1,7 +1,7 @@
-/// Pure-Dart model.  No Flutter dependency.
-///
 /// Represents a single game entry in the Games Hub.
 /// Add new games by appending to [GameItem.all].
+
+import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enums
@@ -29,8 +29,8 @@ class GameItem {
   /// Hex color value — used in widgets for tinting.
   final int colorValue;
 
-  /// Icon codePoint from [Icons] — widgets import Flutter to use it.
-  final int iconCodePoint;
+  /// Icon shown on the game card.
+  final IconData icon;
 
   const GameItem({
     required this.id,
@@ -41,7 +41,7 @@ class GameItem {
     required this.difficulty,
     required this.status,
     required this.colorValue,
-    required this.iconCodePoint,
+    required this.icon,
   });
 
   // ── Derived string labels ──────────────────────────────────────────────────

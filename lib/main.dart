@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import 'features/home/providers/user_provider.dart';
+import 'features/habits/providers/habit_provider.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/oauth_callback_page.dart';
 import 'features/home/pages/home_page.dart';
@@ -12,9 +13,17 @@ void main() async {
   final userProvider = UserProvider();
   await userProvider.init();
 
+  final habitProvider = HabitProvider();
+  if (userProvider.isLoggedIn) {
+    await habitProvider.load();
+  }
+
   runApp(
-    ChangeNotifierProvider.value(
-      value: userProvider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: userProvider),
+        ChangeNotifierProvider.value(value: habitProvider),
+      ],
       child: const MyApp(),
     ),
   );
