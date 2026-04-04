@@ -1,0 +1,353 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../features/home/providers/user_provider.dart';
+import '../models/focus_room.dart';
+import '../services/focus_room_service.dart';
+
+class FocusRoomSessionPage extends StatefulWidget {
+  final FocusRoom room;
+  const FocusRoomSessionPage({Key? key, required this.room}) : super(key: key);
+
+  @override
+  State<FocusRoomSessionPage> createState() => _FocusRoomSessionPageState();
+}
+
+class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
+  List<RoomMember> _members = [];
+  bool _loading = true;
+  String? _error;
+  String? _myGoal;
+  Timer? _pollTimer;
+  Timer? _ticker;
+  final Stopwatch _stopwatch = Stopwatch();
+  String _elapsed = '00:00';
+  bool _joined = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _stopwatch.start();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        final d = _stopwatch.elapsed;
+        setState(() {
+          _elapsed =
+              '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+        });
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askGoal());
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _pollTimer?.cancel();
+    _stopwatch.stop();
+    if (_joined) {
+      FocusRoomService.leaveRoomRest(widget.room.id);
+    }
+    super.dispose();
+  }
+
+  Future<void> _askGoal() async {
+    final goalCtl = TextEditingController();
+    final goal = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1624),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(children: [
+          Text(widget.room.emoji, style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(widget.room.name,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('What are you working on?',
+                style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: goalCtl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. Finishing chapter 3 (optional)',
+                hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.06),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, ''),
+            child: Text('Skip', style: TextStyle(color: Colors.grey[500])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryA,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(context, goalCtl.text.trim()),
+            child: const Text('Join Room'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (goal == null) { Navigator.pop(context); return; }
+
+    _myGoal = goal.isEmpty ? null : goal;
+    _joinAndPoll();
+  }
+
+  Future<void> _joinAndPoll() async {
+    try {
+      final room = await FocusRoomService.joinRoomRest(
+          widget.room.id, _myGoal);
+      _joined = true;
+      if (mounted) setState(() {
+        _members = room.members;
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+      return;
+    }
+
+    // Poll every 4 seconds to refresh member list
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      try {
+        final room = await FocusRoomService.getRoom(widget.room.id);
+        if (mounted) setState(() => _members = room.members);
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final myUsername = context.read<UserProvider>().username ?? '';
+    return Scaffold(
+      backgroundColor: const Color(0xFF080D1A),
+      body: SafeArea(
+        child: Column(children: [
+          _buildHeader(),
+          if (_loading)
+            const Expanded(child: Center(
+              child: CircularProgressIndicator(color: AppColors.primaryA)))
+          else if (_error != null)
+            Expanded(child: Center(child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Error: $_error',
+                  style: const TextStyle(color: Colors.red)),
+            )))
+          else
+            Expanded(child: _buildContent(myUsername)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white70, size: 16),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(widget.room.emoji, style: const TextStyle(fontSize: 22)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(widget.room.name,
+              style: const TextStyle(color: Colors.white,
+                  fontSize: 17, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primaryA.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
+          ),
+          child: Row(children: [
+            const Icon(Icons.timer_outlined, color: AppColors.primaryA, size: 14),
+            const SizedBox(width: 4),
+            Text(_elapsed, style: const TextStyle(
+                color: AppColors.primaryA,
+                fontWeight: FontWeight.bold, fontSize: 13)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildContent(String myUsername) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                AppColors.primaryB.withOpacity(0.35),
+                AppColors.primaryA.withOpacity(0.18),
+              ]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primaryA.withOpacity(0.25)),
+            ),
+            child: Row(children: [
+              Container(
+                width: 10, height: 10,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF10B981),
+                  boxShadow: [BoxShadow(color: Color(0xFF10B981), blurRadius: 6)],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing right now',
+                style: const TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ]),
+          ),
+        )),
+        SliverPadding(
+          padding: const EdgeInsets.all(20),
+          sliver: _members.isEmpty
+              ? SliverToBoxAdapter(child: Center(
+                  child: Column(children: [
+                    const SizedBox(height: 40),
+                    const Text('🧑‍💻', style: TextStyle(fontSize: 48)),
+                    const SizedBox(height: 12),
+                    const Text("You're the only one here",
+                        style: TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('Others will appear when they join',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                  ]),
+                ))
+              : SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, crossAxisSpacing: 12,
+                    mainAxisSpacing: 12, childAspectRatio: 1.05,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _MemberCard(
+                        member: _members[i],
+                        isMe: _members[i].username == myUsername),
+                    childCount: _members.length,
+                  ),
+                ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+      ],
+    );
+  }
+}
+
+class _MemberCard extends StatelessWidget {
+  final RoomMember member;
+  final bool isMe;
+  const _MemberCard({required this.member, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = (member.displayName.isNotEmpty
+            ? member.displayName[0]
+            : member.username[0])
+        .toUpperCase();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1624),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isMe
+              ? AppColors.primaryA.withOpacity(0.45)
+              : Colors.white.withOpacity(0.07),
+          width: isMe ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Stack(children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: isMe
+                    ? [AppColors.primaryA, AppColors.primaryB]
+                    : [const Color(0xFF1E2A40), const Color(0xFF2A3A55)],
+              ),
+            ),
+            child: Center(child: Text(initial,
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 20, fontWeight: FontWeight.bold))),
+          ),
+          Positioned(
+            right: 0, bottom: 0,
+            child: Container(
+              width: 14, height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF10B981),
+                border: Border.all(color: const Color(0xFF0F1624), width: 2),
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Text(isMe ? 'You' : member.displayName,
+            style: TextStyle(
+                color: isMe ? AppColors.primaryA : Colors.white,
+                fontSize: 13, fontWeight: FontWeight.bold),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        if (member.goal != null && member.goal!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(member.goal!,
+              style: TextStyle(color: Colors.grey[500], fontSize: 10),
+              maxLines: 2, overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center),
+        ],
+      ]),
+    );
+  }
+}
