@@ -108,31 +108,27 @@ class FocusRoomService {
     }
   }
 
-
-
   static Future<FocusRoom> joinRoomRest(int roomId, String? goal) async {
-  final token = await AuthService.getToken();
-  final resp = await http.post(
-    Uri.parse('$_base/rooms/$roomId/join'),
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({'goal': goal ?? ''}),
-  ).timeout(const Duration(seconds: 8));
-  if (resp.statusCode == 200) {
-    return FocusRoom.fromJson(jsonDecode(resp.body));
+    final token = await AuthService.getToken();
+    final resp = await http
+        .post(
+          Uri.parse('$_base/rooms/$roomId/join'),
+          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+          body: jsonEncode({'goal': goal ?? ''}),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode == 200) {
+      return FocusRoom.fromJson(jsonDecode(resp.body));
+    }
+    throw Exception('Join failed (${resp.statusCode})');
   }
-  throw Exception('Join failed (${resp.statusCode})');
-}
 
-static Future<void> leaveRoomRest(int roomId) async {
-  final token = await AuthService.getToken();
-  try {
-    await http.post(
-      Uri.parse('$_base/rooms/$roomId/leave'),
-      headers: {'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 5));
-  } catch (_) {}
-}
+  static Future<void> leaveRoomRest(int roomId) async {
+    final token = await AuthService.getToken();
+    try {
+      await http
+          .post(Uri.parse('$_base/rooms/$roomId/leave'), headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
 }
