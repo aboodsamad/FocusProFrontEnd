@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../providers/user_provider.dart';
@@ -12,13 +13,18 @@ import '../../focus_session/pages/focus_rooms_page.dart';
 import '../../habits/providers/habit_provider.dart';
 import '../../habits/models/habit.dart';
 import '../../habits/pages/manage_habits_page.dart';
+import '../../profile/services/activity_log_service.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  int _distractingMinutes = 42;
+  // ── Stats state (all loaded from real data, never hardcoded) ──────────────
+  int _distractingMinutes = 0; // loaded from SharedPreferences; user-editable
+  int _streakDays         = 0; // calculated from activity logs
+  int _todaySessions      = 0; // calculated from activity logs
+
   late AnimationController _scoreAnimController;
   late Animation<double> _scoreAnim;
   late AnimationController _pulseController;
@@ -35,15 +41,71 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _scoreAnim = Tween<double>(begin: 0, end: 0).animate(_scoreAnimController);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _animateScore());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animateScore();
+      _loadDistractingMinutes();
+      _loadStats();
+    });
   }
+
   void _animateScore() {
+    // Use the real focus score — no fallback fakes.
+    // If the user hasn't done the diagnostic yet, score is 0 and the ring shows empty.
     final score = context.read<UserProvider>().focusScore;
-    final displayScore = score > 1.0 ? score : 70.0;
-    _scoreAnim = Tween<double>(begin: 0, end: displayScore).animate(
+    _scoreAnim = Tween<double>(begin: 0, end: score).animate(
       CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
     );
     _scoreAnimController.forward();
+  }
+
+  /// Loads distracting-minutes from SharedPreferences (user-persisted, not backend).
+  Future<void> _loadDistractingMinutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0;
+    });
+  }
+
+  /// Fetches activity logs and derives streak + today's session count.
+  Future<void> _loadStats() async {
+    final logs = await ActivityLogService.fetchLogs();
+    if (!mounted) return;
+
+    final today     = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    // Count every activity logged today as one "session"
+    final todaySessions = logs.where((l) {
+      final d = l.activityDate.toLocal();
+      return DateTime(d.year, d.month, d.day) == todayDate;
+    }).length;
+
+    // Streak = consecutive days (going back from today) that have ≥1 activity
+    final activeDays = logs
+        .map((l) {
+          final d = l.activityDate.toLocal();
+          return DateTime(d.year, d.month, d.day);
+        })
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a)); // newest first
+
+    int streak = 0;
+    DateTime check = todayDate;
+    for (final day in activeDays) {
+      if (day == check) {
+        streak++;
+        check = check.subtract(const Duration(days: 1));
+      } else if (day.isBefore(check)) {
+        break; // gap in days — streak ends
+      }
+    }
+
+    setState(() {
+      _todaySessions = todaySessions;
+      _streakDays    = streak;
+    });
   }
   @override
   void dispose() {
@@ -52,12 +114,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
   Color _scoreColor(double score) {
+    if (score == 0)  return Colors.grey;
     if (score >= 80) return const Color(0xFF10B981);
     if (score >= 65) return AppColors.primaryA;
     if (score >= 50) return const Color(0xFFF97316);
     return const Color(0xFFEF4444);
   }
+
   String _scoreLabel(double score) {
+    if (score == 0)  return 'Not Assessed';
     if (score >= 80) return 'Excellent';
     if (score >= 65) return 'Good';
     if (score >= 50) return 'Fair';
@@ -112,7 +177,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         body: Center(child: CircularProgressIndicator(color: AppColors.primaryA)),
       );
     }
-    final score = user.focusScore > 1.0 ? user.focusScore : 70.0;
+    // Use the real focus score. 0.0 means the user hasn't taken the diagnostic yet.
+    final score = user.focusScore;
     final color = _scoreColor(score);
     return Scaffold(
       backgroundColor: const Color(0xFF080D1A),
@@ -202,8 +268,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: TextStyle(color: Colors.white,
                       fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('From your diagnostic + weekly activity',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+              Text(
+                score == 0
+                    ? 'Take the diagnostic to get your score'
+                    : 'From your diagnostic + weekly activity',
+                style: TextStyle(color: Colors.grey[500], fontSize: 11),
+              ),
               const SizedBox(height: 18),
               AnimatedBuilder(
                 animation: _scoreAnim,
@@ -325,12 +395,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               sub: 'scroll time', onTap: _editUsage)),
           const SizedBox(width: 8),
           Expanded(child: _StatCard(
-              label: 'Streak', value: '7 days',
+              label: 'Streak',
+              value: '$_streakDays ${_streakDays == 1 ? "day" : "days"}',
               icon: Icons.local_fire_department_outlined,
-              color: const Color(0xFFF97316), sub: 'keep going!')),
+              color: const Color(0xFFF97316),
+              sub: _streakDays > 0 ? 'keep going!' : 'start today!')),
           const SizedBox(width: 8),
           Expanded(child: _StatCard(
-              label: 'Sessions', value: '3',
+              label: 'Sessions', value: '$_todaySessions',
               icon: Icons.bar_chart_rounded,
               color: AppColors.primaryA, sub: 'today')),
         ]),
@@ -376,7 +448,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         );
       },
-    ).then((v) { if (v != null) setState(() => _distractingMinutes = v); });
+    ).then((v) async {
+      if (v != null) {
+        // Persist so the value survives app restarts
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('distracting_minutes', v);
+        if (mounted) setState(() => _distractingMinutes = v);
+      }
+    });
   }
   Widget _buildHabitsSection() {
     return Padding(

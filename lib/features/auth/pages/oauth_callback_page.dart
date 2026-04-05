@@ -7,6 +7,7 @@ import '../../../features/home/services/user_service.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../../../features/home/pages/home_page.dart';
 import '../../../features/diagnostic/pages/diagnostic_page.dart';
+import '../widgets/complete_profile_dialog.dart';
 
 class OAuthCallbackPage extends StatefulWidget {
   @override
@@ -79,6 +80,15 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       print('[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}');
 
       if (!mounted) return;
+
+      // ── Complete-profile check (Google users with missing DOB) ────────────
+      // dob is null when the user signed in with Google and hasn't filled it in yet.
+      // We show the dialog every login until they do.
+      final dobIsNull = profile?['dob'] == null;
+      if (dobIsNull && mounted) {
+        await showCompleteProfileDialog(context, token);
+        if (!mounted) return;
+      }
 
       if (isNewUser) {
         // Show consent only if this Google user hasn't consented yet.

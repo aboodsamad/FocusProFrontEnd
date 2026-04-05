@@ -63,6 +63,34 @@ class UserService {
     }
   }
 
+  // ── Complete profile (Google users only) ────────────────
+  /// Sends DOB (and optionally name) to the backend.
+  /// Returns true on success.
+  static Future<bool> completeProfile({
+    required String token,
+    required String dob,
+    String? name,
+  }) async {
+    final url = Uri.parse('${AuthService.baseUrl}/user/complete-profile');
+    try {
+      final body = <String, String>{'dob': dob};
+      if (name != null && name.isNotEmpty) body['name'] = name;
+
+      final resp = await http
+          .put(url,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode(body))
+          .timeout(const Duration(seconds: 8));
+      return resp.statusCode == 200;
+    } catch (e) {
+      print('completeProfile error: $e');
+      return false;
+    }
+  }
+
   // ── Individual field getters ─────────────────────────────
   static Future<int?> getStoredUserId() async {
     final prefs = await SharedPreferences.getInstance();
