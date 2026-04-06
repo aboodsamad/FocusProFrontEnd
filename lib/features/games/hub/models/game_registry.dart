@@ -4,6 +4,7 @@ import 'game_item.dart';
 import '../../memory_matrix/pages/memory_matrix_page.dart';
 import '../../sudoku/pages/sudoku_page.dart';
 import '../../number_stream/pages/number_stream_page.dart';
+import '../../train_of_thought/pages/train_of_thought_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -87,6 +88,17 @@ class GameRegistry {
       colorValue: 0xFF06B6D4,
       icon:       Icons.timeline_rounded,
     ),
+    GameItem(
+      id:         'train_of_thought',
+      title:      'Train of Thought',
+      description:'Trains speed toward stations — tap junctions to switch the tracks and route each train to its matching colored station before it crashes.',
+      shortDesc:  'Route trains to their stations',
+      category:   GameCategory.attention,
+      difficulty: GameDifficulty.medium,
+      status:     GameStatus.available,
+      colorValue: 0xFF5B8FFF,
+      icon:       Icons.train_rounded,
+    ),
   ];
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -117,6 +129,8 @@ class GameRegistry {
         return const SudokuHomePage();
       case 'number_stream':
         return const NumberStreamPage();
+      case 'train_of_thought':
+        return const TrainOfThoughtPage();
       default:
         return null;
     }
