@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'game_item.dart';
 import '../../memory_matrix/pages/memory_matrix_page.dart';
 import '../../sudoku/pages/sudoku_page.dart';
+import '../../number_stream/pages/number_stream_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -71,7 +72,7 @@ class GameRegistry {
       shortDesc:  'Solve falling equations',
       category:   GameCategory.speed,
       difficulty: GameDifficulty.medium,
-      status:     GameStatus.comingSoon,
+      status:     GameStatus.available,
       colorValue: 0xFFEC4899,
       icon:       Icons.functions_rounded,
     ),
@@ -114,6 +115,8 @@ class GameRegistry {
         return const MemoryMatrixPage();
       case 'sudoku':
         return const SudokuHomePage();
+      case 'number_stream':
+        return const NumberStreamPage();
       default:
         return null;
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/constants/app_colors.dart';
@@ -28,12 +29,23 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
     });
   }
 
-  /// Pull `token=` out of any URL fragment/query string segment.
-  String? _extractToken(String source) {
-    if (!source.contains('token=')) return null;
-    final raw = source.split('token=')[1].split('&')[0];
+  /// Pull `code=` out of any URL fragment/query string segment.
+  String? _extractCode(String source) {
+    if (!source.contains('code=')) return null;
+    final raw = source.split('code=')[1].split('&')[0];
     if (raw.isEmpty) return null;
     return Uri.decodeComponent(raw);
+  }
+
+  /// Exchange a one-time code for the real JWT by calling the backend.
+  Future<String?> _exchangeCodeForToken(String code) async {
+    final url = Uri.parse('${AuthService.baseUrl}/user/oauth/token?code=$code');
+    final resp = await http.get(url);
+    if (resp.statusCode == 200 && resp.body.isNotEmpty) {
+      return resp.body.trim();
+    }
+    print('[OAuth] Code exchange failed: ${resp.statusCode} ${resp.body}');
+    return null;
   }
 
   void _handleCallback() async {
@@ -43,8 +55,16 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       print('OAuth callback — hash: $hashPart  search: $searchPart');
 
       // Try hash first, fall back to query string.
-      final token = _extractToken(hashPart) ?? _extractToken(searchPart);
-      print('Extracted token: $token');
+      final code = _extractCode(hashPart) ?? _extractCode(searchPart);
+      print('Extracted code: $code');
+
+      if (code == null || code.isEmpty) {
+        if (mounted) Navigator.of(context).pushReplacementNamed('/');
+        return;
+      }
+
+      final token = await _exchangeCodeForToken(code);
+      print('Exchanged token: ${token != null ? "${token.substring(0, 20)}..." : "null"}');
 
       if (token == null || token.isEmpty) {
         if (mounted) Navigator.of(context).pushReplacementNamed('/');
