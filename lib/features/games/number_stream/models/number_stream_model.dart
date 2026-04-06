@@ -150,30 +150,64 @@ StreamEquation generateEquation(int level) {
   int a, b;
 
   if (level == 1) {
-    op = MathOp.add;
-    a  = rng.nextInt(9) + 1;
-    b  = rng.nextInt(9) + 1;
+    // Two-digit add/subtract — no more 3+2 trivia
+    op = rng.nextBool() ? MathOp.add : MathOp.subtract;
+    a  = rng.nextInt(26) + 15;                          // 15–40
+    b  = op == MathOp.subtract
+        ? rng.nextInt(a - 5) + 5                        // b in [5, a-1]
+        : rng.nextInt(21) + 10;                         // 10–30
   } else if (level == 2) {
-    op = rng.nextBool() ? MathOp.add : MathOp.subtract;
-    a  = rng.nextInt(19) + 2;
-    b  = op == MathOp.subtract ? rng.nextInt(a - 1) + 1 : rng.nextInt(19) + 1;
+    // Add/subtract with bigger ranges, or small multiply
+    final roll = rng.nextInt(3);
+    if (roll == 0) {
+      op = MathOp.multiply;
+      a  = rng.nextInt(6) + 3;                          // 3–8
+      b  = rng.nextInt(6) + 3;                          // 3–8
+    } else {
+      op = roll == 1 ? MathOp.add : MathOp.subtract;
+      a  = rng.nextInt(41) + 20;                        // 20–60
+      b  = op == MathOp.subtract
+          ? rng.nextInt(a - 5) + 5
+          : rng.nextInt(31) + 15;                       // 15–45
+    }
   } else if (level == 3) {
-    op = rng.nextBool() ? MathOp.add : MathOp.subtract;
-    a  = rng.nextInt(29) + 2;
-    b  = op == MathOp.subtract ? rng.nextInt(a - 1) + 1 : rng.nextInt(29) + 1;
-  } else if (level == 4) {
-    op = MathOp.multiply;
-    a  = rng.nextInt(8) + 2;
-    b  = rng.nextInt(8) + 2;
-  } else {
+    // All three ops equally; multiply goes up to ×12
     final ops = MathOp.values;
     op = ops[rng.nextInt(ops.length)];
     if (op == MathOp.multiply) {
-      a = rng.nextInt(11) + 2;
-      b = rng.nextInt(11) + 2;
+      a = rng.nextInt(9) + 4;                           // 4–12
+      b = rng.nextInt(9) + 4;
     } else {
-      a = rng.nextInt(49) + 2;
-      b = op == MathOp.subtract ? rng.nextInt(a - 1) + 1 : rng.nextInt(49) + 1;
+      a = rng.nextInt(51) + 30;                         // 30–80
+      b = op == MathOp.subtract
+          ? rng.nextInt(a - 5) + 5
+          : rng.nextInt(41) + 20;                       // 20–60
+    }
+  } else if (level == 4) {
+    // Harder multiply; large add/subtract
+    final ops = MathOp.values;
+    op = ops[rng.nextInt(ops.length)];
+    if (op == MathOp.multiply) {
+      a = rng.nextInt(9) + 6;                           // 6–14
+      b = rng.nextInt(9) + 6;
+    } else {
+      a = rng.nextInt(61) + 40;                         // 40–100
+      b = op == MathOp.subtract
+          ? rng.nextInt(a - 10) + 10
+          : rng.nextInt(51) + 30;                       // 30–80
+    }
+  } else {
+    // Level 5+: all ops, large numbers, multiply up to ×20
+    final ops = MathOp.values;
+    op = ops[rng.nextInt(ops.length)];
+    if (op == MathOp.multiply) {
+      a = rng.nextInt(13) + 8;                          // 8–20
+      b = rng.nextInt(13) + 8;
+    } else {
+      a = rng.nextInt(101) + 50;                        // 50–150
+      b = op == MathOp.subtract
+          ? rng.nextInt(a - 10) + 10
+          : rng.nextInt(71) + 30;                       // 30–100
     }
   }
 
@@ -181,7 +215,8 @@ StreamEquation generateEquation(int level) {
                 : op == MathOp.subtract ? a - b
                 :                         a * b;
 
-  final range  = level <= 2 ? 10 : level <= 4 ? 18 : 25;
+  // Tighter distractors so they're harder to dismiss at a glance
+  final range  = level <= 2 ? 5 : level <= 4 ? 8 : 12;
   final wrongs = <int>{};
   while (wrongs.length < 3) {
     final delta     = rng.nextInt(range) + 1;
