@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -10,116 +10,101 @@ import '../../services/game_service.dart';
 import '../models/train_of_thought_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Visual constants – Lumosity palette
+// Colour helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBoardGreen      = Color(0xFF2E7D32); // deep forest green
-const _kBoardGreenLight = Color(0xFF388E3C); // subtle variation for checkerboard
-const _kTrackBed        = Color(0xFF1B5E20); // very dark green track bed
-const _kTrackRail       = Color(0xFF4CAF50); // bright rail lines
-const _kJunctionFill    = Color(0xFF66BB6A); // junction circle fill
-const _kJunctionBorder  = Color(0xFFA5D6A7); // junction circle border
-const _kJunctionGlow    = Color(0xFF81C784); // active path highlight inside junction
-const _kHeaderBg        = Color(0xFFEEEEEE); // light grey header (Lumosity style)
-const _kHeaderDivider   = Color(0xFFBDBDBD);
-const _kHeaderText      = Color(0xFF212121);
-const _kHeaderLabel     = Color(0xFF757575);
-
-/// Per-color accent palette for trains and station buildings
-Color _trainAccent(TrainColor c) {
+Color _accent(TrainColor c) {
   switch (c) {
-    case TrainColor.blue:   return const Color(0xFF1E88E5);
+    case TrainColor.blue:   return const Color(0xFF2196F3);
     case TrainColor.pink:   return const Color(0xFFE91E8C);
     case TrainColor.red:    return const Color(0xFFE53935);
-    case TrainColor.green:  return const Color(0xFF43A047);
+    case TrainColor.green:  return const Color(0xFF4CAF50);
     case TrainColor.yellow: return const Color(0xFFFDD835);
     case TrainColor.white:  return const Color(0xFFECEFF1);
-    case TrainColor.purple: return const Color(0xFF8E24AA);
   }
 }
 
-/// Slightly darker shade for building walls / train body
-Color _trainDark(TrainColor c) {
+Color _dark(TrainColor c) {
   switch (c) {
     case TrainColor.blue:   return const Color(0xFF1565C0);
     case TrainColor.pink:   return const Color(0xFFC2185B);
     case TrainColor.red:    return const Color(0xFFB71C1C);
     case TrainColor.green:  return const Color(0xFF2E7D32);
-    case TrainColor.yellow: return const Color(0xFFF9A825);
-    case TrainColor.white:  return const Color(0xFF90A4AE);
-    case TrainColor.purple: return const Color(0xFF6A1B9A);
+    case TrainColor.yellow: return const Color(0xFFF57F17);
+    case TrainColor.white:  return const Color(0xFF78909C);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page root
+// Game phase
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _Phase { idle, playing, complete, gameOver }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
 // ─────────────────────────────────────────────────────────────────────────────
 
 class TrainOfThoughtPage extends StatefulWidget {
   const TrainOfThoughtPage({super.key});
 
   @override
-  State<TrainOfThoughtPage> createState() => _TrainOfThoughtPageState();
+  State<TrainOfThoughtPage> createState() => _TOTState();
 }
 
-class _TrainOfThoughtPageState extends State<TrainOfThoughtPage>
+class _TOTState extends State<TrainOfThoughtPage>
     with TickerProviderStateMixin {
 
-  // ── Game state ──────────────────────────────────────────────────────────────
-  late TrainOfThoughtState _game;
-  bool _gameInitialized = false;
-  Timer? _tickTimer;
+  // ── game data ──────────────────────────────────────────────────────────────
+  int _level = 1;
+  late LevelConfig _cfg;                   // immutable template
+  late Map<String, NetworkNode> _nodes;    // mutable per-play copy
 
-  // Countdown timer (Lumosity counts down from a fixed duration)
-  static const int _gameDurationSec = 120; // 2 minutes per session
-  int _timeRemaining = _gameDurationSec;
-  Timer? _countdownTimer;
-  int _startTimeEpoch = 0;
+  final List<TrainState> _trains = [];
+  int _uidCounter = 0;
 
-  // ── Animation controllers ───────────────────────────────────────────────────
-  /// Smooth interpolated positions for each train (col as dx, row as dy)
-  final Map<int, Offset> _trainAnimPos = {};
-  final Map<int, AnimationController> _trainMoveAnims = {};
+  int _correct  = 0;
+  int _wrong    = 0;
+  int _spawned  = 0;
+  double _spawnTimer = 0.0; // seconds until next spawn
 
-  late AnimationController _idleFloatAnim;
-  late AnimationController _wrongFlashAnim;
+  _Phase _phase = _Phase.idle;
+
+  // ── animation ──────────────────────────────────────────────────────────────
+  late Ticker _ticker;
+  DateTime?   _prevTime;
+
+  // per-station flash (green on correct, red on wrong)
+  final Map<String, double> _stationFlash = {}; // nodeId → 0..1 fade
+
+  // fork tap scale flash
+  final Map<String, double> _forkFlash = {};
+
+  // win/intro animation controllers
   late AnimationController _winAnim;
+  late AnimationController _idleAnim;
 
-  // ── Junction flash: map junctionKey→opacity ────────────────────────────────
-  final Map<String, AnimationController> _junctionFlash = {};
+  int _startEpoch = 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-
-    _idleFloatAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-
-    _wrongFlashAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-
     _winAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
+      vsync: this, duration: const Duration(milliseconds: 700));
+    _idleAnim = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat(reverse: true);
 
+    _ticker = createTicker(_onTick);
     _loadLevel(1);
   }
 
   @override
   void dispose() {
-    _tickTimer?.cancel();
-    _countdownTimer?.cancel();
-    _idleFloatAnim.dispose();
-    _wrongFlashAnim.dispose();
+    _ticker.dispose();
     _winAnim.dispose();
-    for (final c in _trainMoveAnims.values) c.dispose();
-    for (final c in _junctionFlash.values) c.dispose();
+    _idleAnim.dispose();
     super.dispose();
   }
 
@@ -127,270 +112,181 @@ class _TrainOfThoughtPageState extends State<TrainOfThoughtPage>
   // Level management
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _loadLevel(int level, {bool resetTimer = false}) {
-    _tickTimer?.cancel();
-    _countdownTimer?.cancel();
+  void _loadLevel(int lvl) {
+    if (_ticker.isActive) _ticker.stop();
 
-    if (resetTimer) _timeRemaining = _gameDurationSec;
+    _level   = lvl;
+    _cfg     = LevelFactory.build(lvl).copyForPlay();
+    _nodes   = _cfg.nodes;
 
-    // Dispose old animation controllers
-    for (final c in _trainMoveAnims.values) c.dispose();
-    _trainMoveAnims.clear();
-    _trainAnimPos.clear();
-    for (final c in _junctionFlash.values) c.dispose();
-    _junctionFlash.clear();
+    _trains.clear();
+    _correct     = 0;
+    _wrong       = 0;
+    _spawned     = 0;
+    _spawnTimer  = 1.0; // first train arrives after 1 second
+    _phase       = _Phase.idle;
+    _stationFlash.clear();
+    _forkFlash.clear();
+    _prevTime    = null;
 
-    final def = LevelFactory.buildLevel(level);
-
-    // Create per-train animation controllers
-    for (int i = 0; i < def.trains.length; i++) {
-      _trainMoveAnims[i] = AnimationController(
-        vsync: this,
-        duration: def.tickInterval * 0.85,
-      );
-      _trainAnimPos[i] = Offset(
-        def.trains[i].col.toDouble(),
-        def.trains[i].row.toDouble(),
-      );
-    }
-
-    // Create per-junction flash controllers
-    for (int r = 0; r < def.rows; r++) {
-      for (int c = 0; c < def.cols; c++) {
-        if (def.grid[r][c].isJunction) {
-          final key = '$r-$c';
-          _junctionFlash[key] = AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 220),
-          );
-        }
-      }
-    }
-
-    final carryCorrect  = _gameInitialized ? _game.correct   : 0;
-    final carryTotal    = _gameInitialized ? _game.total     : 0;
-    final carryMistakes = _gameInitialized ? _game.mistakes  : 0;
-
-    final newState = TrainOfThoughtState(
-      level: level,
-      correct:  resetTimer ? 0 : carryCorrect,
-      total:    resetTimer ? 0 : carryTotal,
-      mistakes: resetTimer ? 0 : carryMistakes,
-      phase: GamePhase.idle,
-      grid: def.grid,
-      trains: def.trains,
-      rows: def.rows,
-      cols: def.cols,
-      tickInterval: def.tickInterval,
-    );
-
-    if (_gameInitialized) {
-      setState(() { _game = newState; });
-    } else {
-      _game = newState;
-      _gameInitialized = true;
-    }
+    setState(() {});
   }
 
   void _startGame() {
-    _startTimeEpoch = DateTime.now().millisecondsSinceEpoch;
-    setState(() {
-      _game = _game.copyWith(phase: GamePhase.playing);
-    });
-    _scheduleTick();
-    _startCountdown();
-  }
-
-  void _startCountdown() {
-    _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _game.phase != GamePhase.playing) return;
-      setState(() { _timeRemaining = (_timeRemaining - 1).clamp(0, _gameDurationSec); });
-      if (_timeRemaining <= 0) {
-        _countdownTimer?.cancel();
-        _tickTimer?.cancel();
-        setState(() {
-          _game = _game.copyWith(phase: GamePhase.gameOver);
-        });
-        _submitResult(completed: false);
-      }
-    });
-  }
-
-  void _scheduleTick() {
-    _tickTimer?.cancel();
-    _tickTimer = Timer(_game.tickInterval, _onTick);
+    _startEpoch = DateTime.now().millisecondsSinceEpoch;
+    _phase = _Phase.playing;
+    _ticker.start();
+    setState(() {});
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Game tick – moves all trains one cell
+  // Ticker callback – runs every frame (~60 fps)
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _onTick() {
-    if (_game.phase != GamePhase.playing) return;
+  void _onTick(Duration _) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final dt  = _prevTime == null
+        ? 0.016
+        : now.difference(_prevTime!).inMicroseconds / 1e6;
+    _prevTime = now;
 
-    final grid   = _game.grid;
-    final trains = List<Train>.from(_game.trains);
-    int correct  = _game.correct;
-    int total    = _game.total;
-    int mistakes = _game.mistakes;
-
-    for (int i = 0; i < trains.length; i++) {
-      final t = trains[i];
-      if (!t.alive) continue;
-
-      final nextRow = t.row + t.direction.dRow;
-      final nextCol = t.col + t.direction.dCol;
-
-      // Out of bounds → derail
-      if (nextRow < 0 || nextRow >= _game.rows ||
-          nextCol < 0 || nextCol >= _game.cols) {
-        trains[i] = t.copyWith(alive: false, crashed: true);
-        mistakes++;
-        total++;
-        HapticFeedback.heavyImpact();
-        _wrongFlashAnim.forward(from: 0);
-        continue;
-      }
-
-      final nextCell = grid[nextRow][nextCol];
-
-      // ── Station ──────────────────────────────────────────────────────────
-      if (nextCell.isStation) {
-        _startTrainMoveAnim(i, nextRow.toDouble(), nextCol.toDouble());
-        total++;
-        if (nextCell.stationColor == t.color) {
-          // Correct!
-          trains[i] = t.copyWith(row: nextRow, col: nextCol, alive: false, arrived: true);
-          correct++;
-          HapticFeedback.selectionClick();
-        } else {
-          // Wrong station
-          trains[i] = t.copyWith(row: nextRow, col: nextCol, alive: false, crashed: true);
-          mistakes++;
-          HapticFeedback.heavyImpact();
-          _wrongFlashAnim.forward(from: 0);
-        }
-        continue;
-      }
-
-      // ── Empty / off-track → derail ────────────────────────────────────────
-      if (nextCell.isEmpty) {
-        trains[i] = t.copyWith(alive: false, crashed: true);
-        mistakes++;
-        total++;
-        HapticFeedback.heavyImpact();
-        _wrongFlashAnim.forward(from: 0);
-        continue;
-      }
-
-      // ── Regular track / junction ──────────────────────────────────────────
-      final entryPort = t.direction.entryPort;
-      final exitPort  = nextCell.exitPort(entryPort);
-
-      if (exitPort == null) {
-        // Can't route → derail
-        trains[i] = t.copyWith(alive: false, crashed: true);
-        mistakes++;
-        total++;
-        HapticFeedback.heavyImpact();
-        _wrongFlashAnim.forward(from: 0);
-        continue;
-      }
-
-      final newDir = exitPort.exitDir;
-      trains[i] = t.copyWith(row: nextRow, col: nextCol, direction: newDir);
-      _startTrainMoveAnim(i, nextRow.toDouble(), nextCol.toDouble());
-    }
-
-    // ── Level complete? ───────────────────────────────────────────────────────
-    final allDone = trains.every((t) => !t.alive);
-    if (allDone) {
-      _tickTimer?.cancel();
-      _countdownTimer?.cancel();
-      setState(() {
-        _game = _game.copyWith(
-          trains: trains,
-          correct: correct,
-          total: total,
-          mistakes: mistakes,
-          phase: GamePhase.levelComplete,
-        );
-      });
-      _winAnim.forward(from: 0);
-      HapticFeedback.selectionClick();
-      _submitResult(completed: true);
+    if (_phase != _Phase.playing) {
+      // Still update flash decays even when not playing
+      _decayFlashes(dt);
+      setState(() {});
       return;
     }
 
-    setState(() {
-      _game = _game.copyWith(
-        trains: trains,
-        correct: correct,
-        total: total,
-        mistakes: mistakes,
-      );
-    });
-    _scheduleTick();
+    // ── move trains ──────────────────────────────────────────────────────────
+    for (final train in _trains) {
+      if (train.done) continue;
+      _advanceTrain(train, dt);
+    }
+
+    // ── spawn next train ─────────────────────────────────────────────────────
+    _spawnTimer -= dt;
+    if (_spawnTimer <= 0 && _spawned < _cfg.spawnSequence.length) {
+      _spawnTrain();
+      _spawnTimer = _cfg.spawnInterval;
+    }
+
+    // ── decay visual flashes ──────────────────────────────────────────────────
+    _decayFlashes(dt);
+
+    // ── check completion ──────────────────────────────────────────────────────
+    final allSpawned = _spawned >= _cfg.spawnSequence.length;
+    final allDone    = _trains.every((t) => t.done);
+    if (allSpawned && allDone) {
+      _ticker.stop();
+      _phase = _Phase.complete;
+      _winAnim.forward(from: 0);
+      _submitResult(completed: true);
+    }
+
+    setState(() {});
+  }
+
+  void _decayFlashes(double dt) {
+    for (final k in _stationFlash.keys.toList()) {
+      _stationFlash[k] = ((_stationFlash[k]! - dt * 1.8)).clamp(0, 1);
+      if (_stationFlash[k]! <= 0) _stationFlash.remove(k);
+    }
+    for (final k in _forkFlash.keys.toList()) {
+      _forkFlash[k] = ((_forkFlash[k]! - dt * 3.0)).clamp(0, 1);
+      if (_forkFlash[k]! <= 0) _forkFlash.remove(k);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Smooth train movement animation
+  // Train movement
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _startTrainMoveAnim(int idx, double toRow, double toCol) {
-    final ctrl = _trainMoveAnims[idx];
-    if (ctrl == null) return;
-    final from = _trainAnimPos[idx] ?? Offset(toCol, toRow);
-    final to   = Offset(toCol, toRow);
+  void _advanceTrain(TrainState train, double dt) {
+    final from = _nodes[train.fromId]!;
+    final to   = _nodes[train.toId]!;
 
-    ctrl.stop();
-    ctrl.reset();
+    // Euclidean length of this segment (in rel-units)
+    final dx  = to.relX - from.relX;
+    final dy  = to.relY - from.relY;
+    final len = sqrt(dx * dx + dy * dy).clamp(0.01, 2.0);
 
-    final anim = Tween<Offset>(begin: from, end: to).animate(
-      CurvedAnimation(parent: ctrl, curve: Curves.easeInOut),
-    );
-    anim.addListener(() {
-      if (mounted) setState(() { _trainAnimPos[idx] = anim.value; });
-    });
-    ctrl.forward();
-    _trainAnimPos[idx] = to;
+    train.t += (_cfg.trainSpeed * dt) / len;
+
+    if (train.t >= 1.0) {
+      train.t = 1.0;
+      _onReached(train, to);
+    }
+  }
+
+  void _onReached(TrainState train, NetworkNode node) {
+    if (node.isStation) {
+      train.done    = true;
+      train.correct = node.stationColor == train.color;
+      if (train.correct) {
+        _correct++;
+        HapticFeedback.selectionClick();
+      } else {
+        _wrong++;
+        HapticFeedback.heavyImpact();
+      }
+      _stationFlash[node.id] = 1.0;
+      return;
+    }
+
+    // Move to next segment
+    if (node.exitIds.isNotEmpty) {
+      final nextId = node.isFork
+          ? node.exitIds[node.activeExit]
+          : node.exitIds[0];
+      train.fromId = node.id;
+      train.toId   = nextId;
+      train.t      = 0.0;
+    }
+  }
+
+  void _spawnTrain() {
+    final color      = _cfg.spawnSequence[_spawned];
+    final tunnelNode = _nodes[_cfg.tunnelId]!;
+    final firstExit  = tunnelNode.exitIds[0];
+    _trains.add(TrainState(
+      uid:    _uidCounter++,
+      color:  color,
+      fromId: _cfg.tunnelId,
+      toId:   firstExit,
+    ));
+    _spawned++;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Junction tap
+  // Fork interaction
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _onJunctionTap(int row, int col) {
-    if (_game.phase != GamePhase.playing) return;
-    final cell = _game.grid[row][col];
-    if (!cell.isJunction) return;
+  void _tapFork(String id) {
+    if (_phase != _Phase.playing) return;
+    final node = _nodes[id];
+    if (node == null || !node.isFork) return;
 
+    node.activeExit = 1 - node.activeExit;
+    _forkFlash[id] = 1.0;
     HapticFeedback.selectionClick();
-
-    // Flash animation
-    final key = '$row-$col';
-    _junctionFlash[key]?.forward(from: 0);
-
-    final newGrid = _game.grid.map((r) => List<TrackCell>.from(r)).toList();
-    newGrid[row][col] = cell.copyWith(activeIdx: 1 - cell.activeIdx);
-    setState(() { _game = _game.copyWith(grid: newGrid); });
+    setState(() {});
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Backend submission
+  // Backend
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _submitResult({required bool completed}) async {
     final elapsed =
-        (DateTime.now().millisecondsSinceEpoch - _startTimeEpoch) ~/ 1000;
+        (DateTime.now().millisecondsSinceEpoch - _startEpoch) ~/ 1000;
     final result = await GameService.submitResult(
       gameType: 'train_of_thought',
-      score: _game.correct * 100,
+      score: _correct * 100,
       timePlayedSeconds: elapsed,
       completed: completed,
-      levelReached: _game.level,
-      mistakes: _game.mistakes,
+      levelReached: _level,
+      mistakes: _wrong,
     );
     if (result != null && mounted) {
       context.read<UserProvider>().updateFocusScore(result.newFocusScore);
@@ -404,53 +300,38 @@ class _TrainOfThoughtPageState extends State<TrainOfThoughtPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kBoardGreen,
+      backgroundColor: const Color(0xFF2E7D32),
       body: SafeArea(
         child: Column(
           children: [
-            // Lumosity-style light header bar
-            _LumosityHeader(
-              timeRemaining: _timeRemaining,
-              correct: _game.correct,
-              total: _game.total,
-              onBack: () => Navigator.of(context).pop(),
+            _Header(
+              level:   _level,
+              correct: _correct,
+              total:   _cfg.spawnSequence.length,
+              onBack:  () => Navigator.of(context).pop(),
             ),
-            // Green game board
             Expanded(
               child: Stack(
                 children: [
-                  _buildGameBoard(),
-                  // Overlays
-                  if (_game.phase == GamePhase.idle)
+                  _buildBoard(),
+                  if (_phase == _Phase.idle)
                     _IdleOverlay(
-                      level: _game.level,
-                      floatAnim: _idleFloatAnim,
+                      level: _level,
+                      anim:  _idleAnim,
                       onStart: _startGame,
                     ),
-                  if (_game.phase == GamePhase.levelComplete)
-                    _LevelCompleteOverlay(
-                      level: _game.level,
-                      correct: _game.correct,
-                      total: _game.total,
-                      stars: _game.stars,
-                      winAnim: _winAnim,
-                      onNext: () {
+                  if (_phase == _Phase.complete)
+                    _CompleteOverlay(
+                      level:   _level,
+                      correct: _correct,
+                      total:   _cfg.spawnSequence.length,
+                      wrong:   _wrong,
+                      anim:    _winAnim,
+                      onNext:  () {
                         _winAnim.reset();
-                        _loadLevel(_game.level + 1);
+                        _loadLevel(_level + 1);
                         Future.delayed(
-                          const Duration(milliseconds: 150), _startGame);
-                      },
-                    ),
-                  if (_game.phase == GamePhase.gameOver)
-                    _GameOverOverlay(
-                      correct: _game.correct,
-                      total: _game.total,
-                      level: _game.level,
-                      onRetry: () {
-                        _timeRemaining = _gameDurationSec;
-                        _loadLevel(_game.level, resetTimer: true);
-                        Future.delayed(
-                          const Duration(milliseconds: 150), _startGame);
+                            const Duration(milliseconds: 200), _startGame);
                       },
                     ),
                 ],
@@ -462,743 +343,600 @@ class _TrainOfThoughtPageState extends State<TrainOfThoughtPage>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Game board layout
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Widget _buildGameBoard() {
-    return LayoutBuilder(builder: (context, constraints) {
-      const padding = 14.0;
-      final availW = constraints.maxWidth  - padding * 2;
-      final availH = constraints.maxHeight - padding * 2;
-      final cellW  = availW / _game.cols;
-      final cellH  = availH / _game.rows;
-      final cellSize = min(cellW, cellH).clamp(20.0, 68.0);
-      final gridW  = cellSize * _game.cols;
-      final gridH  = cellSize * _game.rows;
-
-      return Center(
-        child: SizedBox(
-          width: gridW,
-          height: gridH,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // 1 – track + station layer (CustomPaint)
-              CustomPaint(
-                size: Size(gridW, gridH),
-                painter: _TrackPainter(
-                  grid: _game.grid,
-                  rows: _game.rows,
-                  cols: _game.cols,
-                  cellSize: cellSize,
-                  junctionFlash: _junctionFlash,
-                ),
-              ),
-              // 2 – interactive junction tap targets
-              ..._junctionTargets(cellSize),
-              // 3 – trains
-              ..._trainWidgets(cellSize),
-            ],
+  Widget _buildBoard() {
+    return LayoutBuilder(builder: (ctx, box) {
+      final w = box.maxWidth;
+      final h = box.maxHeight;
+      return GestureDetector(
+        onTapUp: (d) => _handleTap(d.localPosition, w, h),
+        child: CustomPaint(
+          size: Size(w, h),
+          painter: _BoardPainter(
+            nodes:        _nodes,
+            trains:       _trains,
+            stationFlash: _stationFlash,
+            forkFlash:    _forkFlash,
           ),
         ),
       );
     });
   }
 
-  List<Widget> _junctionTargets(double cs) {
-    final out = <Widget>[];
-    for (int r = 0; r < _game.rows; r++) {
-      for (int c = 0; c < _game.cols; c++) {
-        if (!_game.grid[r][c].isJunction) continue;
-        out.add(Positioned(
-          left:   c * cs - cs * 0.15,
-          top:    r * cs - cs * 0.15,
-          width:  cs * 1.3,
-          height: cs * 1.3,
-          child: GestureDetector(
-            onTap: () => _onJunctionTap(r, c),
-            behavior: HitTestBehavior.translucent,
-            child: const SizedBox.expand(),
-          ),
-        ));
+  void _handleTap(Offset pos, double w, double h) {
+    // Find closest fork within tap radius
+    const tapRadius = 38.0;
+    String? best;
+    double bestDist = tapRadius;
+    for (final node in _nodes.values) {
+      if (!node.isFork) continue;
+      final nx = node.relX * w;
+      final ny = node.relY * h;
+      final d  = (pos - Offset(nx, ny)).distance;
+      if (d < bestDist) {
+        bestDist = d;
+        best     = node.id;
       }
     }
-    return out;
-  }
-
-  List<Widget> _trainWidgets(double cs) {
-    final out = <Widget>[];
-    for (int i = 0; i < _game.trains.length; i++) {
-      final t       = _game.trains[i];
-      final animPos = _trainAnimPos[i] ?? Offset(t.col.toDouble(), t.row.toDouble());
-
-      double opacity;
-      if (!t.alive) {
-        opacity = t.arrived ? 0.0 : (t.crashed ? 0.5 : 0.0);
-      } else {
-        opacity = 1.0;
-      }
-
-      final size = cs * 0.72;
-      out.add(Positioned(
-        left: animPos.dx * cs + (cs - size) / 2,
-        top:  animPos.dy * cs + (cs - size) / 2,
-        width:  size,
-        height: size,
-        child: AnimatedOpacity(
-          opacity: opacity,
-          duration: const Duration(milliseconds: 280),
-          child: _TrainWidget(
-            color:    t.color,
-            direction: t.direction,
-            crashed:  t.crashed,
-            size:     size,
-          ),
-        ),
-      ));
-    }
-    return out;
+    if (best != null) _tapFork(best);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Track Painter – draws the entire board in Lumosity style
+// Board CustomPainter
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TrackPainter extends CustomPainter {
-  final List<List<TrackCell>> grid;
-  final int rows;
-  final int cols;
-  final double cellSize;
-  final Map<String, AnimationController> junctionFlash;
+class _BoardPainter extends CustomPainter {
+  final Map<String, NetworkNode> nodes;
+  final List<TrainState>         trains;
+  final Map<String, double>      stationFlash;
+  final Map<String, double>      forkFlash;
 
-  const _TrackPainter({
-    required this.grid,
-    required this.rows,
-    required this.cols,
-    required this.cellSize,
-    required this.junctionFlash,
+  const _BoardPainter({
+    required this.nodes,
+    required this.trains,
+    required this.stationFlash,
+    required this.forkFlash,
   });
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── helpers ────────────────────────────────────────────────────────────────
 
-  Offset _portPt(Port p, double cx, double cy) {
-    final h = cellSize / 2;
-    switch (p) {
-      case Port.top:    return Offset(cx, cy - h);
-      case Port.bottom: return Offset(cx, cy + h);
-      case Port.left:   return Offset(cx - h, cy);
-      case Port.right:  return Offset(cx + h, cy);
-    }
-  }
+  Offset _pt(NetworkNode n, Size sz) =>
+      Offset(n.relX * sz.width, n.relY * sz.height);
 
-  bool _isStraight(Port a, Port b) {
-    return (a == Port.left  && b == Port.right)  ||
-           (a == Port.right && b == Port.left)   ||
-           (a == Port.top   && b == Port.bottom) ||
-           (a == Port.bottom && b == Port.top);
-  }
-
-  // ── Main paint ─────────────────────────────────────────────────────────────
+  // ── main ───────────────────────────────────────────────────────────────────
 
   @override
   void paint(Canvas canvas, Size size) {
     _drawBackground(canvas, size);
+    _drawAllTracks(canvas, size);
+    _drawTunnel(canvas, size);
+    _drawForkNodes(canvas, size);
+    _drawStations(canvas, size);
+    _drawTrains(canvas, size);
+  }
 
-    // First pass: draw all regular (non-junction) tracks
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final cell = grid[r][c];
-        final cx   = c * cellSize + cellSize / 2;
-        final cy   = r * cellSize + cellSize / 2;
+  // ── background ─────────────────────────────────────────────────────────────
 
-        if (cell.isEmpty || cell.isJunction || cell.isStation) continue;
-        _drawTrack(canvas, cell.connections[0], cx, cy, bright: false);
-      }
+  void _drawBackground(Canvas canvas, Size sz) {
+    // base green field
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, sz.width, sz.height),
+      Paint()..color = const Color(0xFF2E7D32),
+    );
+    // subtle lighter patches (grass texture)
+    final p = Paint()..color = const Color(0xFF388E3C).withOpacity(0.25);
+    final rng = Random(42);
+    for (int i = 0; i < 18; i++) {
+      final x = rng.nextDouble() * sz.width;
+      final y = rng.nextDouble() * sz.height;
+      final r = 18 + rng.nextDouble() * 28;
+      canvas.drawCircle(Offset(x, y), r, p);
     }
+    // corner trees
+    _tree(canvas, sz.width * 0.04, sz.height * 0.06, sz);
+    _tree(canvas, sz.width * 0.96, sz.height * 0.06, sz);
+    _tree(canvas, sz.width * 0.04, sz.height * 0.94, sz);
+    _tree(canvas, sz.width * 0.96, sz.height * 0.94, sz);
+  }
 
-    // Second pass: junctions (drawn on top so circles sit above tracks)
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final cell = grid[r][c];
-        if (!cell.isJunction) continue;
-        final cx = c * cellSize + cellSize / 2;
-        final cy = r * cellSize + cellSize / 2;
-        final key = '$r-$c';
-        final flash = junctionFlash[key]?.value ?? 0.0;
-        _drawJunction(canvas, cell, cx, cy, flashT: flash);
-      }
+  void _tree(Canvas canvas, double x, double y, Size sz) {
+    final r = sz.width * 0.040;
+    canvas.drawRect(
+      Rect.fromLTWH(x - r * 0.18, y + r * 0.4, r * 0.36, r * 0.65),
+      Paint()..color = const Color(0xFF4E342E).withOpacity(0.55),
+    );
+    // two canopy layers
+    for (final (scale, opacity) in [(1.0, 0.65), (0.7, 0.80)]) {
+      final path = Path()
+        ..moveTo(x, y - r * scale)
+        ..lineTo(x + r * scale * 1.0, y + r * scale * 0.55)
+        ..lineTo(x - r * scale * 1.0, y + r * scale * 0.55)
+        ..close();
+      canvas.drawPath(
+          path, Paint()..color = const Color(0xFF1B5E20).withOpacity(opacity));
     }
+  }
 
-    // Third pass: station buildings (topmost layer)
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final cell = grid[r][c];
-        if (!cell.isStation) continue;
-        final cx = c * cellSize + cellSize / 2;
-        final cy = r * cellSize + cellSize / 2;
-        _drawStationBuilding(canvas, cell.stationColor!, cx, cy);
+  // ── tracks ─────────────────────────────────────────────────────────────────
+
+  void _drawAllTracks(Canvas canvas, Size sz) {
+    // collect all directed edges (parent → child) from the node graph
+    for (final node in nodes.values) {
+      if (node.isStation) continue;
+      for (int i = 0; i < node.exitIds.length; i++) {
+        final toNode = nodes[node.exitIds[i]];
+        if (toNode == null) continue;
+        final active = !node.isFork || i == node.activeExit;
+        _drawSegment(canvas, sz, node, toNode, active: active);
       }
     }
   }
 
-  // ── Background ─────────────────────────────────────────────────────────────
+  void _drawSegment(Canvas canvas, Size sz,
+      NetworkNode a, NetworkNode b, {required bool active}) {
+    final pa = _pt(a, sz);
+    final pb = _pt(b, sz);
 
-  void _drawBackground(Canvas canvas, Size size) {
-    // Solid deep green base
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = _kBoardGreen,
+    final bedW  = sz.width * 0.030;
+    final railW = sz.width * 0.008;
+
+    // track bed
+    canvas.drawLine(
+      pa, pb,
+      Paint()
+        ..color       = active
+            ? const Color(0xFF795548)
+            : const Color(0xFF4E342E).withOpacity(0.45)
+        ..strokeWidth = bedW
+        ..strokeCap   = StrokeCap.round
+        ..style       = PaintingStyle.stroke,
     );
 
-    // Very subtle grid texture (every-other-cell lighter shade)
-    final lightPaint = Paint()..color = _kBoardGreenLight.withOpacity(0.18);
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        if ((r + c) % 2 == 0) {
-          canvas.drawRect(
-            Rect.fromLTWH(c * cellSize, r * cellSize, cellSize, cellSize),
-            lightPaint,
+    if (active) {
+      // parallel rails
+      final dx  = pb.dx - pa.dx;
+      final dy  = pb.dy - pa.dy;
+      final len = sqrt(dx * dx + dy * dy);
+      if (len > 0) {
+        final nx  = -dy / len;
+        final ny  =  dx / len;
+        final off = bedW * 0.28;
+        final railPaint = Paint()
+          ..color       = const Color(0xFFBCAAA4).withOpacity(0.75)
+          ..strokeWidth = railW
+          ..strokeCap   = StrokeCap.butt
+          ..style       = PaintingStyle.stroke;
+        canvas.drawLine(
+            pa + Offset(nx * off, ny * off),
+            pb + Offset(nx * off, ny * off), railPaint);
+        canvas.drawLine(
+            pa - Offset(nx * off, ny * off),
+            pb - Offset(nx * off, ny * off), railPaint);
+
+        // crossties
+        final count = max(3, (len / (sz.width * 0.07)).round());
+        final tiePaint = Paint()
+          ..color       = const Color(0xFF6D4C41).withOpacity(0.65)
+          ..strokeWidth = bedW * 0.55
+          ..strokeCap   = StrokeCap.square;
+        for (int k = 1; k < count; k++) {
+          final t   = k / count;
+          final mid = Offset.lerp(pa, pb, t)!;
+          canvas.drawLine(
+            mid + Offset(nx * off * 1.5, ny * off * 1.5),
+            mid - Offset(nx * off * 1.5, ny * off * 1.5),
+            tiePaint,
           );
         }
       }
     }
-
-    // Small tree decorations in board corners
-    _drawTree(canvas, cellSize * 0.4, cellSize * 0.4);
-    _drawTree(canvas, size.width - cellSize * 0.4, cellSize * 0.4);
-    _drawTree(canvas, cellSize * 0.4, size.height - cellSize * 0.4);
-    _drawTree(canvas, size.width - cellSize * 0.4, size.height - cellSize * 0.4);
   }
 
-  void _drawTree(Canvas canvas, double x, double y) {
-    final r = cellSize * 0.22;
-    // Trunk
-    canvas.drawRect(
-      Rect.fromLTWH(x - r * 0.18, y + r * 0.5, r * 0.36, r * 0.7),
-      Paint()..color = const Color(0xFF4E342E).withOpacity(0.55),
-    );
-    // Canopy (two layered triangles)
-    final canopy = Paint()..color = const Color(0xFF1B5E20).withOpacity(0.7);
-    final path = Path()
-      ..moveTo(x, y - r)
-      ..lineTo(x + r * 1.1, y + r * 0.6)
-      ..lineTo(x - r * 1.1, y + r * 0.6)
+  // ── tunnel ─────────────────────────────────────────────────────────────────
+
+  void _drawTunnel(Canvas canvas, Size sz) {
+    final tunnel = nodes.values.firstWhere((n) => n.isTunnel,
+        orElse: () => nodes.values.first);
+    final p = _pt(tunnel, sz);
+    final r = sz.width * 0.055;
+
+    // mountain silhouette
+    final mPath = Path()
+      ..moveTo(p.dx - r * 1.6, p.dy + r * 0.6)
+      ..lineTo(p.dx - r * 0.1, p.dy - r * 1.2)
+      ..lineTo(p.dx + r * 1.4, p.dy + r * 0.6)
       ..close();
-    canvas.drawPath(path, canopy);
-    final path2 = Path()
-      ..moveTo(x, y - r * 1.5)
-      ..lineTo(x + r * 0.8, y)
-      ..lineTo(x - r * 0.8, y)
-      ..close();
-    canvas.drawPath(path2, canopy..color = const Color(0xFF2E7D32).withOpacity(0.75));
-  }
-
-  // ── Track segment ──────────────────────────────────────────────────────────
-
-  void _drawTrack(Canvas canvas, ({Port a, Port b}) conn,
-      double cx, double cy, {required bool bright}) {
-    final half  = cellSize / 2;
-    final width = cellSize * 0.26;
-
-    final bedPaint = Paint()
-      ..color  = bright ? _kTrackRail.withOpacity(0.55) : _kTrackBed
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final p1 = _portPt(conn.a, cx, cy);
-    final p2 = _portPt(conn.b, cx, cy);
-
-    if (_isStraight(conn.a, conn.b)) {
-      canvas.drawLine(p1, p2, bedPaint);
-      _drawRails(canvas, p1, p2, conn.a, cx, cy);
-    } else {
-      _drawCurve(canvas, conn.a, conn.b, cx, cy, half, bedPaint);
-    }
-  }
-
-  void _drawRails(Canvas canvas, Offset p1, Offset p2, Port a,
-      double cx, double cy) {
-    final isH = (a == Port.left || a == Port.right);
-    final d   = cellSize * 0.065;
-    final perp = isH ? const Offset(0, 1) : const Offset(1, 0);
-
-    final railPaint = Paint()
-      ..color = _kTrackRail.withOpacity(0.50)
-      ..strokeWidth = cellSize * 0.045
-      ..strokeCap = StrokeCap.butt
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(p1 + perp * d, p2 + perp * d, railPaint);
-    canvas.drawLine(p1 - perp * d, p2 - perp * d, railPaint);
-
-    // Crossties
-    final tiePaint = Paint()
-      ..color = _kTrackRail.withOpacity(0.3)
-      ..strokeWidth = cellSize * 0.055
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
-
-    for (int i = 1; i <= 3; i++) {
-      final t   = i / 4.0;
-      final mid = Offset.lerp(p1, p2, t)!;
-      final td  = cellSize * 0.09;
-      if (isH) {
-        canvas.drawLine(mid - Offset(0, td), mid + Offset(0, td), tiePaint);
-      } else {
-        canvas.drawLine(mid - Offset(td, 0), mid + Offset(td, 0), tiePaint);
-      }
-    }
-  }
-
-  void _drawCurve(Canvas canvas, Port a, Port b,
-      double cx, double cy, double half, Paint paint) {
-    final p1 = _portPt(a, cx, cy);
-    final p2 = _portPt(b, cx, cy);
-    final corner = _curveCorner(a, b, cx, cy, half);
-    final path = Path()
-      ..moveTo(p1.dx, p1.dy)
-      ..quadraticBezierTo(corner.dx, corner.dy, p2.dx, p2.dy);
-    canvas.drawPath(path, paint);
-  }
-
-  Offset _curveCorner(Port a, Port b, double cx, double cy, double half) {
-    final ports = {a, b};
-    if (ports.contains(Port.top) && ports.contains(Port.right))  return Offset(cx + half, cy - half);
-    if (ports.contains(Port.top) && ports.contains(Port.left))   return Offset(cx - half, cy - half);
-    if (ports.contains(Port.bottom) && ports.contains(Port.right)) return Offset(cx + half, cy + half);
-    return Offset(cx - half, cy + half);
-  }
-
-  // ── Junction ───────────────────────────────────────────────────────────────
-
-  void _drawJunction(Canvas canvas, TrackCell cell,
-      double cx, double cy, {required double flashT}) {
-    // Draw inactive path dim
-    final inactive = 1 - cell.activeIdx;
-    _drawTrack(canvas, cell.connections[inactive], cx, cy, bright: false);
-    // Draw active path bright
-    _drawTrack(canvas, cell.connections[cell.activeIdx], cx, cy, bright: true);
-
-    // Central circular node
-    final radius = cellSize * 0.33;
-    final glowR  = radius + cellSize * 0.06 * (1 + flashT);
-
-    // Outer glow on tap
-    if (flashT > 0) {
-      canvas.drawCircle(
-        Offset(cx, cy), glowR,
-        Paint()
-          ..color = Colors.white.withOpacity(0.55 * flashT)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
-      );
-    }
-
-    // Shadow beneath circle
-    canvas.drawCircle(
-      Offset(cx, cy + 2), radius + 2,
-      Paint()..color = Colors.black26,
-    );
-
-    // Fill
-    final fillColor = Color.lerp(_kJunctionFill, Colors.white, flashT * 0.5)!;
-    canvas.drawCircle(
-      Offset(cx, cy), radius,
-      Paint()..color = fillColor,
-    );
-
-    // Border
-    canvas.drawCircle(
-      Offset(cx, cy), radius,
+    canvas.drawPath(mPath, Paint()..color = const Color(0xFF546E7A));
+    canvas.drawPath(
+      mPath,
       Paint()
-        ..color = _kJunctionBorder
+        ..color = const Color(0xFF78909C)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = cellSize * 0.05,
+        ..strokeWidth = 1.5,
     );
 
-    // Active direction indicator – small bright dot/arrow inside circle
-    _drawActiveIndicator(canvas, cell, cx, cy, radius);
+    // tunnel mouth (arch)
+    final archRect = Rect.fromCenter(
+        center: Offset(p.dx, p.dy + r * 0.15), width: r * 1.0, height: r * 1.4);
+    final archPath = Path()
+      ..addArc(
+          Rect.fromLTWH(archRect.left, archRect.top,
+              archRect.width, archRect.width),
+          pi, pi)
+      ..lineTo(archRect.right, archRect.bottom)
+      ..lineTo(archRect.left,  archRect.bottom)
+      ..close();
+    canvas.drawPath(archPath, Paint()..color = const Color(0xFF1A237E));
+    canvas.drawPath(
+      archPath,
+      Paint()
+        ..color = const Color(0xFF3949AB)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
   }
 
-  void _drawActiveIndicator(Canvas canvas, TrackCell cell,
-      double cx, double cy, double radius) {
-    final conn = cell.connections[cell.activeIdx];
-    final isH  = _isStraight(conn.a, conn.b) &&
-                 (conn.a == Port.left || conn.a == Port.right);
-    final isV  = _isStraight(conn.a, conn.b) &&
-                 (conn.a == Port.top || conn.a == Port.bottom);
+  // ── fork nodes (circles) ───────────────────────────────────────────────────
 
-    final dotPaint = Paint()..color = Colors.white.withOpacity(0.85);
-    final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.75)
-      ..strokeWidth = cellSize * 0.055
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+  void _drawForkNodes(Canvas canvas, Size sz) {
+    for (final node in nodes.values) {
+      if (!node.isFork) continue;
+      final p     = _pt(node, sz);
+      final r     = sz.width * 0.048;
+      final flash = forkFlash[node.id] ?? 0.0;
 
-    if (isH) {
-      // horizontal arrow ←→
-      canvas.drawLine(
-        Offset(cx - radius * 0.55, cy),
-        Offset(cx + radius * 0.55, cy),
-        linePaint,
+      // glow
+      if (flash > 0) {
+        canvas.drawCircle(
+          p, r * (1.0 + 0.4 * flash),
+          Paint()
+            ..color = Colors.white.withOpacity(0.45 * flash)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+        );
+      }
+
+      // shadow
+      canvas.drawCircle(p + const Offset(2, 3), r,
+          Paint()..color = Colors.black.withOpacity(0.30));
+
+      // body
+      final bodyColor = Color.lerp(
+          const Color(0xFF66BB6A), Colors.white, flash * 0.5)!;
+      canvas.drawCircle(p, r, Paint()..color = bodyColor);
+
+      // border
+      canvas.drawCircle(
+        p, r,
+        Paint()
+          ..color       = const Color(0xFFA5D6A7)
+          ..style       = PaintingStyle.stroke
+          ..strokeWidth = sz.width * 0.010,
       );
-    } else if (isV) {
-      // vertical arrow ↑↓
-      canvas.drawLine(
-        Offset(cx, cy - radius * 0.55),
-        Offset(cx, cy + radius * 0.55),
-        linePaint,
+
+      // inner ring
+      canvas.drawCircle(
+        p, r * 0.6,
+        Paint()
+          ..color       = const Color(0xFF388E3C).withOpacity(0.4)
+          ..style       = PaintingStyle.stroke
+          ..strokeWidth = sz.width * 0.006,
       );
-    } else {
-      // diagonal curve – just a dot
-      canvas.drawCircle(Offset(cx, cy), radius * 0.2, dotPaint);
+
+      // direction arrow (points toward active exit)
+      _drawForkArrow(canvas, sz, p, r, node);
     }
   }
 
-  // ── Station building ────────────────────────────────────────────────────────
+  void _drawForkArrow(Canvas canvas, Size sz,
+      Offset center, double r, NetworkNode node) {
+    if (node.exitIds.isEmpty) return;
+    final activeId  = node.exitIds[node.activeExit];
+    final targetNode = nodes[activeId];
+    if (targetNode == null) return;
 
-  void _drawStationBuilding(Canvas canvas, TrainColor color,
-      double cx, double cy) {
-    final accent = _trainAccent(color);
-    final dark   = _trainDark(color);
+    final tx = targetNode.relX * sz.width  - center.dx;
+    final ty = targetNode.relY * sz.height - center.dy;
+    final len = sqrt(tx * tx + ty * ty);
+    if (len == 0) return;
+    final ux = tx / len;
+    final uy = ty / len;
 
-    final bw = cellSize * 0.75;  // building width
-    final bh = cellSize * 0.55;  // building body height
-    final rh = cellSize * 0.30;  // roof height
+    // arrow shaft
+    final arrowPaint = Paint()
+      ..color       = Colors.white.withOpacity(0.92)
+      ..strokeWidth = sz.width * 0.009
+      ..strokeCap   = StrokeCap.round;
+    canvas.drawLine(
+      center - Offset(ux * r * 0.38, uy * r * 0.38),
+      center + Offset(ux * r * 0.52, uy * r * 0.52),
+      arrowPaint,
+    );
+    // arrowhead
+    final tip  = center + Offset(ux * r * 0.52, uy * r * 0.52);
+    final perp = Offset(-uy, ux);
+    final ah   = r * 0.18;
+    final aw   = r * 0.10;
+    final aPath = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo((tip - Offset(ux * ah, uy * ah) + perp * aw).dx,
+               (tip - Offset(ux * ah, uy * ah) + perp * aw).dy)
+      ..lineTo((tip - Offset(ux * ah, uy * ah) - perp * aw).dx,
+               (tip - Offset(ux * ah, uy * ah) - perp * aw).dy)
+      ..close();
+    canvas.drawPath(aPath, Paint()..color = Colors.white.withOpacity(0.92));
+  }
 
-    final left   = cx - bw / 2;
-    final right  = cx + bw / 2;
-    final bottom = cy + bh / 2 + rh * 0.15;
+  // ── station buildings ───────────────────────────────────────────────────────
+
+  void _drawStations(Canvas canvas, Size sz) {
+    for (final node in nodes.values) {
+      if (!node.isStation || node.stationColor == null) continue;
+      final p     = _pt(node, sz);
+      final flash = stationFlash[node.id] ?? 0.0;
+      _drawBuilding(canvas, sz, p, node.stationColor!, flash);
+    }
+  }
+
+  void _drawBuilding(Canvas canvas, Size sz, Offset center,
+      TrainColor color, double flash) {
+    final ac  = _accent(color);
+    final dk  = _dark(color);
+    final bw  = sz.width * 0.090;
+    final bh  = sz.height * 0.072;
+    final rh  = sz.height * 0.050;
+
+    final left    = center.dx - bw / 2;
+    final right   = center.dx + bw / 2;
+    final bottom  = center.dy + bh * 0.55;
     final bodyTop = bottom - bh;
     final roofTop = bodyTop - rh;
 
-    // Drop shadow
+    // flash glow (correct = green, wrong = red, default = station color)
+    if (flash > 0) {
+      canvas.drawCircle(
+        center,
+        bw * 0.9 * (1 + flash * 0.3),
+        Paint()
+          ..color = ac.withOpacity(0.5 * flash)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+      );
+    }
+
+    // shadow
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTRB(left + 2, bodyTop + 3, right + 2, bottom + 3),
         const Radius.circular(3),
       ),
-      Paint()..color = Colors.black.withOpacity(0.30),
+      Paint()..color = Colors.black.withOpacity(0.28),
     );
 
-    // Building body
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTRB(left, bodyTop, right, bottom),
-        const Radius.circular(3),
-      ),
-      Paint()..color = accent,
-    );
+    // body
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromLTRB(left, bodyTop, right, bottom), const Radius.circular(3));
+    canvas.drawRRect(bodyRect, Paint()..color = ac);
 
-    // Body highlight (lighter left strip)
+    // body highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTRB(left, bodyTop, left + bw * 0.18, bottom),
+        Rect.fromLTRB(left, bodyTop, left + bw * 0.22, bottom),
         const Radius.circular(3),
       ),
-      Paint()..color = Colors.white.withOpacity(0.20),
+      Paint()..color = Colors.white.withOpacity(0.22),
     );
-
-    // Body outline
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTRB(left, bodyTop, right, bottom),
-        const Radius.circular(3),
-      ),
+    canvas.drawRRect(bodyRect,
       Paint()
-        ..color = dark
+        ..color = dk
         ..style = PaintingStyle.stroke
-        ..strokeWidth = cellSize * 0.04,
+        ..strokeWidth = 1.4,
     );
 
-    // Roof (pentagon / house shape)
-    final roofPath = Path()
-      ..moveTo(left  - bw * 0.06, bodyTop)
-      ..lineTo(right + bw * 0.06, bodyTop)
-      ..lineTo(right + bw * 0.06, roofTop + rh * 0.45)
-      ..lineTo(cx,   roofTop)
-      ..lineTo(left  - bw * 0.06, roofTop + rh * 0.45)
+    // roof
+    final roof = Path()
+      ..moveTo(left  - bw * 0.07, bodyTop)
+      ..lineTo(right + bw * 0.07, bodyTop)
+      ..lineTo(right + bw * 0.07, roofTop + rh * 0.42)
+      ..lineTo(center.dx, roofTop)
+      ..lineTo(left  - bw * 0.07, roofTop + rh * 0.42)
       ..close();
-    canvas.drawPath(roofPath, Paint()..color = dark);
-
-    // Roof highlight
+    canvas.drawPath(roof, Paint()..color = dk);
     canvas.drawPath(
-      roofPath,
+      roof,
       Paint()
         ..color = Colors.white.withOpacity(0.12)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = cellSize * 0.025,
+        ..strokeWidth = 1.0,
     );
 
-    // Door (centered at bottom)
-    final doorW = bw * 0.24;
-    final doorH = bh * 0.42;
+    // door
+    final doorW = bw * 0.26;
+    final doorH = bh * 0.40;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTRB(
-          cx - doorW / 2, bottom - doorH,
-          cx + doorW / 2, bottom,
+          center.dx - doorW / 2, bottom - doorH,
+          center.dx + doorW / 2, bottom,
         ),
         const Radius.circular(2),
       ),
-      Paint()..color = dark.withOpacity(0.75),
+      Paint()..color = dk.withOpacity(0.70),
     );
 
-    // Two windows
-    final winW = bw * 0.20;
-    final winH = bh * 0.28;
-    final winTop = bodyTop + bh * 0.15;
-    for (final xOff in [-bw * 0.25, bw * 0.25]) {
+    // windows
+    final winW = bw * 0.22;
+    final winH = bh * 0.26;
+    final winY = bodyTop + bh * 0.14;
+    for (final xo in [-bw * 0.26, bw * 0.26]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTRB(
-            cx + xOff - winW / 2, winTop,
-            cx + xOff + winW / 2, winTop + winH,
-          ),
+          Rect.fromLTRB(center.dx + xo - winW / 2, winY,
+              center.dx + xo + winW / 2, winY + winH),
           const Radius.circular(2),
         ),
-        Paint()..color = Colors.white.withOpacity(0.80),
-      );
-      // Window cross
-      final crossPaint = Paint()
-        ..color = dark.withOpacity(0.35)
-        ..strokeWidth = cellSize * 0.025;
-      canvas.drawLine(
-        Offset(cx + xOff, winTop),
-        Offset(cx + xOff, winTop + winH),
-        crossPaint,
-      );
-      canvas.drawLine(
-        Offset(cx + xOff - winW / 2, winTop + winH / 2),
-        Offset(cx + xOff + winW / 2, winTop + winH / 2),
-        crossPaint,
+        Paint()..color = Colors.white.withOpacity(0.82),
       );
     }
 
-    // Star / flag on rooftop
-    _drawStar(canvas, cx, roofTop - cellSize * 0.06, cellSize * 0.09, accent);
+    // star on rooftop
+    _drawStar(canvas, center.dx, roofTop - sz.height * 0.012,
+        sz.width * 0.018, ac);
   }
 
-  void _drawStar(Canvas canvas, double cx, double cy,
-      double r, Color color) {
-    final paint = Paint()..color = Colors.white;
+  void _drawStar(
+      Canvas canvas, double cx, double cy, double r, Color color) {
     final path = Path();
     for (int i = 0; i < 5; i++) {
-      final outerAngle = -pi / 2 + 2 * pi * i / 5;
-      final innerAngle = outerAngle + pi / 5;
-      final op = Offset(
-          cx + r * cos(outerAngle), cy + r * sin(outerAngle));
-      final ip = Offset(
-          cx + r * 0.45 * cos(innerAngle), cy + r * 0.45 * sin(innerAngle));
-      if (i == 0) path.moveTo(op.dx, op.dy);
-      else path.lineTo(op.dx, op.dy);
+      final oa = -pi / 2 + 2 * pi * i / 5;
+      final ia = oa + pi / 5;
+      final op = Offset(cx + r * cos(oa), cy + r * sin(oa));
+      final ip = Offset(cx + r * 0.45 * cos(ia), cy + r * 0.45 * sin(ia));
+      if (i == 0) path.moveTo(op.dx, op.dy); else path.lineTo(op.dx, op.dy);
       path.lineTo(ip.dx, ip.dy);
     }
     path.close();
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, Paint()..color = Colors.white.withOpacity(0.90));
   }
 
-  @override
-  bool shouldRepaint(_TrackPainter old) => true; // repaint on every frame for flash anims
-}
+  // ── trains ─────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Train Widget – cute pixel-style train car
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TrainWidget extends StatelessWidget {
-  final TrainColor color;
-  final MoveDir direction;
-  final bool crashed;
-  final double size;
-
-  const _TrainWidget({
-    required this.color,
-    required this.direction,
-    required this.crashed,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final angle = _angle(direction);
-    return Transform.rotate(
-      angle: angle,
-      child: CustomPaint(
-        size: Size(size, size),
-        painter: _TrainPainter(
-          color:   crashed ? const Color(0xFFEF5350) : _trainAccent(color),
-          dark:    crashed ? const Color(0xFFB71C1C)  : _trainDark(color),
-          crashed: crashed,
-        ),
-      ),
-    );
-  }
-
-  double _angle(MoveDir d) {
-    switch (d) {
-      case MoveDir.right: return 0;
-      case MoveDir.down:  return pi / 2;
-      case MoveDir.left:  return pi;
-      case MoveDir.up:    return -pi / 2;
+  void _drawTrains(Canvas canvas, Size sz) {
+    for (final train in trains) {
+      if (train.done && train.correct) continue; // vanish on correct arrival
+      _drawOneTrain(canvas, sz, train);
     }
   }
-}
 
-class _TrainPainter extends CustomPainter {
-  final Color color;
-  final Color dark;
-  final bool crashed;
-  const _TrainPainter({required this.color, required this.dark, required this.crashed});
+  void _drawOneTrain(Canvas canvas, Size sz, TrainState train) {
+    final from = nodes[train.fromId];
+    final to   = nodes[train.toId];
+    if (from == null || to == null) return;
 
-  @override
-  void paint(Canvas canvas, Size sz) {
-    final w = sz.width;
-    final h = sz.height;
+    final fx = from.relX * sz.width;
+    final fy = from.relY * sz.height;
+    final tx = to.relX   * sz.width;
+    final ty = to.relY   * sz.height;
 
-    // Glow / drop shadow
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.08, h * 0.22, w * 0.82, h * 0.56),
-        Radius.circular(h * 0.18),
-      ),
+    final cx = fx + (tx - fx) * train.t;
+    final cy = fy + (ty - fy) * train.t;
+
+    final angle = atan2(ty - fy, tx - fx);
+    final r     = sz.width * 0.038;
+
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.rotate(angle);
+
+    final ac  = _accent(train.color);
+    final dk  = _dark(train.color);
+    final cw  = r * 2.0;
+    final ch  = r * 1.3;
+
+    // glow
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset.zero, width: cw * 1.1, height: ch * 1.1),
       Paint()
-        ..color = color.withOpacity(0.50)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        ..color = ac.withOpacity(0.45)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
 
-    // Body (pointing RIGHT)
-    final bodyRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.08, h * 0.22, w * 0.72, h * 0.56),
-      Radius.circular(h * 0.18),
+    // body (elongated along travel direction = +x axis after rotation)
+    final bodyRR = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+          center: Offset(-r * 0.08, 0), width: cw, height: ch),
+      Radius.circular(ch * 0.45),
     );
-    canvas.drawRRect(bodyRRect, Paint()..color = color);
+    canvas.drawRRect(bodyRR, Paint()..color = ac);
 
-    // Body shading top highlight
+    // highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.10, h * 0.24, w * 0.68, h * 0.20),
-        Radius.circular(h * 0.12),
+        Rect.fromLTRB(-cw * 0.42, -ch * 0.45, cw * 0.30, -ch * 0.05),
+        Radius.circular(ch * 0.30),
       ),
       Paint()..color = Colors.white.withOpacity(0.30),
     );
 
-    // Cab / nose on the RIGHT side
-    final cabPath = Path()
-      ..moveTo(w * 0.80, h * 0.22)
-      ..lineTo(w * 0.96, h * 0.50)
-      ..lineTo(w * 0.80, h * 0.78)
+    // nose (front, pointing +x)
+    final nosePath = Path()
+      ..moveTo(cw * 0.45,  ch * 0.48)
+      ..lineTo(cw * 0.68,  0)
+      ..lineTo(cw * 0.45, -ch * 0.48)
       ..close();
-    canvas.drawPath(cabPath, Paint()..color = dark);
+    canvas.drawPath(nosePath, Paint()..color = dk);
 
-    // Window
+    // window
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.48, h * 0.30, w * 0.24, h * 0.38),
-        Radius.circular(h * 0.08),
+        Rect.fromLTRB(cw * 0.04, -ch * 0.37, cw * 0.38, ch * 0.30),
+        Radius.circular(ch * 0.12),
       ),
-      Paint()..color = Colors.white.withOpacity(0.85),
+      Paint()..color = Colors.white.withOpacity(0.88),
     );
 
-    // Body outline
+    // outline
     canvas.drawRRect(
-      bodyRRect,
+      bodyRR,
       Paint()
-        ..color = dark
+        ..color = dk
         ..style = PaintingStyle.stroke
-        ..strokeWidth = h * 0.06,
+        ..strokeWidth = r * 0.14,
     );
 
-    // Wheels (left and right)
-    final wheelPaint = Paint()..color = dark;
-    final wheelR = h * 0.10;
-    canvas.drawCircle(Offset(w * 0.22, h * 0.80), wheelR, wheelPaint);
-    canvas.drawCircle(Offset(w * 0.60, h * 0.80), wheelR, wheelPaint);
-
-    final wheelRimPaint = Paint()
+    // wheels
+    final wheelPaint = Paint()..color = dk;
+    final rimPaint   = Paint()
       ..color = Colors.white.withOpacity(0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = wheelR * 0.35;
-    canvas.drawCircle(Offset(w * 0.22, h * 0.80), wheelR * 0.6, wheelRimPaint);
-    canvas.drawCircle(Offset(w * 0.60, h * 0.80), wheelR * 0.6, wheelRimPaint);
-
-    // X mark on crashed train
-    if (crashed) {
-      final xPaint = Paint()
-        ..color = Colors.white
-        ..strokeWidth = h * 0.08
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(
-        Offset(w * 0.22, h * 0.30), Offset(w * 0.50, h * 0.70), xPaint);
-      canvas.drawLine(
-        Offset(w * 0.50, h * 0.30), Offset(w * 0.22, h * 0.70), xPaint);
+      ..strokeWidth = r * 0.10;
+    for (final wx in [-cw * 0.22, cw * 0.22]) {
+      canvas.drawCircle(Offset(wx, ch * 0.52), r * 0.20, wheelPaint);
+      canvas.drawCircle(Offset(wx, ch * 0.52), r * 0.10, rimPaint);
     }
+
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_TrainPainter old) =>
-      old.color != color || old.crashed != crashed;
+  bool shouldRepaint(_BoardPainter old) => true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lumosity-style Header
+// Header
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LumosityHeader extends StatelessWidget {
-  final int timeRemaining;
+class _Header extends StatelessWidget {
+  final int level;
   final int correct;
   final int total;
   final VoidCallback onBack;
-
-  const _LumosityHeader({
-    required this.timeRemaining,
+  const _Header({
+    required this.level,
     required this.correct,
     required this.total,
     required this.onBack,
   });
 
-  String get _timeStr {
-    final m = timeRemaining ~/ 60;
-    final s = timeRemaining % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isLow = timeRemaining <= 20;
     return Container(
-      color: _kHeaderBg,
+      color: const Color(0xFFEEEEEE),
       child: Row(
         children: [
-          // Back button
           GestureDetector(
             onTap: onBack,
             child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: _kHeaderText, size: 18),
+                  color: Color(0xFF212121), size: 18),
             ),
           ),
-          Container(width: 1, height: 36, color: _kHeaderDivider),
-          // TIME
+          Container(width: 1, height: 36, color: const Color(0xFFBDBDBD)),
+          Expanded(child: _Cell(label: 'LEVEL', value: '$level')),
+          Container(width: 1, height: 36, color: const Color(0xFFBDBDBD)),
           Expanded(
-            child: _HeaderCell(
-              label: 'TIME',
-              value: _timeStr,
-              valueColor: isLow ? const Color(0xFFE53935) : _kHeaderText,
-              bold: isLow,
-            ),
-          ),
-          Container(width: 1, height: 36, color: _kHeaderDivider),
-          // CORRECT
-          Expanded(
-            child: _HeaderCell(
+            child: _Cell(
               label: 'CORRECT',
               value: '$correct of $total',
-              valueColor: _kHeaderText,
-              bold: false,
             ),
           ),
         ],
@@ -1207,57 +945,44 @@ class _LumosityHeader extends StatelessWidget {
   }
 }
 
-class _HeaderCell extends StatelessWidget {
+class _Cell extends StatelessWidget {
   final String label;
   final String value;
-  final Color valueColor;
-  final bool bold;
-  const _HeaderCell({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-    required this.bold,
-  });
+  const _Cell({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                color: _kHeaderLabel,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(label,
+            style: const TextStyle(
+                color: Color(0xFF757575),
                 fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.0,
-              )),
-          const SizedBox(height: 1),
-          Text(value,
-              style: TextStyle(
-                color: valueColor,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2)),
+        const SizedBox(height: 1),
+        Text(value,
+            style: const TextStyle(
+                color: Color(0xFF212121),
                 fontSize: 15,
-                fontWeight: bold ? FontWeight.w800 : FontWeight.w700,
-              )),
-        ],
-      ),
+                fontWeight: FontWeight.w800)),
+      ]),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Overlays
+// Idle overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _IdleOverlay extends StatelessWidget {
   final int level;
-  final AnimationController floatAnim;
+  final AnimationController anim;
   final VoidCallback onStart;
-
   const _IdleOverlay({
     required this.level,
-    required this.floatAnim,
+    required this.anim,
     required this.onStart,
   });
 
@@ -1265,78 +990,67 @@ class _IdleOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: Colors.black54,
+        color: Colors.black.withOpacity(0.55),
         child: Center(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 28),
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: _kHeaderBg,
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(22),
               boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 24, offset: Offset(0, 6)),
+                BoxShadow(
+                    color: Colors.black38, blurRadius: 28, offset: Offset(0, 6)),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: floatAnim,
-                  builder: (_, child) => Transform.translate(
-                    offset: Offset(0, -5 * floatAnim.value),
-                    child: child,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              AnimatedBuilder(
+                animation: anim,
+                builder: (_, child) => Transform.translate(
+                  offset: Offset(0, -6 * anim.value), child: child),
+                child: Container(
+                  width: 74,
+                  height: 74,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF66BB6A),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: const Color(0xFF66BB6A).withOpacity(0.45),
+                          blurRadius: 18, spreadRadius: 2),
+                    ],
                   ),
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      color: _kJunctionFill,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _kJunctionFill.withOpacity(0.4),
-                          blurRadius: 16,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.train_rounded,
-                        color: Colors.white, size: 38),
-                  ),
+                  child: const Icon(Icons.train_rounded,
+                      color: Colors.white, size: 38),
                 ),
-                const SizedBox(height: 18),
-                Text(
-                  level == 1 ? 'Train of Thought' : 'Level $level',
-                  style: const TextStyle(
-                    color: _kHeaderText,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                level == 1 ? 'Train of Thought' : 'Level $level',
+                style: const TextStyle(
+                  color: Color(0xFF212121),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 6),
-                if (level == 1)
-                  Text(
-                    'Route trains to matching stations',
-                    style: TextStyle(color: _kHeaderLabel, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                const SizedBox(height: 18),
-                const _HowToRow(
+              ),
+              const SizedBox(height: 10),
+              const _Hint(
                   icon: Icons.touch_app_rounded,
-                  text: 'Tap junctions to switch tracks',
-                ),
-                const SizedBox(height: 8),
-                const _HowToRow(
+                  text: 'Tap the green circles to switch tracks'),
+              const SizedBox(height: 6),
+              const _Hint(
                   icon: Icons.compare_arrows_rounded,
-                  text: 'Match each train to its station',
-                ),
-                const SizedBox(height: 24),
-                _GreenButton(
-                  label: level == 1 ? 'Start Game' : 'Start Level $level',
-                  onTap: onStart,
-                ),
-              ],
-            ),
+                  text: 'Route each train to its matching station'),
+              const SizedBox(height: 6),
+              const _Hint(
+                  icon: Icons.directions_railway_rounded,
+                  text: 'Trains leave the tunnel one by one'),
+              const SizedBox(height: 24),
+              _GreenBtn(
+                label: level == 1 ? 'Start Game' : 'Level $level',
+                onTap: onStart,
+              ),
+            ]),
           ),
         ),
       ),
@@ -1344,159 +1058,113 @@ class _IdleOverlay extends StatelessWidget {
   }
 }
 
-class _HowToRow extends StatelessWidget {
+class _Hint extends StatelessWidget {
   final IconData icon;
   final String text;
-  const _HowToRow({required this.icon, required this.text});
+  const _Hint({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _kJunctionFill, size: 16),
-        const SizedBox(width: 8),
-        Text(text, style: const TextStyle(color: _kHeaderLabel, fontSize: 13)),
-      ],
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: const Color(0xFF66BB6A), size: 16),
+      const SizedBox(width: 8),
+      Flexible(
+        child: Text(text,
+            style:
+                const TextStyle(color: Color(0xFF757575), fontSize: 12.5)),
+      ),
+    ]);
   }
 }
 
-class _LevelCompleteOverlay extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Level complete overlay
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompleteOverlay extends StatelessWidget {
   final int level;
   final int correct;
   final int total;
-  final int stars;
-  final AnimationController winAnim;
+  final int wrong;
+  final AnimationController anim;
   final VoidCallback onNext;
 
-  const _LevelCompleteOverlay({
+  const _CompleteOverlay({
     required this.level,
     required this.correct,
     required this.total,
-    required this.stars,
-    required this.winAnim,
+    required this.wrong,
+    required this.anim,
     required this.onNext,
   });
+
+  int get _stars => wrong == 0 ? 3 : wrong == 1 ? 2 : 1;
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: Colors.black54,
+        color: Colors.black.withOpacity(0.55),
         child: Center(
           child: AnimatedBuilder(
-            animation: winAnim,
+            animation: anim,
             builder: (_, child) => Transform.scale(
-              scale: 0.85 + 0.15 * CurvedAnimation(
-                parent: winAnim, curve: Curves.elasticOut).value,
+              scale: 0.85 +
+                  0.15 *
+                      CurvedAnimation(
+                              parent: anim, curve: Curves.elasticOut)
+                          .value,
               child: child,
             ),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 28),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: _kHeaderBg,
-                borderRadius: BorderRadius.circular(20),
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black38, blurRadius: 24, offset: Offset(0, 6)),
+                  BoxShadow(
+                      color: Colors.black38,
+                      blurRadius: 28,
+                      offset: Offset(0, 6)),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.emoji_events_rounded,
-                      color: Color(0xFFFDD835), size: 56),
-                  const SizedBox(height: 10),
-                  const Text('Level Complete!',
-                      style: TextStyle(
-                        color: _kHeaderText,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      )),
-                  const SizedBox(height: 14),
-                  // Stars
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(3, (i) {
-                      final lit = i < stars;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          lit ? Icons.star_rounded : Icons.star_outline_rounded,
-                          color: lit
-                              ? const Color(0xFFFDD835)
-                              : _kHeaderLabel.withOpacity(0.4),
-                          size: 36,
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 14),
-                  _ResultRow(label: 'Correct', value: '$correct of $total'),
-                  const SizedBox(height: 22),
-                  _GreenButton(
-                    label: 'Level ${level + 1}',
-                    onTap: onNext,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GameOverOverlay extends StatelessWidget {
-  final int correct;
-  final int total;
-  final int level;
-  final VoidCallback onRetry;
-
-  const _GameOverOverlay({
-    required this.correct,
-    required this.total,
-    required this.level,
-    required this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black54,
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 28),
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: _kHeaderBg,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 24, offset: Offset(0, 6)),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.timer_off_rounded,
-                    color: Color(0xFFE53935), size: 52),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.emoji_events_rounded,
+                    color: Color(0xFFFDD835), size: 54),
                 const SizedBox(height: 10),
-                const Text('Time\'s Up!',
+                const Text('Level Complete!',
                     style: TextStyle(
-                      color: _kHeaderText,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    )),
+                        color: Color(0xFF212121),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800)),
                 const SizedBox(height: 14),
-                _ResultRow(label: 'Correct', value: '$correct of $total'),
-                const SizedBox(height: 8),
-                _ResultRow(label: 'Level', value: '$level'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final lit = i < _stars;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        lit
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color:
+                            lit ? const Color(0xFFFDD835) : Colors.grey[400],
+                        size: 36,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 14),
+                _Row(label: 'Correct', value: '$correct / $total'),
+                if (wrong > 0) ...[
+                  const SizedBox(height: 6),
+                  _Row(label: 'Wrong station', value: '$wrong'),
+                ],
                 const SizedBox(height: 22),
-                _GreenButton(label: 'Try Again', onTap: onRetry),
-              ],
+                _GreenBtn(label: 'Level ${level + 1}', onTap: onNext),
+              ]),
             ),
           ),
         ),
@@ -1505,10 +1173,10 @@ class _GameOverOverlay extends StatelessWidget {
   }
 }
 
-class _ResultRow extends StatelessWidget {
+class _Row extends StatelessWidget {
   final String label;
   final String value;
-  const _ResultRow({required this.label, required this.value});
+  const _Row({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1517,29 +1185,29 @@ class _ResultRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kHeaderDivider),
+        border: Border.all(color: const Color(0xFFBDBDBD)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: const TextStyle(color: _kHeaderLabel, fontSize: 13)),
+              style: const TextStyle(
+                  color: Color(0xFF757575), fontSize: 13)),
           Text(value,
               style: const TextStyle(
-                color: _kHeaderText,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              )),
+                  color: Color(0xFF212121),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 }
 
-class _GreenButton extends StatelessWidget {
+class _GreenBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  const _GreenButton({required this.label, required this.onTap});
+  const _GreenBtn({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1548,25 +1216,22 @@ class _GreenButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
         decoration: BoxDecoration(
-          color: _kJunctionFill,
+          color: const Color(0xFF66BB6A),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: _kJunctionFill.withOpacity(0.50),
+              color: const Color(0xFF66BB6A).withOpacity(0.50),
               blurRadius: 14,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.3,
-          ),
-        ),
+        child: Text(label,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3)),
       ),
     );
   }
