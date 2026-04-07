@@ -3,11 +3,6 @@ import 'dart:math';
 
 enum TrainColor { blue, pink, red, green, yellow, white }
 enum NodeType { tunnel, fork, station }
-
-
- 
-enum TrainColor { blue, pink, red, green, yellow, white }
-enum NodeType { tunnel, fork, station }
  
 
 class NetworkNode {
