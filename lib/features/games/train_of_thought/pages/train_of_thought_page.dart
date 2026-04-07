@@ -66,6 +66,7 @@ class _TOTState extends State<TrainOfThoughtPage>
   int _correct  = 0;
   int _wrong    = 0;
   int _spawned  = 0;
+  List<TrainColor> _activeSequence = [];   // shuffled each play
   double _spawnTimer = 0.0; // seconds until next spawn
 
   _Phase _phase = _Phase.idle;
@@ -123,6 +124,7 @@ class _TOTState extends State<TrainOfThoughtPage>
     _correct     = 0;
     _wrong       = 0;
     _spawned     = 0;
+    _activeSequence = List<TrainColor>.from(_cfg.spawnPool)..shuffle(Random());
     _spawnTimer  = 1.0; // first train arrives after 1 second
     _phase       = _Phase.idle;
     _stationFlash.clear();
@@ -166,7 +168,7 @@ class _TOTState extends State<TrainOfThoughtPage>
 
     // ── spawn next train ─────────────────────────────────────────────────────
     _spawnTimer -= dt;
-    if (_spawnTimer <= 0 && _spawned < _cfg.spawnSequence.length) {
+    if (_spawnTimer <= 0 && _spawned < _activeSequence.length) {
       _spawnTrain();
       _spawnTimer = _cfg.spawnInterval;
     }
@@ -175,7 +177,7 @@ class _TOTState extends State<TrainOfThoughtPage>
     _decayFlashes(dt);
 
     // ── check completion ──────────────────────────────────────────────────────
-    final allSpawned = _spawned >= _cfg.spawnSequence.length;
+    final allSpawned = _spawned >= _activeSequence.length;
     final allDone    = _trains.every((t) => t.done);
     if (allSpawned && allDone) {
       _ticker.stop();
@@ -246,7 +248,7 @@ class _TOTState extends State<TrainOfThoughtPage>
   }
 
   void _spawnTrain() {
-    final color      = _cfg.spawnSequence[_spawned];
+    final color      = _activeSequence[_spawned];
     final tunnelNode = _nodes[_cfg.tunnelId]!;
     final firstExit  = tunnelNode.exitIds[0];
     _trains.add(TrainState(
@@ -307,7 +309,7 @@ class _TOTState extends State<TrainOfThoughtPage>
             _Header(
               level:   _level,
               correct: _correct,
-              total:   _cfg.spawnSequence.length,
+              total:   _activeSequence.length,
               onBack:  () => Navigator.of(context).pop(),
             ),
             Expanded(
@@ -324,7 +326,7 @@ class _TOTState extends State<TrainOfThoughtPage>
                     _CompleteOverlay(
                       level:   _level,
                       correct: _correct,
-                      total:   _cfg.spawnSequence.length,
+                      total:   _activeSequence.length,
                       wrong:   _wrong,
                       anim:    _winAnim,
                       onNext:  () {
@@ -801,7 +803,7 @@ class _BoardPainter extends CustomPainter {
 
   void _drawTrains(Canvas canvas, Size sz) {
     for (final train in trains) {
-      if (train.done && train.correct) continue; // vanish on correct arrival
+      if (train.done) continue; // vanish immediately on arrival (correct or wrong)
       _drawOneTrain(canvas, sz, train);
     }
   }
