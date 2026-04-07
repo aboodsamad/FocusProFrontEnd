@@ -120,6 +120,59 @@ class MemoryMatrixStatusLabel extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MemoryMatrixTimerRing
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Circular countdown ring shown during the input phase.
+/// Colour shifts green → amber → red as time runs low.
+class MemoryMatrixTimerRing extends StatelessWidget {
+  final int timeLeft;
+  final int totalTime;
+
+  const MemoryMatrixTimerRing({
+    super.key,
+    required this.timeLeft,
+    required this.totalTime,
+  });
+
+  Color get _color {
+    if (totalTime == 0) return const Color(0xFF3DD68C);
+    final fraction = timeLeft / totalTime;
+    if (fraction > 0.5) return const Color(0xFF3DD68C);  // green
+    if (fraction > 0.25) return const Color(0xFFFFD166); // amber
+    return const Color(0xFFFF5270);                       // red
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = totalTime > 0 ? (timeLeft / totalTime).clamp(0.0, 1.0) : 0.0;
+    return SizedBox(
+      width:  52,
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircularProgressIndicator(
+            value:           fraction,
+            backgroundColor: const Color(0xFF1E2840),
+            valueColor:      AlwaysStoppedAnimation<Color>(_color),
+            strokeWidth:     4,
+          ),
+          Text(
+            '$timeLeft',
+            style: TextStyle(
+              color:      _color,
+              fontSize:   15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MemoryMatrixStatRow
 // ─────────────────────────────────────────────────────────────────────────────
 
