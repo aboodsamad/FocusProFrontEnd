@@ -1,18 +1,18 @@
 import 'dart:math';
-
+ 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
+ 
 import '../../../../features/home/providers/user_provider.dart';
 import '../../services/game_service.dart';
 import '../models/train_of_thought_model.dart';
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Colour helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 Color _accent(TrainColor c) {
   switch (c) {
     case TrainColor.blue:   return const Color(0xFF2196F3);
@@ -23,7 +23,7 @@ Color _accent(TrainColor c) {
     case TrainColor.white:  return const Color(0xFFECEFF1);
   }
 }
-
+ 
 Color _dark(TrainColor c) {
   switch (c) {
     case TrainColor.blue:   return const Color(0xFF1565C0);
@@ -34,59 +34,59 @@ Color _dark(TrainColor c) {
     case TrainColor.white:  return const Color(0xFF78909C);
   }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Game phase
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 enum _Phase { idle, playing, complete, gameOver }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class TrainOfThoughtPage extends StatefulWidget {
   const TrainOfThoughtPage({super.key});
-
+ 
   @override
   State<TrainOfThoughtPage> createState() => _TOTState();
 }
-
+ 
 class _TOTState extends State<TrainOfThoughtPage>
     with TickerProviderStateMixin {
-
+ 
   // ── game data ──────────────────────────────────────────────────────────────
   int _level = 1;
   late LevelConfig _cfg;                   // immutable template
   late Map<String, NetworkNode> _nodes;    // mutable per-play copy
-
+ 
   final List<TrainState> _trains = [];
   int _uidCounter = 0;
-
+ 
   int _correct  = 0;
   int _wrong    = 0;
   int _spawned  = 0;
   List<TrainColor> _activeSequence = [];   // shuffled each play
   double _spawnTimer = 0.0; // seconds until next spawn
-
+ 
   _Phase _phase = _Phase.idle;
-
+ 
   // ── animation ──────────────────────────────────────────────────────────────
   late Ticker _ticker;
   DateTime?   _prevTime;
-
+ 
   // per-station flash (green on correct, red on wrong)
   final Map<String, double> _stationFlash = {}; // nodeId → 0..1 fade
-
+ 
   // fork tap scale flash
   final Map<String, double> _forkFlash = {};
-
+ 
   // win/intro animation controllers
   late AnimationController _winAnim;
   late AnimationController _idleAnim;
-
+ 
   int _startEpoch = 0;
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
@@ -96,11 +96,11 @@ class _TOTState extends State<TrainOfThoughtPage>
     _idleAnim = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
-
+ 
     _ticker = createTicker(_onTick);
     _loadLevel(1);
   }
-
+ 
   @override
   void dispose() {
     _ticker.dispose();
@@ -108,18 +108,18 @@ class _TOTState extends State<TrainOfThoughtPage>
     _idleAnim.dispose();
     super.dispose();
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Level management
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   void _loadLevel(int lvl) {
     if (_ticker.isActive) _ticker.stop();
-
+ 
     _level   = lvl;
     _cfg     = LevelFactory.build(lvl).copyForPlay();
     _nodes   = _cfg.nodes;
-
+ 
     _trains.clear();
     _correct     = 0;
     _wrong       = 0;
@@ -130,21 +130,21 @@ class _TOTState extends State<TrainOfThoughtPage>
     _stationFlash.clear();
     _forkFlash.clear();
     _prevTime    = null;
-
+ 
     setState(() {});
   }
-
+ 
   void _startGame() {
     _startEpoch = DateTime.now().millisecondsSinceEpoch;
     _phase = _Phase.playing;
     _ticker.start();
     setState(() {});
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Ticker callback – runs every frame (~60 fps)
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   void _onTick(Duration _) {
     if (!mounted) return;
     final now = DateTime.now();
@@ -152,30 +152,30 @@ class _TOTState extends State<TrainOfThoughtPage>
         ? 0.016
         : now.difference(_prevTime!).inMicroseconds / 1e6;
     _prevTime = now;
-
+ 
     if (_phase != _Phase.playing) {
       // Still update flash decays even when not playing
       _decayFlashes(dt);
       setState(() {});
       return;
     }
-
+ 
     // ── move trains ──────────────────────────────────────────────────────────
     for (final train in _trains) {
       if (train.done) continue;
       _advanceTrain(train, dt);
     }
-
+ 
     // ── spawn next train ─────────────────────────────────────────────────────
     _spawnTimer -= dt;
     if (_spawnTimer <= 0 && _spawned < _activeSequence.length) {
       _spawnTrain();
       _spawnTimer = _cfg.spawnInterval;
     }
-
+ 
     // ── decay visual flashes ──────────────────────────────────────────────────
     _decayFlashes(dt);
-
+ 
     // ── check completion ──────────────────────────────────────────────────────
     final allSpawned = _spawned >= _activeSequence.length;
     final allDone    = _trains.every((t) => t.done);
@@ -185,10 +185,10 @@ class _TOTState extends State<TrainOfThoughtPage>
       _winAnim.forward(from: 0);
       _submitResult(completed: true);
     }
-
+ 
     setState(() {});
   }
-
+ 
   void _decayFlashes(double dt) {
     for (final k in _stationFlash.keys.toList()) {
       _stationFlash[k] = ((_stationFlash[k]! - dt * 1.8)).clamp(0, 1);
@@ -199,28 +199,28 @@ class _TOTState extends State<TrainOfThoughtPage>
       if (_forkFlash[k]! <= 0) _forkFlash.remove(k);
     }
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Train movement
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   void _advanceTrain(TrainState train, double dt) {
     final from = _nodes[train.fromId]!;
     final to   = _nodes[train.toId]!;
-
+ 
     // Euclidean length of this segment (in rel-units)
     final dx  = to.relX - from.relX;
     final dy  = to.relY - from.relY;
     final len = sqrt(dx * dx + dy * dy).clamp(0.01, 2.0);
-
+ 
     train.t += (_cfg.trainSpeed * dt) / len;
-
+ 
     if (train.t >= 1.0) {
       train.t = 1.0;
       _onReached(train, to);
     }
   }
-
+ 
   void _onReached(TrainState train, NetworkNode node) {
     if (node.isStation) {
       train.done    = true;
@@ -235,7 +235,7 @@ class _TOTState extends State<TrainOfThoughtPage>
       _stationFlash[node.id] = 1.0;
       return;
     }
-
+ 
     // Move to next segment
     if (node.exitIds.isNotEmpty) {
       final nextId = node.isFork
@@ -246,7 +246,7 @@ class _TOTState extends State<TrainOfThoughtPage>
       train.t      = 0.0;
     }
   }
-
+ 
   void _spawnTrain() {
     final color      = _activeSequence[_spawned];
     final tunnelNode = _nodes[_cfg.tunnelId]!;
@@ -259,26 +259,26 @@ class _TOTState extends State<TrainOfThoughtPage>
     ));
     _spawned++;
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Fork interaction
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   void _tapFork(String id) {
     if (_phase != _Phase.playing) return;
     final node = _nodes[id];
     if (node == null || !node.isFork) return;
-
+ 
     node.activeExit = 1 - node.activeExit;
     _forkFlash[id] = 1.0;
     HapticFeedback.selectionClick();
     setState(() {});
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Backend
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   Future<void> _submitResult({required bool completed}) async {
     final elapsed =
         (DateTime.now().millisecondsSinceEpoch - _startEpoch) ~/ 1000;
@@ -294,11 +294,11 @@ class _TOTState extends State<TrainOfThoughtPage>
       context.read<UserProvider>().updateFocusScore(result.newFocusScore);
     }
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // Build
   // ─────────────────────────────────────────────────────────────────────────
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,7 +344,7 @@ class _TOTState extends State<TrainOfThoughtPage>
       ),
     );
   }
-
+ 
   Widget _buildBoard() {
     return LayoutBuilder(builder: (ctx, box) {
       final w = box.maxWidth;
@@ -363,7 +363,7 @@ class _TOTState extends State<TrainOfThoughtPage>
       );
     });
   }
-
+ 
   void _handleTap(Offset pos, double w, double h) {
     // Find closest fork within tap radius
     const tapRadius = 38.0;
@@ -382,31 +382,31 @@ class _TOTState extends State<TrainOfThoughtPage>
     if (best != null) _tapFork(best);
   }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Board CustomPainter
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class _BoardPainter extends CustomPainter {
   final Map<String, NetworkNode> nodes;
   final List<TrainState>         trains;
   final Map<String, double>      stationFlash;
   final Map<String, double>      forkFlash;
-
+ 
   const _BoardPainter({
     required this.nodes,
     required this.trains,
     required this.stationFlash,
     required this.forkFlash,
   });
-
+ 
   // ── helpers ────────────────────────────────────────────────────────────────
-
+ 
   Offset _pt(NetworkNode n, Size sz) =>
       Offset(n.relX * sz.width, n.relY * sz.height);
-
+ 
   // ── main ───────────────────────────────────────────────────────────────────
-
+ 
   @override
   void paint(Canvas canvas, Size size) {
     _drawBackground(canvas, size);
@@ -416,9 +416,9 @@ class _BoardPainter extends CustomPainter {
     _drawStations(canvas, size);
     _drawTrains(canvas, size);
   }
-
+ 
   // ── background ─────────────────────────────────────────────────────────────
-
+ 
   void _drawBackground(Canvas canvas, Size sz) {
     // base green field
     canvas.drawRect(
@@ -440,7 +440,7 @@ class _BoardPainter extends CustomPainter {
     _tree(canvas, sz.width * 0.04, sz.height * 0.94, sz);
     _tree(canvas, sz.width * 0.96, sz.height * 0.94, sz);
   }
-
+ 
   void _tree(Canvas canvas, double x, double y, Size sz) {
     final r = sz.width * 0.040;
     canvas.drawRect(
@@ -458,9 +458,9 @@ class _BoardPainter extends CustomPainter {
           path, Paint()..color = const Color(0xFF1B5E20).withOpacity(opacity));
     }
   }
-
+ 
   // ── tracks ─────────────────────────────────────────────────────────────────
-
+ 
   void _drawAllTracks(Canvas canvas, Size sz) {
     // collect all directed edges (parent → child) from the node graph
     for (final node in nodes.values) {
@@ -473,15 +473,15 @@ class _BoardPainter extends CustomPainter {
       }
     }
   }
-
+ 
   void _drawSegment(Canvas canvas, Size sz,
       NetworkNode a, NetworkNode b, {required bool active}) {
     final pa = _pt(a, sz);
     final pb = _pt(b, sz);
-
+ 
     final bedW  = sz.width * 0.030;
     final railW = sz.width * 0.008;
-
+ 
     // track bed
     canvas.drawLine(
       pa, pb,
@@ -493,7 +493,7 @@ class _BoardPainter extends CustomPainter {
         ..strokeCap   = StrokeCap.round
         ..style       = PaintingStyle.stroke,
     );
-
+ 
     if (active) {
       // parallel rails
       final dx  = pb.dx - pa.dx;
@@ -514,7 +514,7 @@ class _BoardPainter extends CustomPainter {
         canvas.drawLine(
             pa - Offset(nx * off, ny * off),
             pb - Offset(nx * off, ny * off), railPaint);
-
+ 
         // crossties
         final count = max(3, (len / (sz.width * 0.07)).round());
         final tiePaint = Paint()
@@ -533,15 +533,15 @@ class _BoardPainter extends CustomPainter {
       }
     }
   }
-
+ 
   // ── tunnel ─────────────────────────────────────────────────────────────────
-
+ 
   void _drawTunnel(Canvas canvas, Size sz) {
     final tunnel = nodes.values.firstWhere((n) => n.isTunnel,
         orElse: () => nodes.values.first);
     final p = _pt(tunnel, sz);
     final r = sz.width * 0.055;
-
+ 
     // mountain silhouette
     final mPath = Path()
       ..moveTo(p.dx - r * 1.6, p.dy + r * 0.6)
@@ -556,7 +556,7 @@ class _BoardPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
-
+ 
     // tunnel mouth (arch)
     final archRect = Rect.fromCenter(
         center: Offset(p.dx, p.dy + r * 0.15), width: r * 1.0, height: r * 1.4);
@@ -577,16 +577,16 @@ class _BoardPainter extends CustomPainter {
         ..strokeWidth = 2,
     );
   }
-
+ 
   // ── fork nodes (circles) ───────────────────────────────────────────────────
-
+ 
   void _drawForkNodes(Canvas canvas, Size sz) {
     for (final node in nodes.values) {
       if (!node.isFork) continue;
       final p     = _pt(node, sz);
       final r     = sz.width * 0.048;
       final flash = forkFlash[node.id] ?? 0.0;
-
+ 
       // glow
       if (flash > 0) {
         canvas.drawCircle(
@@ -596,16 +596,16 @@ class _BoardPainter extends CustomPainter {
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
         );
       }
-
+ 
       // shadow
       canvas.drawCircle(p + const Offset(2, 3), r,
           Paint()..color = Colors.black.withOpacity(0.30));
-
+ 
       // body
       final bodyColor = Color.lerp(
           const Color(0xFF66BB6A), Colors.white, flash * 0.5)!;
       canvas.drawCircle(p, r, Paint()..color = bodyColor);
-
+ 
       // border
       canvas.drawCircle(
         p, r,
@@ -614,7 +614,7 @@ class _BoardPainter extends CustomPainter {
           ..style       = PaintingStyle.stroke
           ..strokeWidth = sz.width * 0.010,
       );
-
+ 
       // inner ring
       canvas.drawCircle(
         p, r * 0.6,
@@ -623,26 +623,26 @@ class _BoardPainter extends CustomPainter {
           ..style       = PaintingStyle.stroke
           ..strokeWidth = sz.width * 0.006,
       );
-
+ 
       // direction arrow (points toward active exit)
       _drawForkArrow(canvas, sz, p, r, node);
     }
   }
-
+ 
   void _drawForkArrow(Canvas canvas, Size sz,
       Offset center, double r, NetworkNode node) {
     if (node.exitIds.isEmpty) return;
     final activeId  = node.exitIds[node.activeExit];
     final targetNode = nodes[activeId];
     if (targetNode == null) return;
-
+ 
     final tx = targetNode.relX * sz.width  - center.dx;
     final ty = targetNode.relY * sz.height - center.dy;
     final len = sqrt(tx * tx + ty * ty);
     if (len == 0) return;
     final ux = tx / len;
     final uy = ty / len;
-
+ 
     // arrow shaft
     final arrowPaint = Paint()
       ..color       = Colors.white.withOpacity(0.92)
@@ -667,9 +667,9 @@ class _BoardPainter extends CustomPainter {
       ..close();
     canvas.drawPath(aPath, Paint()..color = Colors.white.withOpacity(0.92));
   }
-
+ 
   // ── station buildings ───────────────────────────────────────────────────────
-
+ 
   void _drawStations(Canvas canvas, Size sz) {
     for (final node in nodes.values) {
       if (!node.isStation || node.stationColor == null) continue;
@@ -678,7 +678,7 @@ class _BoardPainter extends CustomPainter {
       _drawBuilding(canvas, sz, p, node.stationColor!, flash);
     }
   }
-
+ 
   void _drawBuilding(Canvas canvas, Size sz, Offset center,
       TrainColor color, double flash) {
     final ac  = _accent(color);
@@ -686,13 +686,13 @@ class _BoardPainter extends CustomPainter {
     final bw  = sz.width * 0.090;
     final bh  = sz.height * 0.072;
     final rh  = sz.height * 0.050;
-
+ 
     final left    = center.dx - bw / 2;
     final right   = center.dx + bw / 2;
     final bottom  = center.dy + bh * 0.55;
     final bodyTop = bottom - bh;
     final roofTop = bodyTop - rh;
-
+ 
     // flash glow (correct = green, wrong = red, default = station color)
     if (flash > 0) {
       canvas.drawCircle(
@@ -703,7 +703,7 @@ class _BoardPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
       );
     }
-
+ 
     // shadow
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -712,12 +712,12 @@ class _BoardPainter extends CustomPainter {
       ),
       Paint()..color = Colors.black.withOpacity(0.28),
     );
-
+ 
     // body
     final bodyRect = RRect.fromRectAndRadius(
       Rect.fromLTRB(left, bodyTop, right, bottom), const Radius.circular(3));
     canvas.drawRRect(bodyRect, Paint()..color = ac);
-
+ 
     // body highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -732,7 +732,7 @@ class _BoardPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.4,
     );
-
+ 
     // roof
     final roof = Path()
       ..moveTo(left  - bw * 0.07, bodyTop)
@@ -749,7 +749,7 @@ class _BoardPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0,
     );
-
+ 
     // door
     final doorW = bw * 0.26;
     final doorH = bh * 0.40;
@@ -763,7 +763,7 @@ class _BoardPainter extends CustomPainter {
       ),
       Paint()..color = dk.withOpacity(0.70),
     );
-
+ 
     // windows
     final winW = bw * 0.22;
     final winH = bh * 0.26;
@@ -778,12 +778,12 @@ class _BoardPainter extends CustomPainter {
         Paint()..color = Colors.white.withOpacity(0.82),
       );
     }
-
+ 
     // star on rooftop
     _drawStar(canvas, center.dx, roofTop - sz.height * 0.012,
         sz.width * 0.018, ac);
   }
-
+ 
   void _drawStar(
       Canvas canvas, double cx, double cy, double r, Color color) {
     final path = Path();
@@ -798,41 +798,41 @@ class _BoardPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, Paint()..color = Colors.white.withOpacity(0.90));
   }
-
+ 
   // ── trains ─────────────────────────────────────────────────────────────────
-
+ 
   void _drawTrains(Canvas canvas, Size sz) {
     for (final train in trains) {
       if (train.done) continue; // vanish immediately on arrival (correct or wrong)
       _drawOneTrain(canvas, sz, train);
     }
   }
-
+ 
   void _drawOneTrain(Canvas canvas, Size sz, TrainState train) {
     final from = nodes[train.fromId];
     final to   = nodes[train.toId];
     if (from == null || to == null) return;
-
+ 
     final fx = from.relX * sz.width;
     final fy = from.relY * sz.height;
     final tx = to.relX   * sz.width;
     final ty = to.relY   * sz.height;
-
+ 
     final cx = fx + (tx - fx) * train.t;
     final cy = fy + (ty - fy) * train.t;
-
+ 
     final angle = atan2(ty - fy, tx - fx);
     final r     = sz.width * 0.038;
-
+ 
     canvas.save();
     canvas.translate(cx, cy);
     canvas.rotate(angle);
-
+ 
     final ac  = _accent(train.color);
     final dk  = _dark(train.color);
     final cw  = r * 2.0;
     final ch  = r * 1.3;
-
+ 
     // glow
     canvas.drawOval(
       Rect.fromCenter(center: Offset.zero, width: cw * 1.1, height: ch * 1.1),
@@ -840,7 +840,7 @@ class _BoardPainter extends CustomPainter {
         ..color = ac.withOpacity(0.45)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
-
+ 
     // body (elongated along travel direction = +x axis after rotation)
     final bodyRR = RRect.fromRectAndRadius(
       Rect.fromCenter(
@@ -848,7 +848,7 @@ class _BoardPainter extends CustomPainter {
       Radius.circular(ch * 0.45),
     );
     canvas.drawRRect(bodyRR, Paint()..color = ac);
-
+ 
     // highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -857,7 +857,7 @@ class _BoardPainter extends CustomPainter {
       ),
       Paint()..color = Colors.white.withOpacity(0.30),
     );
-
+ 
     // nose (front, pointing +x)
     final nosePath = Path()
       ..moveTo(cw * 0.45,  ch * 0.48)
@@ -865,7 +865,7 @@ class _BoardPainter extends CustomPainter {
       ..lineTo(cw * 0.45, -ch * 0.48)
       ..close();
     canvas.drawPath(nosePath, Paint()..color = dk);
-
+ 
     // window
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -874,7 +874,7 @@ class _BoardPainter extends CustomPainter {
       ),
       Paint()..color = Colors.white.withOpacity(0.88),
     );
-
+ 
     // outline
     canvas.drawRRect(
       bodyRR,
@@ -883,7 +883,7 @@ class _BoardPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = r * 0.14,
     );
-
+ 
     // wheels
     final wheelPaint = Paint()..color = dk;
     final rimPaint   = Paint()
@@ -894,18 +894,18 @@ class _BoardPainter extends CustomPainter {
       canvas.drawCircle(Offset(wx, ch * 0.52), r * 0.20, wheelPaint);
       canvas.drawCircle(Offset(wx, ch * 0.52), r * 0.10, rimPaint);
     }
-
+ 
     canvas.restore();
   }
-
+ 
   @override
   bool shouldRepaint(_BoardPainter old) => true;
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Header
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class _Header extends StatelessWidget {
   final int level;
   final int correct;
@@ -917,7 +917,7 @@ class _Header extends StatelessWidget {
     required this.total,
     required this.onBack,
   });
-
+ 
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -946,12 +946,12 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
+ 
 class _Cell extends StatelessWidget {
   final String label;
   final String value;
   const _Cell({required this.label, required this.value});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -973,11 +973,11 @@ class _Cell extends StatelessWidget {
     );
   }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Idle overlay
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class _IdleOverlay extends StatelessWidget {
   final int level;
   final AnimationController anim;
@@ -987,7 +987,7 @@ class _IdleOverlay extends StatelessWidget {
     required this.anim,
     required this.onStart,
   });
-
+ 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -1059,12 +1059,12 @@ class _IdleOverlay extends StatelessWidget {
     );
   }
 }
-
+ 
 class _Hint extends StatelessWidget {
   final IconData icon;
   final String text;
   const _Hint({required this.icon, required this.text});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1078,11 +1078,11 @@ class _Hint extends StatelessWidget {
     ]);
   }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // Level complete overlay
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class _CompleteOverlay extends StatelessWidget {
   final int level;
   final int correct;
@@ -1090,7 +1090,7 @@ class _CompleteOverlay extends StatelessWidget {
   final int wrong;
   final AnimationController anim;
   final VoidCallback onNext;
-
+ 
   const _CompleteOverlay({
     required this.level,
     required this.correct,
@@ -1099,9 +1099,9 @@ class _CompleteOverlay extends StatelessWidget {
     required this.anim,
     required this.onNext,
   });
-
+ 
   int get _stars => wrong == 0 ? 3 : wrong == 1 ? 2 : 1;
-
+ 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -1174,12 +1174,12 @@ class _CompleteOverlay extends StatelessWidget {
     );
   }
 }
-
+ 
 class _Row extends StatelessWidget {
   final String label;
   final String value;
   const _Row({required this.label, required this.value});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1205,12 +1205,12 @@ class _Row extends StatelessWidget {
     );
   }
 }
-
+ 
 class _GreenBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _GreenBtn({required this.label, required this.onTap});
-
+ 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

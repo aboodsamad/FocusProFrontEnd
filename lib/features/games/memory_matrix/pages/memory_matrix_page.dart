@@ -26,31 +26,37 @@ class MemoryMatrixPage extends StatefulWidget {
 class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     with TickerProviderStateMixin {
 
-  // ── Constants ──────────────────────────────────────────────────────────────
+  // ── Colors ─────────────────────────────────────────────────────────────────
 
-  static const int    _gridSize      = 4;
-  static const Color  _bg            = Color(0xFF06090F);
-  static const Color  _surface       = Color(0xFF0F1420);
-  static const Color  _borderColor   = Color(0xFF1E2840);
-  static const Color  _accent        = Color(0xFF5B8FFF);
-  static const Color  _accentGlow    = Color(0xFF3D6EFF);
-  static const Color  _gold          = Color(0xFFFFD166);
-  static const Color  _wrong         = Color(0xFFFF5270);
-  static const Color  _textMuted     = Color(0xFF6B7A99);
+  static const Color _bg        = Color(0xFF06090F);
+  static const Color _accent    = Color(0xFF5B8FFF);
+  static const Color _gold      = Color(0xFFFFD166);
+  static const Color _wrong     = Color(0xFFFF5270);
+  static const Color _textMuted = Color(0xFF6B7A99);
+
+  // ── Grid size ──────────────────────────────────────────────────────────────
+
+  /// Level 1 → 9×9, level 2 → 10×10, …, level 5+ → 13×13 (max).
+  int get _currentGridSize => MemoryMatrixState.gridSizeForLevel(_game.level);
 
   // ── State ──────────────────────────────────────────────────────────────────
 
   late MemoryMatrixState _game;
   DateTime? _gameStartTime;
 
+  /// Tracks how many cells we've allocated controllers for.
+  int _allocatedGridSize = 0;
+
+  /// Periodic timer that counts down during the input phase.
+  Timer? _inputTimer;
+
   // ── Animations ─────────────────────────────────────────────────────────────
 
-  late AnimationController _fadeCtrl;    // idle / game-over fade-in
-  late AnimationController _scaleCtrl;   // level-up star scale
+  late AnimationController _fadeCtrl;
+  late AnimationController _scaleCtrl;
   late Animation<double>   _fadeAnim;
   late Animation<double>   _scaleAnim;
 
-  /// One controller per cell — drives the pop/scale on tap or reveal.
   final Map<int, AnimationController> _cellCtrl = {};
   final Map<int, Animation<double>>   _cellAnim = {};
 
@@ -59,7 +65,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   @override
   void initState() {
     super.initState();
-    _game = MemoryMatrixState.initial(_gridSize);
+    const initialGridSize = 9; // level 1
+    _game = MemoryMatrixState.initial(initialGridSize);
 
     _fadeCtrl = AnimationController(
       vsync:    this,
@@ -74,7 +81,25 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     _fadeAnim  = CurvedAnimation(parent: _fadeCtrl,  curve: Curves.easeOut);
     _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
 
-    for (int i = 0; i < _gridSize * _gridSize; i++) {
+    _rebuildCellControllers(initialGridSize);
+  }
+
+  @override
+  void dispose() {
+    _inputTimer?.cancel();
+    _fadeCtrl.dispose();
+    _scaleCtrl.dispose();
+    for (final c in _cellCtrl.values) c.dispose();
+    super.dispose();
+  }
+
+  // ── Cell-controller management ─────────────────────────────────────────────
+
+  void _rebuildCellControllers(int gridSize) {
+    for (final c in _cellCtrl.values) c.dispose();
+    _cellCtrl.clear();
+    _cellAnim.clear();
+    for (int i = 0; i < gridSize * gridSize; i++) {
       final ctrl = AnimationController(
         vsync:    this,
         duration: const Duration(milliseconds: 250),
@@ -83,23 +108,49 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       _cellAnim[i] = Tween<double>(begin: 0.0, end: 1.0)
           .animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
     }
+    _allocatedGridSize = gridSize;
   }
 
-  @override
-  void dispose() {
-    _fadeCtrl.dispose();
-    _scaleCtrl.dispose();
-    for (final c in _cellCtrl.values) c.dispose();
-    super.dispose();
+  void _ensureCellControllers(int gridSize) {
+    if (_allocatedGridSize != gridSize) _rebuildCellControllers(gridSize);
+  }
+
+  // ── Input timer ────────────────────────────────────────────────────────────
+
+  void _startInputTimer() {
+    _inputTimer?.cancel();
+    final seconds = MemoryMatrixState.inputSecondsForLevel(_game.level);
+    setState(() => _game = _game.copyWith(timeLeft: seconds));
+
+    _inputTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      final remaining = _game.timeLeft - 1;
+      if (remaining <= 0) {
+        timer.cancel();
+        setState(() => _game = _game.copyWith(timeLeft: 0));
+        _submitAnswer(); // auto-submit on timeout
+      } else {
+        setState(() => _game = _game.copyWith(timeLeft: remaining));
+      }
+    });
+  }
+
+  void _cancelInputTimer() {
+    _inputTimer?.cancel();
+    _inputTimer = null;
   }
 
   // ── Game flow ──────────────────────────────────────────────────────────────
 
   void _startGame() {
     HapticFeedback.mediumImpact();
+    _cancelInputTimer();
     _gameStartTime = DateTime.now();
+    const startLevel = 1;
+    final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
+    _ensureCellControllers(gs);
     setState(() {
-      _game = MemoryMatrixState.initial(_gridSize).copyWith(
+      _game = MemoryMatrixState.initial(gs).copyWith(
         phase: MemoryMatrixPhase.countdown,
       );
     });
@@ -116,38 +167,44 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   }
 
   void _startRound() {
-    final pattern = _buildPattern();
+    final gs = _currentGridSize;
+    _ensureCellControllers(gs);
+    final pattern    = _buildPattern(gs);
+    final inputSecs  = MemoryMatrixState.inputSecondsForLevel(_game.level);
     setState(() {
       _game = _game.copyWith(
         phase:            MemoryMatrixPhase.showing,
         pattern:          pattern,
-        playerInput:      List.generate(_gridSize, (_) => List.filled(_gridSize, false)),
+        playerInput:      List.generate(gs, (_) => List.filled(gs, false)),
         highlightedCells: {},
+        timeLeft:         inputSecs,
       );
     });
-    _showPattern();
+    _showPattern(gs);
   }
 
-  List<List<bool>> _buildPattern() {
-    final count   = _game.cellsToRemember(_gridSize);
-    final indices = List.generate(_gridSize * _gridSize, (i) => i)
-      ..shuffle(Random());
-    final pattern = List.generate(_gridSize, (_) => List.filled(_gridSize, false));
+  List<List<bool>> _buildPattern(int gs) {
+    final count   = _game.cellsToRemember(gs);
+    final indices = List.generate(gs * gs, (i) => i)..shuffle(Random());
+    final pattern = List.generate(gs, (_) => List.filled(gs, false));
     for (int i = 0; i < count; i++) {
-      pattern[indices[i] ~/ _gridSize][indices[i] % _gridSize] = true;
+      pattern[indices[i] ~/ gs][indices[i] % gs] = true;
     }
     return pattern;
   }
 
-  Future<void> _showPattern() async {
-    // Collect pattern indices and light them up one by one.
+  Future<void> _showPattern(int gs) async {
     final patternIndices = <int>[];
-    for (int r = 0; r < _gridSize; r++) {
-      for (int c = 0; c < _gridSize; c++) {
-        if (_game.pattern[r][c]) patternIndices.add(r * _gridSize + c);
+    for (int r = 0; r < gs; r++) {
+      for (int c = 0; c < gs; c++) {
+        if (_game.pattern[r][c]) patternIndices.add(r * gs + c);
       }
     }
-    patternIndices.shuffle();
+    // Randomise reveal order for unpredictability
+    patternIndices.shuffle(Random());
+
+    // Reveal delay shortens on bigger grids so total reveal time stays reasonable
+    final revealDelayMs = gs >= 12 ? 90 : gs >= 10 ? 110 : 130;
 
     final highlighted = <int>{};
     for (final idx in patternIndices) {
@@ -156,37 +213,38 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       setState(() => _game = _game.copyWith(highlightedCells: Set.of(highlighted)));
       _cellCtrl[idx]!.forward(from: 0.0);
       HapticFeedback.selectionClick();
-      await Future.delayed(const Duration(milliseconds: 150));
+      await Future.delayed(Duration(milliseconds: revealDelayMs));
     }
 
-    // Hold so the player can memorise.
-    final holdMs = max(600, 1800 - (_game.level * 150));
+    // Hold: shorter at higher levels to increase difficulty
+    final holdMs = max(400, 1800 - (_game.level * 120));
     await Future.delayed(Duration(milliseconds: holdMs));
     if (!mounted) return;
 
-    // Fade out.
     for (final idx in patternIndices) _cellCtrl[idx]!.reverse();
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 280));
+    if (!mounted) return;
 
     setState(() => _game = _game.copyWith(
       highlightedCells: {},
       phase:            MemoryMatrixPhase.input,
     ));
+    _startInputTimer();
   }
 
   void _onCellTap(int row, int col) {
     if (_game.phase != MemoryMatrixPhase.input) return;
     HapticFeedback.selectionClick();
+    final gs = _currentGridSize;
 
     final updated = List.generate(
-      _gridSize,
-      (r) => List.generate(_gridSize, (c) => _game.playerInput[r][c]),
+      gs,
+      (r) => List.generate(gs, (c) => _game.playerInput[r][c]),
     );
     updated[row][col] = !updated[row][col];
-
     setState(() => _game = _game.copyWith(playerInput: updated));
 
-    final idx = row * _gridSize + col;
+    final idx = row * gs + col;
     if (updated[row][col]) {
       _cellCtrl[idx]!.forward(from: 0.0);
     } else {
@@ -196,14 +254,15 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
   Future<void> _submitAnswer() async {
     if (_game.phase != MemoryMatrixPhase.input) return;
+    _cancelInputTimer();
     HapticFeedback.mediumImpact();
 
-    // Show the correct answer overlay.
+    final gs = _currentGridSize;
     final revealSet = <int>{};
     bool allCorrect = true;
-    for (int r = 0; r < _gridSize; r++) {
-      for (int c = 0; c < _gridSize; c++) {
-        if (_game.pattern[r][c]) revealSet.add(r * _gridSize + c);
+    for (int r = 0; r < gs; r++) {
+      for (int c = 0; c < gs; c++) {
+        if (_game.pattern[r][c]) revealSet.add(r * gs + c);
         if (_game.pattern[r][c] != _game.playerInput[r][c]) allCorrect = false;
       }
     }
@@ -215,12 +274,13 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;
 
-    // Reset cell animations.
     for (final ctrl in _cellCtrl.values) ctrl.reset();
 
     if (allCorrect) {
-      final newScore = _game.score + _game.roundPoints;
+      final newScore = _game.score + _game.roundPoints(gs);
       final newLevel = _game.level + 1;
+      final newGs    = MemoryMatrixState.gridSizeForLevel(newLevel);
+      _ensureCellControllers(newGs);
       setState(() => _game = _game.copyWith(
         score:            newScore,
         level:            newLevel,
@@ -370,9 +430,13 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   // ── Active game (showing / input / checking) ───────────────────────────────
 
   Widget _buildGameScreen() {
+    final gs = _currentGridSize;
+    final needed = _game.cellsToRemember(gs);
+    final totalSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
+
     final label = switch (_game.phase) {
       MemoryMatrixPhase.showing  => 'Watch carefully...',
-      MemoryMatrixPhase.input    => 'Select ${_game.cellsToRemember(_gridSize)} cells',
+      MemoryMatrixPhase.input    => 'Select $needed cells',
       MemoryMatrixPhase.checking => 'Checking...',
       _                          => '',
     };
@@ -380,19 +444,35 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     return Column(
       children: [
         const SizedBox(height: 12),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: MemoryMatrixStatusLabel(key: ValueKey(label), text: label),
+        // Status label + timer on same row
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: MemoryMatrixStatusLabel(key: ValueKey(label), text: label),
+              ),
+              if (_game.phase == MemoryMatrixPhase.input) ...[
+                const SizedBox(width: 16),
+                MemoryMatrixTimerRing(
+                  timeLeft:  _game.timeLeft,
+                  totalTime: totalSecs,
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: AspectRatio(
                 aspectRatio: 1,
                 child: MemoryMatrixGrid(
-                  gridSize:         _gridSize,
+                  gridSize:         gs,
                   phase:            _game.phase,
                   pattern:          _game.pattern,
                   playerInput:      _game.playerInput,
@@ -408,16 +488,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           duration: const Duration(milliseconds: 300),
           child: _game.phase == MemoryMatrixPhase.input
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   child: _SubmitButton(
                     selected: _game.selectedCount,
-                    required: _game.cellsToRemember(_gridSize),
-                    onTap:    _game.selectedCount == _game.cellsToRemember(_gridSize)
-                        ? _submitAnswer
-                        : null,
+                    required: needed,
+                    onTap:    _game.selectedCount == needed ? _submitAnswer : null,
                   ),
                 )
-              : const SizedBox(height: 80),
+              : const SizedBox(height: 72),
         ),
       ],
     );
@@ -426,6 +504,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   // ── Level up ───────────────────────────────────────────────────────────────
 
   Widget _buildLevelUpScreen() {
+    final prevGs = MemoryMatrixState.gridSizeForLevel(_game.level - 1);
     return Center(
       child: ScaleTransition(
         scale: _scaleAnim,
@@ -465,9 +544,16 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
               'Now on level ${_game.level}',
               style: const TextStyle(color: _textMuted, fontSize: 16),
             ),
+            if (_currentGridSize > prevGs) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Grid grew to ${_currentGridSize}×${_currentGridSize}!',
+                style: const TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
-              '+${_game.roundPoints} pts',
+              '+${_game.roundPoints(prevGs)} pts',
               style: const TextStyle(
                 color:      _gold,
                 fontSize:   20,

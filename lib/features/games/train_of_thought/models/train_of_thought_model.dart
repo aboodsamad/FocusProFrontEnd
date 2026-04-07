@@ -1,7 +1,14 @@
 import 'dart:math';
 
+
 enum TrainColor { blue, pink, red, green, yellow, white }
 enum NodeType { tunnel, fork, station }
+
+
+ 
+enum TrainColor { blue, pink, red, green, yellow, white }
+enum NodeType { tunnel, fork, station }
+ 
 
 class NetworkNode {
   final String id;
@@ -12,6 +19,10 @@ class NetworkNode {
   final List<String> exitIds;
   int activeExit;
 
+
+
+ 
+
   NetworkNode({
     required this.id,
     required this.relX,
@@ -21,11 +32,11 @@ class NetworkNode {
     List<String>? exitIds,
     this.activeExit = 0,
   }) : exitIds = exitIds ?? const [];
-
+ 
   bool get isFork    => type == NodeType.fork;
   bool get isStation => type == NodeType.station;
   bool get isTunnel  => type == NodeType.tunnel;
-
+ 
   NetworkNode clone() => NetworkNode(
         id: id, relX: relX, relY: relY, type: type,
         stationColor: stationColor,
@@ -33,6 +44,8 @@ class NetworkNode {
         activeExit: activeExit,
       );
 }
+
+
 
 class TrainState {
   final int    uid;
@@ -42,7 +55,7 @@ class TrainState {
   double t;
   bool   done;
   bool   correct;
-
+ 
   TrainState({
     required this.uid,
     required this.color,
@@ -62,7 +75,7 @@ class LevelConfig {
   final double trainSpeed;
   final double spawnInterval;
   final int allowedMistakes;
-
+ 
   LevelConfig({
     required this.nodes,
     required this.tunnelId,
@@ -84,7 +97,7 @@ class LevelConfig {
 
 class LevelFactory {
   LevelFactory._();
-
+ 
   static LevelConfig build(int level) {
     final idx   = (level - 1).clamp(0, _tpl.length - 1);
     final base  = _tpl[idx]();
@@ -98,7 +111,7 @@ class LevelFactory {
       allowedMistakes: base.allowedMistakes,
     );
   }
-
+ 
   static final List<LevelConfig Function()> _tpl = [
     _l1, _l2, _l3, _l4, _l5,
   ];
@@ -115,7 +128,7 @@ class LevelFactory {
     }
     return m;
   }
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // L1 — one fork, two stations
   //
@@ -139,7 +152,7 @@ class LevelFactory {
         trainSpeed: 0.13,
         spawnInterval: 4.5,
       );
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // L2 — two forks, four stations
   //
@@ -170,7 +183,7 @@ class LevelFactory {
         trainSpeed: 0.16,
         spawnInterval: 3.5,
       );
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // L3 — three forks, five stations
   //
@@ -204,7 +217,7 @@ class LevelFactory {
         trainSpeed: 0.18,
         spawnInterval: 2.8,
       );
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // L4 — four forks, six stations
   //
@@ -241,7 +254,7 @@ class LevelFactory {
         trainSpeed: 0.20,
         spawnInterval: 2.3,
       );
-
+ 
   // ─────────────────────────────────────────────────────────────────────────
   // L5 — same tree, faster + more trains
   // ─────────────────────────────────────────────────────────────────────────

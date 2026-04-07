@@ -69,14 +69,30 @@ class MemoryMatrixGrid extends StatelessWidget {
     }
   }
 
+  /// Grid gap scales down for larger grids so cells stay a decent size.
+  double get _spacing {
+    if (gridSize >= 13) return 3.0;
+    if (gridSize >= 11) return 4.0;
+    if (gridSize >= 9)  return 5.0;
+    return 8.0;
+  }
+
+  /// Cell corner radius scales down for smaller cells.
+  double get _cellRadius {
+    if (gridSize >= 13) return 4.0;
+    if (gridSize >= 11) return 6.0;
+    if (gridSize >= 9)  return 8.0;
+    return 12.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount:  gridSize,
-        crossAxisSpacing: 10,
-        mainAxisSpacing:  10,
+        crossAxisCount:   gridSize,
+        crossAxisSpacing: _spacing,
+        mainAxisSpacing:  _spacing,
       ),
       itemCount: gridSize * gridSize,
       itemBuilder: (context, idx) {
@@ -87,8 +103,9 @@ class MemoryMatrixGrid extends StatelessWidget {
         return GestureDetector(
           onTap: () => onCellTap(row, col),
           child: _MemoryCell(
-            state:     state,
-            animation: cellAnimations[idx]!,
+            state:      state,
+            animation:  cellAnimations[idx]!,
+            cellRadius: _cellRadius,
           ),
         );
       },
@@ -103,8 +120,9 @@ class MemoryMatrixGrid extends StatelessWidget {
 class _MemoryCell extends StatelessWidget {
   final MemoryMatrixCellState state;
   final Animation<double> animation;
+  final double cellRadius;
 
-  const _MemoryCell({required this.state, required this.animation});
+  const _MemoryCell({required this.state, required this.animation, required this.cellRadius});
 
   Color get _bg {
     switch (state) {
@@ -142,7 +160,7 @@ class _MemoryCell extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(cellRadius),
               color:         _bg,
               border: Border.all(
                 color: state == MemoryMatrixCellState.idle

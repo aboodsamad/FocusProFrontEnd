@@ -41,6 +41,9 @@ class MemoryMatrixState {
   final MemoryMatrixPhase phase;
   final int countdownValue;
 
+  /// Seconds remaining during the input phase (counts down to 0).
+  final int timeLeft;
+
   /// Which cells are part of the pattern (row × col booleans).
   final List<List<bool>> pattern;
 
@@ -56,6 +59,7 @@ class MemoryMatrixState {
     required this.lives,
     required this.phase,
     required this.countdownValue,
+    required this.timeLeft,
     required this.pattern,
     required this.playerInput,
     required this.highlightedCells,
@@ -69,6 +73,7 @@ class MemoryMatrixState {
       lives:            3,
       phase:            MemoryMatrixPhase.idle,
       countdownValue:   3,
+      timeLeft:         inputSecondsForLevel(1),
       pattern:          List.generate(gridSize, (_) => List.filled(gridSize, false)),
       playerInput:      List.generate(gridSize, (_) => List.filled(gridSize, false)),
       highlightedCells: {},
@@ -81,6 +86,7 @@ class MemoryMatrixState {
     int?                    lives,
     MemoryMatrixPhase?      phase,
     int?                    countdownValue,
+    int?                    timeLeft,
     List<List<bool>>?       pattern,
     List<List<bool>>?       playerInput,
     Set<int>?               highlightedCells,
@@ -91,6 +97,7 @@ class MemoryMatrixState {
       lives:            lives            ?? this.lives,
       phase:            phase            ?? this.phase,
       countdownValue:   countdownValue   ?? this.countdownValue,
+      timeLeft:         timeLeft         ?? this.timeLeft,
       pattern:          pattern          ?? this.pattern,
       playerInput:      playerInput      ?? this.playerInput,
       highlightedCells: highlightedCells ?? this.highlightedCells,
@@ -99,11 +106,22 @@ class MemoryMatrixState {
 
   // ── Derived helpers ────────────────────────────────────────────────────────
 
+  /// Grid size for a given level: 9×9 at level 1, grows by 1 per level, capped at 13×13.
+  static int gridSizeForLevel(int level) {
+    return (8 + level).clamp(9, 13);
+  }
+
+  /// Seconds the player has to recall the pattern, decreasing with each level.
+  static int inputSecondsForLevel(int level) {
+    return (32 - level * 2).clamp(10, 32);
+  }
+
   /// How many cells the player must remember this round.
+  /// Grows fast enough to be challenging on a large grid.
   int cellsToRemember(int gridSize) {
-    final max = gridSize * gridSize - 2;
-    final count = 2 + level;
-    return count < max ? count : max;
+    final maxCells = (gridSize * gridSize * 0.28).round();
+    final count = 4 + level * 2;
+    return count.clamp(4, maxCells);
   }
 
   /// How many cells the player has selected so far.
@@ -118,5 +136,5 @@ class MemoryMatrixState {
   }
 
   /// Points awarded for completing the current round.
-  int get roundPoints => cellsToRemember(4) * 10 + (level * 5);
+  int roundPoints(int gridSize) => cellsToRemember(gridSize) * 10 + (level * 5);
 }
