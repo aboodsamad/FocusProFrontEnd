@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/widgets/auth_background.dart';
@@ -6,6 +7,7 @@ import '../widgets/animated_logo.dart';
 import '../widgets/auth_text_field.dart';
 import './login_page.dart';
 import '../../diagnostic/pages/diagnostic_page.dart';
+import '../../home/providers/user_provider.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -170,6 +172,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       final token = result['token']?.toString() ?? '';
       if (token.isNotEmpty) {
         await AuthService.saveToken(token);
+        // Load the user's profile into UserProvider so the home page
+        // shows the real name/username instead of the 'User' fallback.
+        if (mounted) {
+          await context.read<UserProvider>().reloadAfterLogin();
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Welcome! Let\'s set up your focus profile.'),
               backgroundColor: Colors.green),

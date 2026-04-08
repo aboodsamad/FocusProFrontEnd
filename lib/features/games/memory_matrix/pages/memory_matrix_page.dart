@@ -434,18 +434,22 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: MemoryMatrixStatusLabel(key: ValueKey(label), text: label),
-              ),
-              if (_game.phase == MemoryMatrixPhase.input) ...[
-                const SizedBox(width: 16),
-                MemoryMatrixTimerRing(timeLeft: _game.timeLeft, totalTime: totalSecs),
+          child: SizedBox(
+            height: 52,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: MemoryMatrixStatusLabel(key: ValueKey(label), text: label),
+                ),
+                if (_game.phase == MemoryMatrixPhase.input) ...[
+                  const SizedBox(width: 16),
+                  MemoryMatrixTimerRing(timeLeft: _game.timeLeft, totalTime: totalSecs),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -468,18 +472,18 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
             ),
           ),
         ),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+        SizedBox(
+          height: 72,
           child: _game.phase == MemoryMatrixPhase.input
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                   child: _SubmitButton(
                     selected: _game.selectedCount,
                     required: needed,
                     onTap: _game.selectedCount == needed ? _submitAnswer : null,
                   ),
                 )
-              : const SizedBox(height: 72),
+              : const SizedBox.shrink(),
         ),
       ],
     );
@@ -610,7 +614,7 @@ class _SubmitButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           gradient: ready ? const LinearGradient(colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)]) : null,
           color: ready ? null : const Color(0xFF0F1420),

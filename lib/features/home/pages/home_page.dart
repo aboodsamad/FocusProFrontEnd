@@ -343,10 +343,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   Widget _buildQuickActions() {
     final actions = [
-      _ActionItem(icon: Icons.assessment_outlined, label: 'Test',
-          sub: '5–8 min', color: AppColors.primaryA,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const QuestionPage()))),
       _ActionItem(icon: Icons.videogame_asset_outlined, label: 'Games',
           sub: '2–6 min', color: const Color(0xFF10B981),
           onTap: () => Navigator.push(context,
