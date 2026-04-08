@@ -23,15 +23,13 @@ class MemoryMatrixPage extends StatefulWidget {
   State<MemoryMatrixPage> createState() => _MemoryMatrixPageState();
 }
 
-class _MemoryMatrixPageState extends State<MemoryMatrixPage>
-    with TickerProviderStateMixin {
-
+class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProviderStateMixin {
   // ── Colors ─────────────────────────────────────────────────────────────────
 
-  static const Color _bg        = Color(0xFF06090F);
-  static const Color _accent    = Color(0xFF5B8FFF);
-  static const Color _gold      = Color(0xFFFFD166);
-  static const Color _wrong     = Color(0xFFFF5270);
+  static const Color _bg = Color(0xFF06090F);
+  static const Color _accent = Color(0xFF5B8FFF);
+  static const Color _gold = Color(0xFFFFD166);
+  static const Color _wrong = Color(0xFFFF5270);
   static const Color _textMuted = Color(0xFF6B7A99);
 
   // ── Grid size ──────────────────────────────────────────────────────────────
@@ -54,11 +52,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
   late AnimationController _fadeCtrl;
   late AnimationController _scaleCtrl;
-  late Animation<double>   _fadeAnim;
-  late Animation<double>   _scaleAnim;
+  late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
 
   final Map<int, AnimationController> _cellCtrl = {};
-  final Map<int, Animation<double>>   _cellAnim = {};
+  final Map<int, Animation<double>> _cellAnim = {};
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -68,17 +66,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     const initialGridSize = 9; // level 1
     _game = MemoryMatrixState.initial(initialGridSize);
 
-    _fadeCtrl = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 400),
-    )..forward();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400))..forward();
 
-    _scaleCtrl = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 500),
-    );
+    _scaleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
 
-    _fadeAnim  = CurvedAnimation(parent: _fadeCtrl,  curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
 
     _rebuildCellControllers(initialGridSize);
@@ -100,13 +92,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     _cellCtrl.clear();
     _cellAnim.clear();
     for (int i = 0; i < gridSize * gridSize; i++) {
-      final ctrl = AnimationController(
-        vsync:    this,
-        duration: const Duration(milliseconds: 250),
-      );
+      final ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
       _cellCtrl[i] = ctrl;
-      _cellAnim[i] = Tween<double>(begin: 0.0, end: 1.0)
-          .animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+      _cellAnim[i] = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
     }
     _allocatedGridSize = gridSize;
   }
@@ -123,7 +111,10 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     setState(() => _game = _game.copyWith(timeLeft: seconds));
 
     _inputTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) { timer.cancel(); return; }
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       final remaining = _game.timeLeft - 1;
       if (remaining <= 0) {
         timer.cancel();
@@ -150,9 +141,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
     _ensureCellControllers(gs);
     setState(() {
-      _game = MemoryMatrixState.initial(gs).copyWith(
-        phase: MemoryMatrixPhase.countdown,
-      );
+      _game = MemoryMatrixState.initial(gs).copyWith(phase: MemoryMatrixPhase.countdown);
     });
     _runCountdown();
   }
@@ -169,22 +158,22 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   void _startRound() {
     final gs = _currentGridSize;
     _ensureCellControllers(gs);
-    final pattern    = _buildPattern(gs);
-    final inputSecs  = MemoryMatrixState.inputSecondsForLevel(_game.level);
+    final pattern = _buildPattern(gs);
+    final inputSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
     setState(() {
       _game = _game.copyWith(
-        phase:            MemoryMatrixPhase.showing,
-        pattern:          pattern,
-        playerInput:      List.generate(gs, (_) => List.filled(gs, false)),
+        phase: MemoryMatrixPhase.showing,
+        pattern: pattern,
+        playerInput: List.generate(gs, (_) => List.filled(gs, false)),
         highlightedCells: {},
-        timeLeft:         inputSecs,
+        timeLeft: inputSecs,
       );
     });
     _showPattern(gs);
   }
 
   List<List<bool>> _buildPattern(int gs) {
-    final count   = _game.cellsToRemember(gs);
+    final count = _game.cellsToRemember(gs);
     final indices = List.generate(gs * gs, (i) => i)..shuffle(Random());
     final pattern = List.generate(gs, (_) => List.filled(gs, false));
     for (int i = 0; i < count; i++) {
@@ -204,7 +193,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     patternIndices.shuffle(Random());
 
     // Reveal delay shortens on bigger grids so total reveal time stays reasonable
-    final revealDelayMs = gs >= 12 ? 90 : gs >= 10 ? 110 : 130;
+    final revealDelayMs = gs >= 12
+        ? 90
+        : gs >= 10
+        ? 110
+        : 130;
 
     final highlighted = <int>{};
     for (final idx in patternIndices) {
@@ -225,10 +218,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     await Future.delayed(const Duration(milliseconds: 280));
     if (!mounted) return;
 
-    setState(() => _game = _game.copyWith(
-      highlightedCells: {},
-      phase:            MemoryMatrixPhase.input,
-    ));
+    setState(() => _game = _game.copyWith(highlightedCells: {}, phase: MemoryMatrixPhase.input));
     _startInputTimer();
   }
 
@@ -237,10 +227,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     HapticFeedback.selectionClick();
     final gs = _currentGridSize;
 
-    final updated = List.generate(
-      gs,
-      (r) => List.generate(gs, (c) => _game.playerInput[r][c]),
-    );
+    final updated = List.generate(gs, (r) => List.generate(gs, (c) => _game.playerInput[r][c]));
     updated[row][col] = !updated[row][col];
     setState(() => _game = _game.copyWith(playerInput: updated));
 
@@ -266,10 +253,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
         if (_game.pattern[r][c] != _game.playerInput[r][c]) allCorrect = false;
       }
     }
-    setState(() => _game = _game.copyWith(
-      phase:            MemoryMatrixPhase.checking,
-      highlightedCells: revealSet,
-    ));
+    setState(() => _game = _game.copyWith(phase: MemoryMatrixPhase.checking, highlightedCells: revealSet));
 
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;
@@ -279,14 +263,16 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     if (allCorrect) {
       final newScore = _game.score + _game.roundPoints(gs);
       final newLevel = _game.level + 1;
-      final newGs    = MemoryMatrixState.gridSizeForLevel(newLevel);
+      final newGs = MemoryMatrixState.gridSizeForLevel(newLevel);
       _ensureCellControllers(newGs);
-      setState(() => _game = _game.copyWith(
-        score:            newScore,
-        level:            newLevel,
-        phase:            MemoryMatrixPhase.levelUp,
-        highlightedCells: {},
-      ));
+      setState(
+        () => _game = _game.copyWith(
+          score: newScore,
+          level: newLevel,
+          phase: MemoryMatrixPhase.levelUp,
+          highlightedCells: {},
+        ),
+      );
       _scaleCtrl.forward(from: 0.0);
       HapticFeedback.heavyImpact();
       await Future.delayed(const Duration(milliseconds: 1600));
@@ -296,16 +282,21 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       final newLives = _game.lives - 1;
       HapticFeedback.vibrate();
       if (newLives <= 0) {
-        setState(() => _game = _game.copyWith(
-          lives:            0,
-          phase:            MemoryMatrixPhase.gameOver,
-          highlightedCells: {},
-        ));
+        setState(
+          () => _game = _game.copyWith(
+            lives: 0,
+            mistakes: _game.mistakes + 1, // final mistake — game over
+            phase: MemoryMatrixPhase.gameOver,
+            highlightedCells: {},
+          ),
+        );
         _fadeCtrl.forward(from: 0.0);
         _submitGameResult();
       } else {
+        // FIX: was _game.mistakes (not incrementing) — now correctly +1
         setState(() => _game = _game.copyWith(
-          lives:            newLives,
+          lives: newLives,
+          mistakes: _game.mistakes + 1,
           highlightedCells: {},
         ));
         _startRound();
@@ -316,15 +307,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   // ── Submit result to backend ───────────────────────────────────────────────
 
   Future<void> _submitGameResult() async {
-    final timePlayed = _gameStartTime != null
-        ? DateTime.now().difference(_gameStartTime!).inSeconds
-        : 0;
+    final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     final result = await GameService.submitResult(
-      gameType:          'memory_matrix',
-      score:             _game.score,
+      gameType: 'memory_matrix',
+      score: _game.score,
       timePlayedSeconds: timePlayed,
-      completed:         false,
-      levelReached:      _game.level,
+      completed: false,
+      levelReached: _game.level,
+      mistakes: _game.mistakes, // FIX: was _game.mistakes + 1 (double counting)
     );
     if (result != null && mounted) {
       context.read<UserProvider>().updateFocusScore(result.newFocusScore);
@@ -335,16 +325,29 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: _bg,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
-              Expanded(child: _buildBody()),
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final isPlaying =
+            _game.phase != MemoryMatrixPhase.idle && _game.phase != MemoryMatrixPhase.gameOver;
+        if (isPlaying) {
+          _cancelInputTimer();
+          await _submitGameResult();
+        }
+        if (mounted) Navigator.pop(context);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(child: _buildBody()),
+              ],
+            ),
           ),
         ),
       ),
@@ -354,8 +357,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   // ── App bar ────────────────────────────────────────────────────────────────
 
   Widget _buildAppBar() {
-    final showStats = _game.phase != MemoryMatrixPhase.idle &&
-        _game.phase != MemoryMatrixPhase.gameOver;
+    final showStats = _game.phase != MemoryMatrixPhase.idle && _game.phase != MemoryMatrixPhase.gameOver;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -365,10 +367,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           const Spacer(),
           if (showStats) MemoryMatrixScoreChip(score: _game.score, level: _game.level),
           const Spacer(),
-          if (showStats)
-            MemoryMatrixLivesRow(lives: _game.lives)
-          else
-            const SizedBox(width: 40),
+          if (showStats) MemoryMatrixLivesRow(lives: _game.lives) else const SizedBox(width: 40),
         ],
       ),
     );
@@ -391,10 +390,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
         return _buildLevelUpScreen();
 
       case MemoryMatrixPhase.gameOver:
-        return FadeTransition(
-          opacity: _fadeAnim,
-          child: _buildGameOverScreen(),
-        );
+        return FadeTransition(opacity: _fadeAnim, child: _buildGameOverScreen());
 
       default:
         return _buildGameScreen();
@@ -410,18 +406,10 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
         children: [
           Text(
             '${_game.countdownValue}',
-            style: const TextStyle(
-              color:       _accent,
-              fontSize:    96,
-              fontWeight:  FontWeight.w800,
-              letterSpacing: -4,
-            ),
+            style: const TextStyle(color: _accent, fontSize: 96, fontWeight: FontWeight.w800, letterSpacing: -4),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Get ready...',
-            style: TextStyle(color: _textMuted, fontSize: 16),
-          ),
+          const Text('Get ready...', style: TextStyle(color: _textMuted, fontSize: 16)),
         ],
       ),
     );
@@ -435,16 +423,15 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     final totalSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
 
     final label = switch (_game.phase) {
-      MemoryMatrixPhase.showing  => 'Watch carefully...',
-      MemoryMatrixPhase.input    => 'Select $needed cells',
+      MemoryMatrixPhase.showing => 'Watch carefully...',
+      MemoryMatrixPhase.input => 'Select $needed cells',
       MemoryMatrixPhase.checking => 'Checking...',
-      _                          => '',
+      _ => '',
     };
 
     return Column(
       children: [
         const SizedBox(height: 12),
-        // Status label + timer on same row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
@@ -456,10 +443,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
               ),
               if (_game.phase == MemoryMatrixPhase.input) ...[
                 const SizedBox(width: 16),
-                MemoryMatrixTimerRing(
-                  timeLeft:  _game.timeLeft,
-                  totalTime: totalSecs,
-                ),
+                MemoryMatrixTimerRing(timeLeft: _game.timeLeft, totalTime: totalSecs),
               ],
             ],
           ),
@@ -472,13 +456,13 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
               child: AspectRatio(
                 aspectRatio: 1,
                 child: MemoryMatrixGrid(
-                  gridSize:         gs,
-                  phase:            _game.phase,
-                  pattern:          _game.pattern,
-                  playerInput:      _game.playerInput,
+                  gridSize: gs,
+                  phase: _game.phase,
+                  pattern: _game.pattern,
+                  playerInput: _game.playerInput,
                   highlightedCells: _game.highlightedCells,
-                  cellAnimations:   _cellAnim,
-                  onCellTap:        _onCellTap,
+                  cellAnimations: _cellAnim,
+                  onCellTap: _onCellTap,
                 ),
               ),
             ),
@@ -492,7 +476,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
                   child: _SubmitButton(
                     selected: _game.selectedCount,
                     required: needed,
-                    onTap:    _game.selectedCount == needed ? _submitAnswer : null,
+                    onTap: _game.selectedCount == needed ? _submitAnswer : null,
                   ),
                 )
               : const SizedBox(height: 72),
@@ -512,38 +496,22 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width:  90,
+              width: 90,
               height: 90,
               decoration: BoxDecoration(
-                shape:    BoxShape.circle,
-                gradient: const RadialGradient(
-                  colors: [Color(0xFFFFD166), Color(0xFFFF9A3C)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color:      _gold.withOpacity(0.4),
-                    blurRadius: 32,
-                    spreadRadius: 4,
-                  ),
-                ],
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(colors: [Color(0xFFFFD166), Color(0xFFFF9A3C)]),
+                boxShadow: [BoxShadow(color: _gold.withOpacity(0.4), blurRadius: 32, spreadRadius: 4)],
               ),
               child: const Icon(Icons.star_rounded, color: Colors.white, size: 48),
             ),
             const SizedBox(height: 20),
             const Text(
               'Level Up!',
-              style: TextStyle(
-                color:       Colors.white,
-                fontSize:    34,
-                fontWeight:  FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.5),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Now on level ${_game.level}',
-              style: const TextStyle(color: _textMuted, fontSize: 16),
-            ),
+            Text('Now on level ${_game.level}', style: const TextStyle(color: _textMuted, fontSize: 16)),
             if (_currentGridSize > prevGs) ...[
               const SizedBox(height: 6),
               Text(
@@ -554,11 +522,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
             const SizedBox(height: 6),
             Text(
               '+${_game.roundPoints(prevGs)} pts',
-              style: const TextStyle(
-                color:      _gold,
-                fontSize:   20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -576,11 +540,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width:  88,
+              width: 88,
               height: 88,
               decoration: BoxDecoration(
-                shape:  BoxShape.circle,
-                color:  _wrong.withOpacity(0.12),
+                shape: BoxShape.circle,
+                color: _wrong.withOpacity(0.12),
                 border: Border.all(color: _wrong.withOpacity(0.3), width: 1.5),
               ),
               child: const Icon(Icons.close_rounded, color: _wrong, size: 44),
@@ -588,25 +552,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
             const SizedBox(height: 24),
             const Text(
               'Game Over',
-              style: TextStyle(
-                color:       Colors.white,
-                fontSize:    32,
-                fontWeight:  FontWeight.w700,
-                letterSpacing: -0.5,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.5),
             ),
             const SizedBox(height: 28),
-            MemoryMatrixStatRow(
-              label:      'Final Score',
-              value:      '${_game.score} pts',
-              valueColor: _accent,
-            ),
+            MemoryMatrixStatRow(label: 'Final Score', value: '${_game.score} pts', valueColor: _accent),
             const SizedBox(height: 8),
-            MemoryMatrixStatRow(
-              label:      'Level Reached',
-              value:      '${_game.level}',
-              valueColor: _gold,
-            ),
+            MemoryMatrixStatRow(label: 'Level Reached', value: '${_game.level}', valueColor: _gold),
+            const SizedBox(height: 8),
+            MemoryMatrixStatRow(label: 'Mistakes', value: '${_game.mistakes}', valueColor: _wrong),
             const SizedBox(height: 48),
             _PrimaryButton(label: 'Play Again', onTap: _startGame),
             const SizedBox(height: 12),
@@ -630,32 +583,24 @@ class _BackButton extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width:  40,
+      width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color:        const Color(0xFF0F1420),
+        color: const Color(0xFF0F1420),
         borderRadius: BorderRadius.circular(12),
-        border:       Border.all(color: const Color(0xFF1E2840)),
+        border: Border.all(color: const Color(0xFF1E2840)),
       ),
-      child: const Icon(
-        Icons.arrow_back_ios_new_rounded,
-        color: Colors.white,
-        size:  16,
-      ),
+      child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
     ),
   );
 }
 
 class _SubmitButton extends StatelessWidget {
-  final int          selected;
-  final int          required;
+  final int selected;
+  final int required;
   final VoidCallback? onTap;
 
-  const _SubmitButton({
-    required this.selected,
-    required this.required,
-    required this.onTap,
-  });
+  const _SubmitButton({required this.selected, required this.required, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -664,34 +609,30 @@ class _SubmitButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        width:    double.infinity,
-        padding:  const EdgeInsets.symmetric(vertical: 16),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          gradient: ready
-              ? const LinearGradient(
-                  colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)],
-                )
-              : null,
-          color:         ready ? null : const Color(0xFF0F1420),
-          borderRadius:  BorderRadius.circular(16),
-          border:        ready ? null : Border.all(color: const Color(0xFF1E2840)),
+          gradient: ready ? const LinearGradient(colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)]) : null,
+          color: ready ? null : const Color(0xFF0F1420),
+          borderRadius: BorderRadius.circular(16),
+          border: ready ? null : Border.all(color: const Color(0xFF1E2840)),
           boxShadow: ready
-              ? [BoxShadow(
-                  color:  const Color(0xFF5B8FFF).withOpacity(0.35),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                )]
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF5B8FFF).withOpacity(0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
               : null,
         ),
         child: Center(
           child: Text(
-            ready
-                ? 'Submit Answer'
-                : 'Select $selected / $required cells',
+            ready ? 'Submit Answer' : 'Select $selected / $required cells',
             style: TextStyle(
-              color:       ready ? Colors.white : const Color(0xFF6B7A99),
-              fontWeight:  FontWeight.w700,
-              fontSize:    16,
+              color: ready ? Colors.white : const Color(0xFF6B7A99),
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
               letterSpacing: 0.2,
             ),
           ),
@@ -710,30 +651,19 @@ class _PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width:   double.infinity,
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)],
-        ),
+        gradient: const LinearGradient(colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)]),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color:  const Color(0xFF5B8FFF).withOpacity(0.4),
-            blurRadius:  24,
-            offset: const Offset(0, 10),
-          ),
+          BoxShadow(color: const Color(0xFF5B8FFF).withOpacity(0.4), blurRadius: 24, offset: const Offset(0, 10)),
         ],
       ),
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color:       Colors.white,
-            fontWeight:  FontWeight.w700,
-            fontSize:    16,
-            letterSpacing: 0.3,
-          ),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.3),
         ),
       ),
     ),
@@ -749,21 +679,17 @@ class _SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width:   double.infinity,
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color:        const Color(0xFF0F1420),
+        color: const Color(0xFF0F1420),
         borderRadius: BorderRadius.circular(16),
-        border:       Border.all(color: const Color(0xFF1E2840)),
+        border: Border.all(color: const Color(0xFF1E2840)),
       ),
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color:      Color(0xFF6B7A99),
-            fontWeight: FontWeight.w600,
-            fontSize:   15,
-          ),
+          style: const TextStyle(color: Color(0xFF6B7A99), fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
     ),

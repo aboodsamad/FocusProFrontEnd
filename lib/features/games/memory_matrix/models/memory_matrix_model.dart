@@ -8,24 +8,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The phase the game is currently in.
-enum MemoryMatrixPhase {
-  idle,
-  countdown,
-  showing,
-  input,
-  checking,
-  levelUp,
-  gameOver,
-}
+enum MemoryMatrixPhase { idle, countdown, showing, input, checking, levelUp, gameOver }
 
 /// The visual state of a single cell.
 enum MemoryMatrixCellState {
   idle,
-  highlighted,  // pattern is being shown
-  selected,     // player tapped it
-  correct,      // right — player hit it
-  missed,       // pattern cell the player missed
-  wrong,        // player tapped a non-pattern cell
+  highlighted, // pattern is being shown
+  selected, // player tapped it
+  correct, // right — player hit it
+  missed, // pattern cell the player missed
+  wrong, // player tapped a non-pattern cell
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +32,7 @@ class MemoryMatrixState {
   final int lives;
   final MemoryMatrixPhase phase;
   final int countdownValue;
+  final int mistakes;
 
   /// Seconds remaining during the input phase (counts down to 0).
   final int timeLeft;
@@ -63,43 +56,47 @@ class MemoryMatrixState {
     required this.pattern,
     required this.playerInput,
     required this.highlightedCells,
+    required this.mistakes,
   });
 
   /// Default initial state shown on the idle screen.
   factory MemoryMatrixState.initial(int gridSize) {
     return MemoryMatrixState(
-      level:            1,
-      score:            0,
-      lives:            3,
-      phase:            MemoryMatrixPhase.idle,
-      countdownValue:   3,
-      timeLeft:         inputSecondsForLevel(1),
-      pattern:          List.generate(gridSize, (_) => List.filled(gridSize, false)),
-      playerInput:      List.generate(gridSize, (_) => List.filled(gridSize, false)),
+      level: 1,
+      score: 0,
+      lives: 3,
+      mistakes: 0,
+      phase: MemoryMatrixPhase.idle,
+      countdownValue: 3,
+      timeLeft: inputSecondsForLevel(1),
+      pattern: List.generate(gridSize, (_) => List.filled(gridSize, false)),
+      playerInput: List.generate(gridSize, (_) => List.filled(gridSize, false)),
       highlightedCells: {},
     );
   }
 
   MemoryMatrixState copyWith({
-    int?                    level,
-    int?                    score,
-    int?                    lives,
-    MemoryMatrixPhase?      phase,
-    int?                    countdownValue,
-    int?                    timeLeft,
-    List<List<bool>>?       pattern,
-    List<List<bool>>?       playerInput,
-    Set<int>?               highlightedCells,
+    int? level,
+    int? score,
+    int? lives,
+    int? mistakes,
+    MemoryMatrixPhase? phase,
+    int? countdownValue,
+    int? timeLeft,
+    List<List<bool>>? pattern,
+    List<List<bool>>? playerInput,
+    Set<int>? highlightedCells,
   }) {
     return MemoryMatrixState(
-      level:            level            ?? this.level,
-      score:            score            ?? this.score,
-      lives:            lives            ?? this.lives,
-      phase:            phase            ?? this.phase,
-      countdownValue:   countdownValue   ?? this.countdownValue,
-      timeLeft:         timeLeft         ?? this.timeLeft,
-      pattern:          pattern          ?? this.pattern,
-      playerInput:      playerInput      ?? this.playerInput,
+      level: level ?? this.level,
+      score: score ?? this.score,
+      lives: lives ?? this.lives,
+      phase: phase ?? this.phase,
+      mistakes: mistakes ?? this.mistakes,
+      countdownValue: countdownValue ?? this.countdownValue,
+      timeLeft: timeLeft ?? this.timeLeft,
+      pattern: pattern ?? this.pattern,
+      playerInput: playerInput ?? this.playerInput,
       highlightedCells: highlightedCells ?? this.highlightedCells,
     );
   }
