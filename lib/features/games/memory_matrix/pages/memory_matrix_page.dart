@@ -285,7 +285,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         setState(
           () => _game = _game.copyWith(
             lives: 0,
-            mistakes: _game.mistakes + 1, // final mistake — game over
+            mistakes: _game.mistakes + 1,
             phase: MemoryMatrixPhase.gameOver,
             highlightedCells: {},
           ),
@@ -293,7 +293,6 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         _fadeCtrl.forward(from: 0.0);
         _submitGameResult();
       } else {
-        // FIX: was _game.mistakes (not incrementing) — now correctly +1
         setState(() => _game = _game.copyWith(
           lives: newLives,
           mistakes: _game.mistakes + 1,
@@ -314,7 +313,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       timePlayedSeconds: timePlayed,
       completed: false,
       levelReached: _game.level,
-      mistakes: _game.mistakes, // FIX: was _game.mistakes + 1 (double counting)
+      mistakes: _game.mistakes,
     );
     if (result != null && mounted) {
       context.read<UserProvider>().updateFocusScore(result.newFocusScore);

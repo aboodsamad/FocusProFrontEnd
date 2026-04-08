@@ -176,6 +176,16 @@ class _TOTState extends State<TrainOfThoughtPage>
     // ── decay visual flashes ──────────────────────────────────────────────────
     _decayFlashes(dt);
  
+    // ── check game over (too many wrong deliveries) ────────────────────────────
+    if (_wrong >= _cfg.allowedMistakes) {
+      _ticker.stop();
+      _phase = _Phase.gameOver;
+      _winAnim.forward(from: 0);
+      _submitResult(completed: false);
+      setState(() {});
+      return;
+    }
+
     // ── check completion ──────────────────────────────────────────────────────
     final allSpawned = _spawned >= _activeSequence.length;
     final allDone    = _trains.every((t) => t.done);
@@ -301,7 +311,18 @@ class _TOTState extends State<TrainOfThoughtPage>
  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _Phase.playing) {
+          _ticker.stop();
+          _phase = _Phase.idle; // prevent further tick processing
+          await _submitResult(completed: false);
+        }
+        if (mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF2E7D32),
       body: SafeArea(
         child: Column(
@@ -336,15 +357,28 @@ class _TOTState extends State<TrainOfThoughtPage>
                             const Duration(milliseconds: 200), _startGame);
                       },
                     ),
+                  if (_phase == _Phase.gameOver)
+                    _GameOverOverlay(
+                      level:   _level,
+                      correct: _correct,
+                      wrong:   _wrong,
+                      anim:    _winAnim,
+                      onRetry: () {
+                        _winAnim.reset();
+                        _loadLevel(_level);
+                        Future.delayed(
+                            const Duration(milliseconds: 200), _startGame);
+                      },
+                    ),
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
+    )); // PopScope
   }
- 
+
   Widget _buildBoard() {
     return LayoutBuilder(builder: (ctx, box) {
       final w = box.maxWidth;
@@ -1175,6 +1209,81 @@ class _CompleteOverlay extends StatelessWidget {
   }
 }
  
+// ─────────────────────────────────────────────────────────────────────────────
+// _GameOverOverlay — shown when wrong deliveries reach allowedMistakes
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GameOverOverlay extends StatelessWidget {
+  final int level;
+  final int correct;
+  final int wrong;
+  final AnimationController anim;
+  final VoidCallback onRetry;
+
+  const _GameOverOverlay({
+    required this.level,
+    required this.correct,
+    required this.wrong,
+    required this.anim,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.60),
+        child: Center(
+          child: AnimatedBuilder(
+            animation: anim,
+            builder: (_, child) => Transform.scale(
+              scale: 0.85 +
+                  0.15 *
+                      CurvedAnimation(parent: anim, curve: Curves.elasticOut)
+                          .value,
+              child: child,
+            ),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black38,
+                      blurRadius: 28,
+                      offset: Offset(0, 6)),
+                ],
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.train_rounded,
+                    color: Color(0xFFE53935), size: 54),
+                const SizedBox(height: 10),
+                const Text('Too Many Crashes!',
+                    style: TextStyle(
+                        color: Color(0xFF212121),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text('Level $level',
+                    style: const TextStyle(
+                        color: Color(0xFF757575), fontSize: 14)),
+                const SizedBox(height: 14),
+                _Row(label: 'Correct',  value: '$correct'),
+                const SizedBox(height: 6),
+                _Row(label: 'Crashes',  value: '$wrong'),
+                const SizedBox(height: 22),
+                _GreenBtn(label: 'Try Again', onTap: onRetry),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Row extends StatelessWidget {
   final String label;
   final String value;

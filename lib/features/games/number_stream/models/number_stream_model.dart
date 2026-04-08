@@ -66,6 +66,9 @@ class NumberStreamState {
 
   final int countdown;
 
+  /// Total wrong answers + missed equations across the whole game session.
+  final int mistakes;
+
   /// The equation currently falling. Null when between equations.
   final StreamEquation? equation;
 
@@ -79,6 +82,7 @@ class NumberStreamState {
     required this.solved,
     required this.perLevel,
     required this.countdown,
+    required this.mistakes,
     this.equation,
   });
 
@@ -92,6 +96,7 @@ class NumberStreamState {
         solved:     0,
         perLevel:   8,
         countdown:  3,
+        mistakes:   0,
       );
 
   NumberStreamState copyWith({
@@ -104,6 +109,7 @@ class NumberStreamState {
     int?                  solved,
     int?                  perLevel,
     int?                  countdown,
+    int?                  mistakes,
     StreamEquation?       equation,
     bool                  clearEquation = false,
   }) {
@@ -117,6 +123,7 @@ class NumberStreamState {
       solved:     solved     ?? this.solved,
       perLevel:   perLevel   ?? this.perLevel,
       countdown:  countdown  ?? this.countdown,
+      mistakes:   mistakes   ?? this.mistakes,
       equation:   clearEquation ? null : (equation ?? this.equation),
     );
   }
@@ -141,6 +148,9 @@ class NumberStreamState {
 // ─────────────────────────────────────────────────────────────────────────────
 
 int _eqCounter = 0;
+
+/// Resets the equation ID counter — call this at the start of each new game.
+void resetEqCounter() => _eqCounter = 0;
 
 StreamEquation generateEquation(int level) {
   final rng = Random();

@@ -19,23 +19,6 @@ const _kCardBg  = Color(0xFF0F1624);
 const _kPrimary = Color(0xFF6366F1);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Standalone entry point (kept for debugging; app uses SudokuHomePage directly)
-// ─────────────────────────────────────────────────────────────────────────────
-
-void main() => runApp(const _SudokuApp());
-
-class _SudokuApp extends StatelessWidget {
-  const _SudokuApp();
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-        title: 'Sudoku',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const SudokuHomePage(),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SudokuHomePage
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -222,6 +205,14 @@ class _SudokuHomePageState extends State<SudokuHomePage>
     return true;
   }
 
+  /// Score = base points minus time penalty and mistake penalty, scaled by difficulty.
+  /// Floors at 100 so a completed puzzle always rewards something.
+  int _calculateScore() {
+    final base        = (1000 - mistakes * 40 - (seconds ~/ 2)).clamp(100, 1000);
+    final multiplier  = difficulty == 'Easy' ? 1.0 : difficulty == 'Medium' ? 1.5 : 2.0;
+    return (base * multiplier).round();
+  }
+
   void _onWin() {
     gameWon = true;
     _stopTimer();
@@ -232,9 +223,9 @@ class _SudokuHomePageState extends State<SudokuHomePage>
   Future<void> _submitResult() async {
     final result = await GameService.submitResult(
       gameType:          'sudoku',
-      score:             0,
+      score:             _calculateScore(),
       timePlayedSeconds: seconds,
-      completed:         true,
+      completed:         gameWon,
       mistakes:          mistakes,
     );
     if (result != null && mounted) {
@@ -336,7 +327,18 @@ class _SudokuHomePageState extends State<SudokuHomePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        // Submit partial result if a game is in progress and not yet won
+        if (!gameWon && seconds > 0) {
+          _stopTimer();
+          await _submitResult();
+        }
+        if (mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
         child: Column(
@@ -457,6 +459,6 @@ class _SudokuHomePageState extends State<SudokuHomePage>
           ],
         ),
       ),
-    );
+    )); // PopScope
   }
 }

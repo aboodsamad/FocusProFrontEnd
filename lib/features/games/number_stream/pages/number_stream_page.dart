@@ -126,6 +126,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
 
   void _startGame() {
     _startTime = DateTime.now();
+    resetEqCounter(); // reset equation ID counter so IDs start from 1 each game
     setState(() {
       _game    = NumberStreamState.initial().copyWith(phase: NumberStreamPhase.countdown);
       _cdValue = 3;
@@ -228,7 +229,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
     final newLives = _game.lives - 1;
-    setState(() => _game = _game.copyWith(lives: newLives, streak: 0));
+    setState(() => _game = _game.copyWith(lives: newLives, streak: 0, mistakes: _game.mistakes + 1));
     Future.delayed(const Duration(milliseconds: 750), () {
       if (!mounted) return;
       newLives <= 0 ? _endGame() : _nextEquation();
@@ -239,7 +240,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
     final newLives = _game.lives - 1;
-    setState(() => _game = _game.copyWith(lives: newLives, streak: 0, clearEquation: true));
+    setState(() => _game = _game.copyWith(lives: newLives, streak: 0, mistakes: _game.mistakes + 1, clearEquation: true));
     Future.delayed(const Duration(milliseconds: 550), () {
       if (!mounted) return;
       newLives <= 0 ? _endGame() : _nextEquation();
@@ -261,6 +262,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
       timePlayedSeconds: secs,
       completed:         false,
       levelReached:      _game.level,
+      mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {
       context.read<UserProvider>().updateFocusScore(result.newFocusScore);
@@ -293,7 +295,19 @@ class _NumberStreamPageState extends State<NumberStreamPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final isPlaying = _game.phase == NumberStreamPhase.playing ||
+            _game.phase == NumberStreamPhase.levelUp;
+        if (isPlaying) {
+          _fallCtrl.stop();
+          await _submitResult();
+        }
+        if (mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: _kBg,
       body: AnimatedBuilder(
         animation: Listenable.merge([
@@ -350,22 +364,15 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                       );
                     }),
                   ),
-                  // Answer grid — only shown while playing
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    child: (_game.phase == NumberStreamPhase.playing ||
-                            (_game.phase == NumberStreamPhase.levelUp && _feedback))
-                        ? _buildAnswerGrid()
-                        : const SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: 20),
+                  // Answer grid — fixed height so it never causes overflow on rotation
+                  _buildAnswerSection(context),
                 ],
               ),
             ),
           );
         },
       ),
-    );
+    )); // PopScope
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -546,16 +553,23 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildFallingEquation(BoxConstraints box) {
-    final eq      = _game.equation!;
-    final t       = _fallCtrl.value;                        // 0 → 1
-    final topY    = t * (box.maxHeight - 120);
-    final danger  = (t * 1.6).clamp(0.0, 1.0);
-    final glowCol = Color.lerp(_kAccent, _kWrong, danger)!;
-    final scale   = 1.0 + t * 0.12;
+    final eq       = _game.equation!;
+    final t        = _fallCtrl.value;
+    final topY     = t * (box.maxHeight - 130);
+    final danger   = (t * 1.6).clamp(0.0, 1.0);
+    final glowCol  = Color.lerp(_kAccent, _kWrong, danger)!;
+    final scale    = 1.0 + t * 0.08;
 
-    // Feedback override colour
     Color borderCol = glowCol;
     if (_feedback) borderCol = _correct ? _kCorrect : _kWrong;
+
+    // Responsive sizing relative to the available play-area width
+    final areaW    = box.maxWidth;
+    final eqFontSz = (areaW * 0.10).clamp(28.0, 46.0);
+    final subFontSz = (areaW * 0.055).clamp(16.0, 24.0);
+    final hPad     = (areaW * 0.08).clamp(20.0, 40.0);
+    final vPad     = (box.maxHeight * 0.04).clamp(12.0, 24.0);
+    final maxW     = (areaW * 0.75).clamp(200.0, 340.0);
 
     return Positioned(
       top: topY,
@@ -565,19 +579,25 @@ class _NumberStreamPageState extends State<NumberStreamPage>
         scale: scale,
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 22),
+            constraints: BoxConstraints(maxWidth: maxW),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
             decoration: BoxDecoration(
-              color: _kCard,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: borderCol.withOpacity(0.85), width: 2),
+              // Clearly lighter than the background so it always stands out
+              color: const Color(0xFF1E2D45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderCol, width: 2.5),
               boxShadow: [
                 BoxShadow(
-                    color: borderCol.withOpacity(0.38),
-                    blurRadius: 28,
-                    spreadRadius: 2),
+                    color: borderCol.withOpacity(0.55),
+                    blurRadius: 32,
+                    spreadRadius: 3),
                 BoxShadow(
-                    color: borderCol.withOpacity(0.14), blurRadius: 70),
+                    color: borderCol.withOpacity(0.18), blurRadius: 80),
+                // Inner subtle highlight for depth
+                BoxShadow(
+                    color: Colors.white.withOpacity(0.04),
+                    blurRadius: 0,
+                    spreadRadius: -1),
               ],
             ),
             child: Column(
@@ -586,26 +606,26 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                 Text(
                   eq.expression,
                   style: TextStyle(
-                    color: _kText,
-                    fontSize: 36,
+                    color: Colors.white,
+                    fontSize: eqFontSz,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
+                    letterSpacing: 2,
                     shadows: [
-                      Shadow(
-                          color: borderCol.withOpacity(0.7), blurRadius: 16)
+                      Shadow(color: borderCol.withOpacity(0.8), blurRadius: 20)
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('= ?',
-                        style: TextStyle(
-                            color: borderCol,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700)),
-                  ],
+                SizedBox(height: vPad * 0.4),
+                Text(
+                  '= ?',
+                  style: TextStyle(
+                    color: borderCol,
+                    fontSize: subFontSz,
+                    fontWeight: FontWeight.w800,
+                    shadows: [
+                      Shadow(color: borderCol.withOpacity(0.6), blurRadius: 10)
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -616,74 +636,100 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Answer section — fixed height so landscape rotation never overflows
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Wraps the answer grid in a fixed-height slot.
+  /// The slot is always the same height whether the grid is shown or not,
+  /// so the Expanded game-area above never jumps or shrinks.
+  Widget _buildAnswerSection(BuildContext context) {
+    final mq      = MediaQuery.of(context);
+    final screenH = mq.size.height;
+    final btnH    = (screenH * 0.075).clamp(44.0, 62.0);
+    // total slot = 2 button rows + 1 gap + top padding + bottom padding
+    final slotH   = btnH * 2 + 10 + 10 + 12;
+
+    final show = _game.phase == NumberStreamPhase.playing ||
+        (_game.phase == NumberStreamPhase.levelUp && _feedback);
+
+    return SizedBox(
+      height: slotH,
+      child: AnimatedOpacity(
+        opacity: show ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: show ? _buildAnswerGrid(context, btnH) : const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Answer grid (2 × 2)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Widget _buildAnswerGrid() {
+  Widget _buildAnswerGrid(BuildContext context, double btnH) {
     if (_game.equation == null) return const SizedBox.shrink();
-    final choices = _game.equation!.choices;
-    final correct = _game.equation!.answer;
+    final choices   = _game.equation!.choices;
+    final correct   = _game.equation!.answer;
+    final screenW   = MediaQuery.of(context).size.width;
+    final fontSize  = (screenW * 0.055).clamp(18.0, 26.0);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 3.0,
-        ),
-        itemCount: 4,
-        itemBuilder: (_, i) {
-          final choice = choices[i];
+    Widget btn(int i) {
+      final choice    = choices[i];
+      Color bg        = _kCard;
+      Color border    = _kBorder;
+      Color textColor = _kText;
 
-          Color bg         = _kCard;
-          Color border     = _kBorder;
-          Color textColor  = _kText;
+      if (_feedback) {
+        if (_tappedIdx == i) {
+          bg        = (_correct ? _kCorrect : _kWrong).withOpacity(0.18);
+          border    = _correct ? _kCorrect : _kWrong;
+          textColor = _correct ? _kCorrect : _kWrong;
+        } else if (choice == correct && !_correct) {
+          bg        = _kCorrect.withOpacity(0.10);
+          border    = _kCorrect.withOpacity(0.55);
+          textColor = _kCorrect;
+        }
+      }
 
-          if (_feedback) {
-            if (_tappedIdx == i) {
-              bg      = (_correct ? _kCorrect : _kWrong).withOpacity(0.16);
-              border  = _correct ? _kCorrect : _kWrong;
-              textColor = _correct ? _kCorrect : _kWrong;
-            } else if (choice == correct && !_correct) {
-              bg      = _kCorrect.withOpacity(0.10);
-              border  = _kCorrect.withOpacity(0.55);
-              textColor = _kCorrect;
-            }
-          }
-
-          return GestureDetector(
-            onTap: () => _onAnswerTap(choice, i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: border, width: 1.5),
-                boxShadow: border != _kBorder
-                    ? [
-                        BoxShadow(
-                            color: border.withOpacity(0.35), blurRadius: 14)
-                      ]
-                    : [],
-              ),
-              child: Center(
-                child: Text(
-                  '$choice',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => _onAnswerTap(choice, i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: btnH,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: border, width: 1.5),
+              boxShadow: border != _kBorder
+                  ? [BoxShadow(color: border.withOpacity(0.35), blurRadius: 14)]
+                  : [],
+            ),
+            child: Center(
+              child: Text(
+                '$choice',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [btn(0), const SizedBox(width: 10), btn(1)]),
+          const SizedBox(height: 10),
+          Row(children: [btn(2), const SizedBox(width: 10), btn(3)]),
+        ],
       ),
     );
   }
