@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/diagnostic_question.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -23,35 +24,25 @@ class AttentionTaskWidget extends StatefulWidget {
 }
 
 class _AttentionTaskWidgetState extends State<AttentionTaskWidget> {
-
   void _submit(int optionIndex) {
     final letters = ['A', 'B', 'C', 'D'];
     widget.onAnswered(DiagnosticAnswer(
-      questionId:     widget.question.id,
+      questionId: widget.question.id,
       selectedOption: letters[optionIndex],
-      pointsEarned:   widget.question.points[optionIndex],
+      pointsEarned: widget.question.points[optionIndex],
     ));
   }
 
   @override
   Widget build(BuildContext context) {
-    // Q5: focus timer task
-    if (widget.question.id == 5) {
-      return _FocusTimerTask(onDone: _submit);
-    }
-    // Q6: re-read tracker task
-    if (widget.question.id == 6) {
-      return _RereadTrackerTask(onDone: _submit);
-    }
-    // Q7–Q9: regular option cards
+    if (widget.question.id == 5) return _FocusTimerTask(onDone: _submit);
+    if (widget.question.id == 6) return _RereadTrackerTask(onDone: _submit);
     return _OptionCards(question: widget.question, onSelect: _submit);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Q5 — Focus Timer Task
-// User taps START, tries to stay focused, taps STOP when mind wanders.
-// Time → mapped to A/B/C/D:  >45min=A  20-45=B  10-20=C  <10=D
 // ─────────────────────────────────────────────────────────────────────────────
 class _FocusTimerTask extends StatefulWidget {
   final void Function(int optionIndex) onDone;
@@ -69,22 +60,26 @@ class _FocusTimerTaskState extends State<_FocusTimerTask> {
 
   void _start() {
     setState(() => _running = true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _seconds++);
     });
   }
 
   void _stop() {
     _timer?.cancel();
-    setState(() { _running = false; _done = true; });
+    setState(() {
+      _running = false;
+      _done = true;
+    });
   }
 
   int _toOptionIndex() {
     final minutes = _seconds / 60;
-    if (minutes > 45)       return 0; // A — +5
-    if (minutes >= 20)      return 1; // B — +3
-    if (minutes >= 10)      return 2; // C — +1
-    return 3;                         // D — +0
+    if (minutes > 45) return 0;
+    if (minutes >= 20) return 1;
+    if (minutes >= 10) return 2;
+    return 3;
   }
 
   String get _formatted {
@@ -94,144 +89,220 @@ class _FocusTimerTaskState extends State<_FocusTimerTask> {
   }
 
   @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Instruction card
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AppColors.primaryA.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primaryA.withOpacity(0.12),
+                AppColors.primaryA.withOpacity(0.04),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+                color: AppColors.primaryA.withOpacity(0.25), width: 1.5),
           ),
-          child: Column(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.psychology_outlined,
-                  color: AppColors.primaryA, size: 44),
-              const SizedBox(height: 12),
-              const Text(
-                'Focus Timer Task',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryA.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(11),
                 ),
+                child: const Icon(Icons.psychology_outlined,
+                    color: AppColors.primaryA, size: 20),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _running
-                    ? 'Stay focused on this screen.\nTap STOP the moment your mind wanders.'
-                    : _done
-                        ? 'Great — your result has been recorded.'
-                        : 'Tap START, then stay focused.\nTap STOP when your mind wanders to something else.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Focus Timer Task',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Text(
+                      _running
+                          ? 'Stay focused. Tap STOP the moment your mind wanders.'
+                          : _done
+                              ? 'Great — your result has been recorded.'
+                              : 'Tap START, stay focused. Tap STOP when your mind drifts.',
+                      style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 13,
+                          height: 1.45),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 32),
+        const SizedBox(height: 36),
 
-        // Timer display
-        Text(
-          _formatted,
-          style: TextStyle(
-            fontSize: 56,
-            fontWeight: FontWeight.bold,
-            color: _running ? AppColors.primaryA : Colors.grey[600],
-            fontFeatures: const [FontFeature.tabularFigures()],
+        // Big circular timer
+        Container(
+          width: 168,
+          height: 168,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.04),
+            border: Border.all(
+              color: _running
+                  ? AppColors.primaryA.withOpacity(0.55)
+                  : Colors.grey[800]!,
+              width: 2,
+            ),
+            boxShadow: _running
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryA.withOpacity(0.22),
+                      blurRadius: 28,
+                      spreadRadius: 4,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Text(
+              _formatted,
+              style: TextStyle(
+                fontSize: 46,
+                fontWeight: FontWeight.bold,
+                color:
+                    _running ? AppColors.primaryA : Colors.grey[600],
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
           ),
         ),
 
-        const SizedBox(height: 32),
+        const SizedBox(height: 36),
 
         if (!_done) ...[
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 56,
             child: _running
-                ? ElevatedButton.icon(
-                    onPressed: _stop,
-                    icon: const Icon(Icons.stop_rounded),
-                    label: const Text('My mind just wandered',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
+                ? _gradientButton(
+                    colors: const [Colors.redAccent, Color(0xFFE53935)],
+                    glowColor: Colors.redAccent,
+                    onTap: _stop,
+                    icon: Icons.stop_rounded,
+                    label: 'My mind just wandered',
                   )
-                : ElevatedButton.icon(
-                    onPressed: _start,
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('Start Timer',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryA,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
+                : _gradientButton(
+                    colors: const [AppColors.primaryA, AppColors.primaryB],
+                    glowColor: AppColors.primaryA,
+                    onTap: _start,
+                    icon: Icons.play_arrow_rounded,
+                    label: 'Start Timer',
                   ),
           ),
         ] else ...[
-          // Show result and confirm
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green.withOpacity(0.4)),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF34D399).withOpacity(0.15),
+                  const Color(0xFF34D399).withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: const Color(0xFF34D399).withOpacity(0.4),
+                  width: 1.5),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle_outline, color: Colors.green),
-                const SizedBox(width: 8),
-                Text(
-                  'You focused for $_formatted',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
+                const Icon(Icons.check_circle_outline,
+                    color: Color(0xFF34D399), size: 20),
+                const SizedBox(width: 10),
+                Text('You stayed focused for $_formatted',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14)),
               ],
             ),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () => widget.onDone(_toOptionIndex()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryA,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Next', style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, color: Colors.white),
-                ],
-              ),
+            height: 56,
+            child: _gradientButton(
+              colors: const [AppColors.primaryA, AppColors.primaryB],
+              glowColor: AppColors.primaryA,
+              onTap: () => widget.onDone(_toOptionIndex()),
+              icon: Icons.arrow_forward_rounded,
+              label: 'Next',
             ),
           ),
         ],
       ],
     );
   }
-}
 
+  Widget _gradientButton({
+    required List<Color> colors,
+    required Color glowColor,
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: colors),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: glowColor.withOpacity(0.4),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Q6 — Re-read Tracker Task
-// Show a short paragraph. User taps "Re-read" every time they lose focus.
-// Count of re-reads → mapped to A/B/C/D: 0=A  1-2=B  3-4=C  5+=D
 // ─────────────────────────────────────────────────────────────────────────────
 class _RereadTrackerTask extends StatefulWidget {
   final void Function(int optionIndex) onDone;
@@ -243,7 +314,6 @@ class _RereadTrackerTask extends StatefulWidget {
 
 class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
   int _rereads = 0;
-  bool _finished = false;
 
   static const String _passage =
       'The human brain is remarkably adaptable, but it requires consistent '
@@ -255,10 +325,10 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
       'capacity and lower ability to engage in deep, focused thinking.';
 
   int _toOptionIndex() {
-    if (_rereads == 0)       return 0; // A — +5
-    if (_rereads <= 2)       return 1; // B — +3
-    if (_rereads <= 4)       return 2; // C — +1
-    return 3;                          // D — +0
+    if (_rereads == 0) return 0;
+    if (_rereads <= 2) return 1;
+    if (_rereads <= 4) return 2;
+    return 3;
   }
 
   @override
@@ -266,99 +336,151 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Passage card
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[700]!),
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.07),
+                Colors.white.withOpacity(0.03),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.1), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.menu_book_outlined,
-                      color: AppColors.primaryA, size: 18),
-                  const SizedBox(width: 8),
-                  Text('Read this passage carefully',
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryA.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.auto_stories_rounded,
+                        color: AppColors.primaryA, size: 16),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Read this passage carefully',
                       style: TextStyle(
                           color: AppColors.primaryA,
                           fontWeight: FontWeight.bold,
                           fontSize: 13)),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 _passage,
                 style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 14,
-                  height: 1.6,
-                ),
+                    color: Colors.grey[300], fontSize: 14, height: 1.65),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
 
         Text(
-          'Every time you lose focus and need to re-read a part, tap the button below.',
-          style: TextStyle(color: Colors.grey[400], fontSize: 13),
+          'Tap the button below every time you re-read a sentence.',
+          style:
+              TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.4),
         ),
 
         const SizedBox(height: 16),
 
         // Re-read counter
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _finished
-                    ? null
-                    : () => setState(() => _rereads++),
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(
-                  'I re-read something  ($_rereads)',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.orange,
-                  side: const BorderSide(color: Colors.orange),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() => _rereads++);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.orange.withOpacity(0.15),
+                  Colors.orange.withOpacity(0.06),
+                ],
               ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: Colors.orange.withOpacity(0.4), width: 1.5),
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.refresh_rounded,
+                    color: Colors.orange, size: 22),
+                const SizedBox(width: 10),
+                const Text('I re-read something',
+                    style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15)),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text('$_rereads',
+                      style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17)),
+                ),
+              ],
+            ),
+          ),
         ),
 
         const SizedBox(height: 12),
 
-        // Done reading button
+        // Done reading
         SizedBox(
           width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: () => widget.onDone(_toOptionIndex()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryA,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Done Reading',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, color: Colors.white),
-              ],
+          height: 56,
+          child: GestureDetector(
+            onTap: () => widget.onDone(_toOptionIndex()),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [AppColors.primaryA, AppColors.primaryB]),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryA.withOpacity(0.4),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Done Reading',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_rounded,
+                        color: Colors.white, size: 18),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -368,7 +490,7 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Q7–Q9 — Regular Option Cards (self-reported attention questions)
+// Q7–Q9 — Regular Option Cards (auto-advance on tap)
 // ─────────────────────────────────────────────────────────────────────────────
 class _OptionCards extends StatefulWidget {
   final DiagnosticQuestion question;
@@ -381,116 +503,130 @@ class _OptionCards extends StatefulWidget {
 
 class _OptionCardsState extends State<_OptionCards> {
   int? _selected;
+  bool _advancing = false;
+
+  void _onTap(int i) {
+    if (_advancing) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _selected = i;
+      _advancing = true;
+    });
+    Future.delayed(const Duration(milliseconds: 380), () {
+      if (mounted) widget.onSelect(i);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: [
-        ...List.generate(4, (i) {
-          final isSelected = _selected == i;
-          final label = ['A', 'B', 'C', 'D'][i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: GestureDetector(
-              onTap: () => setState(() => _selected = i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: isSelected
-                      ? LinearGradient(colors: [
-                          AppColors.primaryA,
-                          AppColors.primaryB
-                        ])
-                      : null,
-                  color: isSelected ? null : Colors.white.withOpacity(0.05),
-                  border: Border.all(
-                    color: isSelected
-                        ? Colors.transparent
-                        : Colors.grey[700]!,
-                  ),
+      children: List.generate(4, (i) {
+        final isSelected = _selected == i;
+        final label = ['A', 'B', 'C', 'D'][i];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: GestureDetector(
+            onTap: () => _onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryA, AppColors.primaryB],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      )
+                    : LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.07),
+                          Colors.white.withOpacity(0.03),
+                        ],
+                      ),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primaryA
+                      : Colors.white.withOpacity(0.1),
+                  width: 1.5,
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primaryA.withOpacity(0.4),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? Colors.white.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.06),
+                      border: Border.all(
                         color: isSelected
                             ? Colors.white
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.grey[500]!,
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            color: isSelected
-                                ? AppColors.primaryA
-                                : Colors.grey[400],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
+                            : Colors.white.withOpacity(0.2),
+                        width: 1.5,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
+                    child: Center(
                       child: Text(
-                        widget.question.options[i],
+                        label,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[300],
+                          color:
+                              isSelected ? Colors.white : Colors.grey[400],
+                          fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      widget.question.options[i],
+                      style: TextStyle(
+                        color:
+                            isSelected ? Colors.white : Colors.grey[300],
+                        fontSize: 15,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedOpacity(
+                    opacity: isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 16),
+                    ),
+                  ),
+                ],
               ),
             ),
-          );
-        }),
-
-        const SizedBox(height: 16),
-
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed:
-                _selected != null ? () => widget.onSelect(_selected!) : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryA,
-              disabledBackgroundColor: Colors.grey[800],
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Next',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, color: Colors.white),
-              ],
-            ),
           ),
-        ),
-      ],
+        );
+      }),
     );
   }
 }

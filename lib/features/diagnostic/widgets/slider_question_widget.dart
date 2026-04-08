@@ -25,27 +25,26 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
   bool _hasInteracted = false;
 
   int get _selectedIndex => _sliderValue.round().clamp(0, 3);
-
-  String get _selectedOption =>
-      ['A', 'B', 'C', 'D'][_selectedIndex];
-
-  int get _selectedPoints =>
-      widget.question.points[_selectedIndex];
-
-  String get _selectedLabel =>
-      widget.question.options[_selectedIndex];
+  String get _selectedOption => ['A', 'B', 'C', 'D'][_selectedIndex];
+  int get _selectedPoints => widget.question.points[_selectedIndex];
+  String get _selectedLabel => widget.question.options[_selectedIndex];
 
   Color get _trackColor {
-    // Green → Yellow → Orange → Red as user slides right (worse habits)
-    final colors = [AppColors.primaryA, AppColors.primaryA, Colors.orange, Colors.redAccent];
+    // Green → Blue → Orange → Red as user slides right (worse habits)
+    const colors = [
+      Color(0xFF34D399), // green  (best)
+      AppColors.primaryA, // blue
+      Colors.orange, // orange
+      Colors.redAccent, // red   (worst)
+    ];
     return colors[_selectedIndex];
   }
 
   void _submit() {
     widget.onAnswered(DiagnosticAnswer(
-      questionId:     widget.question.id,
+      questionId: widget.question.id,
       selectedOption: _selectedOption,
-      pointsEarned:   _selectedPoints,
+      pointsEarned: _selectedPoints,
     ));
   }
 
@@ -56,24 +55,42 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         // ── Selected answer display ──────────────────────────────────────────
         AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 220),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _trackColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _trackColor.withOpacity(0.4)),
+            gradient: LinearGradient(
+              colors: [
+                _trackColor.withOpacity(0.13),
+                _trackColor.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: _trackColor.withOpacity(0.35), width: 1.5),
           ),
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: _trackColor,
+                  gradient: LinearGradient(
+                    colors: [
+                      _trackColor,
+                      _trackColor.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _trackColor.withOpacity(0.4),
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Text(
@@ -81,7 +98,7 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 17,
                     ),
                   ),
                 ),
@@ -89,11 +106,16 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  _hasInteracted ? _selectedLabel : 'Move the slider to answer',
+                  _hasInteracted
+                      ? _selectedLabel
+                      : 'Drag the slider to select your answer',
                   style: TextStyle(
                     color: _hasInteracted ? Colors.white : Colors.grey[500],
-                    fontSize: 15,
-                    fontWeight: _hasInteracted ? FontWeight.w500 : FontWeight.normal,
+                    fontSize: 14,
+                    fontWeight: _hasInteracted
+                        ? FontWeight.w500
+                        : FontWeight.normal,
+                    height: 1.35,
                   ),
                 ),
               ),
@@ -101,17 +123,18 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
           ),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
 
         // ── Slider ───────────────────────────────────────────────────────────
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor:   _trackColor,
+            activeTrackColor: _trackColor,
             inactiveTrackColor: Colors.grey[800],
-            thumbColor:         _trackColor,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
-            overlayColor:       _trackColor.withOpacity(0.15),
-            trackHeight:        6,
+            thumbColor: _trackColor,
+            thumbShape:
+                const RoundSliderThumbShape(enabledThumbRadius: 14),
+            overlayColor: _trackColor.withOpacity(0.15),
+            trackHeight: 6,
           ),
           child: Slider(
             value: _sliderValue,
@@ -144,8 +167,11 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
                           : TextAlign.center,
                   style: TextStyle(
                     fontSize: 11,
-                    color: isActive ? _trackColor : Colors.grey[600],
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color:
+                        isActive ? _trackColor : Colors.grey[700],
+                    fontWeight: isActive
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               );
@@ -158,30 +184,51 @@ class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
         // ── Confirm button ────────────────────────────────────────────────
         SizedBox(
           width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _hasInteracted ? _submit : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryA,
-              disabledBackgroundColor: Colors.grey[800],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          height: 54,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _hasInteracted
+                    ? [AppColors.primaryA, AppColors.primaryB]
+                    : [Colors.grey[850]!, Colors.grey[850]!],
               ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: _hasInteracted
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primaryA.withOpacity(0.35),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ]
+                  : null,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Text(
-                  'Confirm',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+            child: ElevatedButton(
+              onPressed: _hasInteracted ? _submit : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, color: Colors.white),
-              ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Confirm',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 18),
+                ],
+              ),
             ),
           ),
         ),
