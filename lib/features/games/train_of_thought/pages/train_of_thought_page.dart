@@ -323,7 +323,7 @@ class _TOTState extends State<TrainOfThoughtPage>
         if (mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFF2E7D32),
+      backgroundColor: const Color(0xFF080D1A),
       body: SafeArea(
         child: Column(
           children: [
@@ -951,58 +951,108 @@ class _Header extends StatelessWidget {
     required this.total,
     required this.onBack,
   });
- 
+
   @override
   Widget build(BuildContext context) {
+    final accuracy = total == 0 ? 0 : ((correct / total) * 100).round();
     return Container(
-      color: const Color(0xFFEEEEEE),
-      child: Row(
-        children: [
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A0F1E),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Back + badges row
+        Row(children: [
           GestureDetector(
             onTap: onBack,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Color(0xFF212121), size: 18),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white70, size: 16),
             ),
           ),
-          Container(width: 1, height: 36, color: const Color(0xFFBDBDBD)),
-          Expanded(child: _Cell(label: 'LEVEL', value: '$level')),
-          Container(width: 1, height: 36, color: const Color(0xFFBDBDBD)),
-          Expanded(
-            child: _Cell(
-              label: 'CORRECT',
-              value: '$correct of $total',
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B5CF6).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.35)),
             ),
+            child: const Text('LOGIC FLOW',
+                style: TextStyle(color: Color(0xFFA78BFA), fontSize: 10,
+                    fontWeight: FontWeight.w800, letterSpacing: 1.2)),
           ),
-        ],
-      ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF34D399).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF34D399).withOpacity(0.3)),
+            ),
+            child: Text('LEVEL $level',
+                style: const TextStyle(color: Color(0xFF34D399), fontSize: 10,
+                    fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+          ),
+          const Spacer(),
+          // Score + accuracy pills
+          _StatPill(label: 'CORRECT', value: '$correct/$total',
+              color: const Color(0xFF60A5FA)),
+          const SizedBox(width: 8),
+          _StatPill(label: 'ACCURACY', value: '$accuracy%',
+              color: const Color(0xFF34D399)),
+        ]),
+      ]),
     );
   }
 }
- 
+
+class _StatPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatPill({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Column(children: [
+        Text(label, style: TextStyle(color: color.withOpacity(0.7),
+            fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        Text(value, style: TextStyle(color: color,
+            fontSize: 13, fontWeight: FontWeight.w900)),
+      ]),
+    );
+  }
+}
+
 class _Cell extends StatelessWidget {
   final String label;
   final String value;
   const _Cell({required this.label, required this.value});
- 
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
-            style: const TextStyle(
-                color: Color(0xFF757575),
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2)),
+        Text(label, style: TextStyle(color: Colors.grey[500],
+            fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
         const SizedBox(height: 1),
-        Text(value,
-            style: const TextStyle(
-                color: Color(0xFF212121),
-                fontSize: 15,
-                fontWeight: FontWeight.w800)),
+        Text(value, style: const TextStyle(color: Colors.white,
+            fontSize: 15, fontWeight: FontWeight.w800)),
       ]),
     );
   }
@@ -1026,17 +1076,19 @@ class _IdleOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withOpacity(0.55),
+        color: Colors.black.withOpacity(0.75),
         child: Center(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 28),
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
+              color: const Color(0xFF0F1524),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              boxShadow: [
                 BoxShadow(
-                    color: Colors.black38, blurRadius: 28, offset: Offset(0, 6)),
+                    color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                    blurRadius: 40, spreadRadius: 4),
               ],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1048,12 +1100,15 @@ class _IdleOverlay extends StatelessWidget {
                   width: 74,
                   height: 74,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF66BB6A),
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                          color: const Color(0xFF66BB6A).withOpacity(0.45),
-                          blurRadius: 18, spreadRadius: 2),
+                          color: const Color(0xFF8B5CF6).withOpacity(0.5),
+                          blurRadius: 24, spreadRadius: 4),
                     ],
                   ),
                   child: const Icon(Icons.train_rounded,
@@ -1064,15 +1119,19 @@ class _IdleOverlay extends StatelessWidget {
               Text(
                 level == 1 ? 'Train of Thought' : 'Level $level',
                 style: const TextStyle(
-                  color: Color(0xFF212121),
+                  color: Colors.white,
                   fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
+              Text('Route trains to matching color stations',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 16),
               const _Hint(
                   icon: Icons.touch_app_rounded,
-                  text: 'Tap the green circles to switch tracks'),
+                  text: 'Tap the circles to switch tracks'),
               const SizedBox(height: 6),
               const _Hint(
                   icon: Icons.compare_arrows_rounded,
@@ -1080,7 +1139,7 @@ class _IdleOverlay extends StatelessWidget {
               const SizedBox(height: 6),
               const _Hint(
                   icon: Icons.directions_railway_rounded,
-                  text: 'Trains leave the tunnel one by one'),
+                  text: 'Trains leave one by one'),
               const SizedBox(height: 24),
               _GreenBtn(
                 label: level == 1 ? 'Start Game' : 'Level $level',
@@ -1098,16 +1157,15 @@ class _Hint extends StatelessWidget {
   final IconData icon;
   final String text;
   const _Hint({required this.icon, required this.text});
- 
+
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: const Color(0xFF66BB6A), size: 16),
+      Icon(icon, color: const Color(0xFFA78BFA), size: 16),
       const SizedBox(width: 8),
       Flexible(
         child: Text(text,
-            style:
-                const TextStyle(color: Color(0xFF757575), fontSize: 12.5)),
+            style: TextStyle(color: Colors.grey[400], fontSize: 12.5)),
       ),
     ]);
   }
@@ -1156,24 +1214,37 @@ class _CompleteOverlay extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 28),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: const [
+                color: const Color(0xFF0F1524),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                boxShadow: [
                   BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 28,
-                      offset: Offset(0, 6)),
+                      color: const Color(0xFF34D399).withOpacity(0.2),
+                      blurRadius: 40, spreadRadius: 4),
                 ],
               ),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.emoji_events_rounded,
-                    color: Color(0xFFFDD835), size: 54),
-                const SizedBox(height: 10),
+                Container(
+                  width: 70, height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFF34D399), Color(0xFF059669)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight),
+                    boxShadow: [BoxShadow(
+                        color: const Color(0xFF34D399).withOpacity(0.45),
+                        blurRadius: 24, spreadRadius: 4)],
+                  ),
+                  child: const Icon(Icons.emoji_events_rounded,
+                      color: Colors.white, size: 36),
+                ),
+                const SizedBox(height: 14),
                 const Text('Level Complete!',
                     style: TextStyle(
-                        color: Color(0xFF212121),
+                        color: Colors.white,
                         fontSize: 22,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w900)),
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1182,23 +1253,22 @@ class _CompleteOverlay extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Icon(
-                        lit
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        color:
-                            lit ? const Color(0xFFFDD835) : Colors.grey[400],
+                        lit ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: lit
+                            ? const Color(0xFFFBBF24)
+                            : Colors.grey[700],
                         size: 36,
                       ),
                     );
                   }),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 _Row(label: 'Correct', value: '$correct / $total'),
                 if (wrong > 0) ...[
                   const SizedBox(height: 6),
                   _Row(label: 'Wrong station', value: '$wrong'),
                 ],
-                const SizedBox(height: 22),
+                const SizedBox(height: 24),
                 _GreenBtn(label: 'Level ${level + 1}', onTap: onNext),
               ]),
             ),
@@ -1247,33 +1317,45 @@ class _GameOverOverlay extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 28),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: const [
+                color: const Color(0xFF0F1524),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                boxShadow: [
                   BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 28,
-                      offset: Offset(0, 6)),
+                      color: const Color(0xFFEF4444).withOpacity(0.2),
+                      blurRadius: 40, spreadRadius: 4),
                 ],
               ),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.train_rounded,
-                    color: Color(0xFFE53935), size: 54),
-                const SizedBox(height: 10),
+                Container(
+                  width: 70, height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFFEF4444), Color(0xFFB91C1C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight),
+                    boxShadow: [BoxShadow(
+                        color: const Color(0xFFEF4444).withOpacity(0.45),
+                        blurRadius: 24, spreadRadius: 4)],
+                  ),
+                  child: const Icon(Icons.train_rounded,
+                      color: Colors.white, size: 36),
+                ),
+                const SizedBox(height: 14),
                 const Text('Too Many Crashes!',
                     style: TextStyle(
-                        color: Color(0xFF212121),
+                        color: Colors.white,
                         fontSize: 22,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w900)),
                 const SizedBox(height: 6),
                 Text('Level $level',
-                    style: const TextStyle(
-                        color: Color(0xFF757575), fontSize: 14)),
-                const SizedBox(height: 14),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+                const SizedBox(height: 16),
                 _Row(label: 'Correct',  value: '$correct'),
                 const SizedBox(height: 6),
                 _Row(label: 'Crashes',  value: '$wrong'),
-                const SizedBox(height: 22),
+                const SizedBox(height: 24),
                 _GreenBtn(label: 'Try Again', onTap: onRetry),
               ]),
             ),
@@ -1288,27 +1370,22 @@ class _Row extends StatelessWidget {
   final String label;
   final String value;
   const _Row({required this.label, required this.value});
- 
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBDBDBD)),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF757575), fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  color: Color(0xFF212121),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+          Text(value, style: const TextStyle(
+              color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -1319,21 +1396,25 @@ class _GreenBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _GreenBtn({required this.label, required this.onTap});
- 
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF66BB6A),
-          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+              colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF66BB6A).withOpacity(0.50),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF8B5CF6).withOpacity(0.45),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),

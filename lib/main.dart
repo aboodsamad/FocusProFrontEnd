@@ -6,6 +6,7 @@ import 'features/habits/providers/habit_provider.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/oauth_callback_page.dart';
 import 'features/home/pages/home_page.dart';
+import './features/diagnostic/pages/diagnostic_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

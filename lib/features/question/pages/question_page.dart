@@ -1,376 +1,479 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../models/question.dart';
 import '../services/question_service.dart';
-import '../widgets/question_progress_bar.dart';
-import '../widgets/question_option_tile.dart';
 import '../../home/pages/home_page.dart';
+
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const _bg      = Color(0xFF080B14);
+const _cardBg  = Color(0xFF0F1524);
+const _purple  = Color(0xFF8B5CF6);
+const _violet  = Color(0xFFA78BFA);
 
 class QuestionPage extends StatefulWidget {
   const QuestionPage({super.key});
-
-  @override
-  State<QuestionPage> createState() => _QuestionPageState();
+  @override State<QuestionPage> createState() => _QuestionPageState();
 }
 
 class _QuestionPageState extends State<QuestionPage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  int selectedoption = -1;
-  int questionNumber = 0;
-  int score          = 0;
-  int seconds        = 10;
 
-  Timer? _questionTimer;
-
-  // Token is cached once on load — no SharedPreferences read on every button press
-  String? _cachedToken;
-
-  List<Question> questions = [];
+  late AnimationController _slideCtrl;
+  int _selected  = -1;
+  int _qIndex    = 0;
+  int _score     = 0;
+  int _seconds   = 10;
+  Timer? _timer;
+  String? _token;
+  List<Question> _questions = [];
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
-
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _controller.forward();
+    _slideCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
+    _slideCtrl.forward();
     _loadQuestions();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    _questionTimer?.cancel();
+    _slideCtrl.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
-  // ── Data loading ───────────────────────────────────────────────────────────
-
+  // ── Data ───────────────────────────────────────────────────────────────────
   Future<void> _loadQuestions() async {
-    _cachedToken = await AuthService.getToken();
-
-    if (_cachedToken == null) {
-      print('No auth token found');
-      return;
-    }
-
-    final fetched = await QuestionService.getQuestions(_cachedToken!);
-
-    setState(() {
-      questions      = fetched;
-      questionNumber = 0;
-      selectedoption = -1;
-      score          = 0;
-    });
-
-    if (questions.isNotEmpty) _setTimer();
+    _token = await AuthService.getToken();
+    if (_token == null) return;
+    final q = await QuestionService.getQuestions(_token!);
+    setState(() { _questions = q; _qIndex = 0; _selected = -1; _score = 0; });
+    if (_questions.isNotEmpty) _startTimer();
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  void _startTimer() {
+    _timer?.cancel();
+    _seconds = 10;
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        if (_seconds <= 1) { t.cancel(); _next(); }
+        else _seconds--;
+      });
+    });
+  }
 
-  void _nextQuestion() {
-    if (questions.isEmpty) return;
-
-    _controller.reverse().then((_) {
+  void _next() {
+    if (_questions.isEmpty) return;
+    _slideCtrl.reverse().then((_) {
       if (!mounted) return;
       setState(() {
-        if (questionNumber < questions.length - 1) {
-          questionNumber++;
-          selectedoption = -1;
-          _controller.forward();
+        if (_qIndex < _questions.length - 1) {
+          _qIndex++;
+          _selected = -1;
+          _slideCtrl.forward();
+          _startTimer();
         } else {
-          _questionTimer?.cancel();
-          if (_cachedToken != null) {
-            QuestionService.submitTestScore(score, _cachedToken!);
-          }
-          _showCompletionDialog();
+          _timer?.cancel();
+          if (_token != null) QuestionService.submitTestScore(_score, _token!);
+          _showResult();
         }
       });
     });
   }
 
-  // ── Answer submission ──────────────────────────────────────────────────────
-
-  // Fire-and-forget — UI responds instantly.
-  // Return value (correct/incorrect) will be used later for weighted scoring.
-  void _submitAnswerInBackground(int questionId, int selectedIndex) {
-    if (_cachedToken == null) return;
-    QuestionService.submitAnswer(questionId, selectedIndex, _cachedToken!);
+  // ── Timer color ────────────────────────────────────────────────────────────
+  Color get _timerColor {
+    if (_seconds > 6) return const Color(0xFF34D399);
+    if (_seconds > 3) return const Color(0xFFFBBF24);
+    return const Color(0xFFEF4444);
   }
 
-  // ── Timer ──────────────────────────────────────────────────────────────────
-
-  void _setTimer() {
-    _questionTimer?.cancel();
-    seconds = 10;
-
-    _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        if (seconds < 1) {
-          timer.cancel();
-          _nextQuestion();
-          if (questionNumber < questions.length) _setTimer();
-        } else {
-          seconds--;
-        }
-      });
-    });
-  }
-
-  // ── Completion dialog ──────────────────────────────────────────────────────
-
-  void _showCompletionDialog() {
+  // ── Result dialog ──────────────────────────────────────────────────────────
+  void _showResult() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Row(
-          children: [
-            Icon(Icons.celebration, color: Colors.amber, size: 28),
-            SizedBox(width: 12),
-            Text(
-              'Quiz Completed!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Your Score', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-            const SizedBox(height: 12),
+      builder: (_) => Dialog(
+        backgroundColor: _cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              width: 100, height: 100,
               decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 gradient: const LinearGradient(
-                  colors: [AppColors.primaryA, AppColors.primaryB],
-                ),
-                borderRadius: BorderRadius.circular(12),
+                    colors: [_purple, _violet],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight),
+                boxShadow: [BoxShadow(
+                    color: _purple.withOpacity(0.45),
+                    blurRadius: 28, spreadRadius: 4)],
               ),
-              child: Text(
-                '$score / ${questions.length}',
+              child: Center(child: Text(
+                '$_score/${_questions.length}',
                 style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900),
+              )),
+            ),
+            const SizedBox(height: 20),
+            const Text('Challenge Complete!',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(
+              _questions.isNotEmpty &&
+                      _score >= (_questions.length * 0.7).ceil()
+                  ? 'Excellent neural performance!'
+                  : 'Keep training your mind!',
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: () => Navigator.pushReplacement(
+                  context, MaterialPageRoute(builder: (_) => HomeScreen())),
+              child: Container(
+                width: double.infinity, height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [_purple, _violet]),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [BoxShadow(
+                      color: _purple.withOpacity(0.4),
+                      blurRadius: 16, offset: const Offset(0, 6))],
+                ),
+                child: const Center(
+                  child: Text('Back to Hub',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16)),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              questions.isNotEmpty && score >= (questions.length * 0.7).ceil()
-                  ? 'Great job!'
-                  : 'Keep practicing!',
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-            ),
-          ],
+          ]),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => HomeScreen()),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.primaryA),
-            child: const Text('Go to Home Page'),
-          ),
-        ],
       ),
     );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    if (questions.isEmpty) {
-      return Scaffold(
-        backgroundColor: AppColors.softBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          automaticallyImplyLeading: false,
-          title: const Text(
-            'Quick Test',
-            style: TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
+    if (_questions.isEmpty) {
+      return const Scaffold(
+        backgroundColor: _bg,
+        body: Center(child: CircularProgressIndicator(color: _purple)),
       );
     }
 
-    final Question current = questions[questionNumber];
-    final int total        = questions.length;
-    final double progress  = (questionNumber + 1) / total;
+    final q              = _questions[_qIndex];
+    final timerFraction  = _seconds / 10.0;
 
     return Scaffold(
-      backgroundColor: AppColors.softBg,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Quick Test',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-      ),
-      body: FadeTransition(
-        opacity: _controller,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.2, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-          ),
-          child: ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(
+          children: [
 
-              // ── Progress bar ───────────────────────────────────────────
-              QuestionProgressBar(
-                questionNumber: questionNumber,
-                total:          total,
-                progress:       progress,
-                primaryA:       AppColors.primaryA,
-              ),
-              const SizedBox(height: 20),
-
-              // ── Question card ──────────────────────────────────────────
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            // ── Full-width timer bar ───────────────────────────────────────
+            SizedBox(
+              height: 4,
+              child: Stack(children: [
+                Container(color: Colors.white.withOpacity(0.06)),
+                FractionallySizedBox(
+                  widthFactor: timerFraction,
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 800),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                          colors: [_timerColor, _timerColor.withOpacity(0.7)]),
+                      boxShadow: [BoxShadow(
+                          color: _timerColor.withOpacity(0.6), blurRadius: 6)],
+                    ),
+                  ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primaryA.withOpacity(0.1),
-                              AppColors.primaryB.withOpacity(0.1),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.help_outline_rounded, color: AppColors.primaryB, size: 28),
-                            const SizedBox(width: 12),
-                            Text(
-                              'seconds left: $seconds',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryB,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        current.text,
+              ]),
+            ),
+
+            // ── Header ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+              child: Row(children: [
+                const Icon(Icons.psychology_rounded, color: _purple, size: 22),
+                const SizedBox(width: 8),
+                const Text('FocusPro',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18)),
+                const Spacer(),
+                const Icon(Icons.notifications_outlined,
+                    color: Colors.white38, size: 22),
+              ]),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── Progress & Score row ───────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('PROGRESS',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                          height: 1.4,
+                            color: Colors.grey[500],
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text('Q${_qIndex + 1}/${_questions.length}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            height: 1)),
+                  ]),
+                  const Spacer(),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text('CURRENT SCORE',
+                        style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text('${_score * 250}',
+                        style: const TextStyle(
+                            color: _violet,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            height: 1)),
+                  ]),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            // ── Scrollable content ─────────────────────────────────────────
+            Expanded(
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                    parent: _slideCtrl, curve: Curves.easeIn),
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                          begin: const Offset(0.08, 0), end: Offset.zero)
+                      .animate(CurvedAnimation(
+                          parent: _slideCtrl, curve: Curves.easeOutCubic)),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Column(children: [
+
+                      // ── Question card ──────────────────────────────────
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(22),
+                        decoration: BoxDecoration(
+                          color: _cardBg,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                              color: Colors.white.withOpacity(0.08)),
+                          boxShadow: [BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 20, offset: const Offset(0, 8))],
                         ),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          // Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _purple.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border:
+                                  Border.all(color: _purple.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                              Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: _purple)),
+                              const SizedBox(width: 6),
+                              Text('COGNITIVE LOAD CHALLENGE',
+                                  style: TextStyle(
+                                      color: _violet,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2)),
+                            ]),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(q.text,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.4)),
+                        ]),
                       ),
-                    ],
+
+                      const SizedBox(height: 16),
+
+                      // ── Answer options ─────────────────────────────────
+                      ...List.generate(q.options.length, (i) {
+                        final isSelected = _selected == i;
+                        final letter = ['A', 'B', 'C', 'D'][i];
+                        return GestureDetector(
+                          onTap: () => setState(() {
+                            if (_selected != i) {
+                              _selected = i;
+                              if (i == q.correctIndex) _score++;
+                            }
+                          }),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? _purple.withOpacity(0.15)
+                                  : _cardBg,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isSelected
+                                    ? _purple
+                                    : Colors.white.withOpacity(0.08),
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [BoxShadow(
+                                      color: _purple.withOpacity(0.25),
+                                      blurRadius: 16)]
+                                  : null,
+                            ),
+                            child: Row(children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 38, height: 38,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected
+                                      ? _purple
+                                      : Colors.white.withOpacity(0.07),
+                                ),
+                                child: Center(
+                                  child: Text(letter,
+                                      style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.grey[400],
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15)),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(q.options[i],
+                                    style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.grey[300],
+                                        fontSize: 15,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                        height: 1.35)),
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.check_circle_rounded,
+                                    color: _purple, size: 20),
+                              ],
+                            ]),
+                          ),
+                        );
+                      }),
+
+                      const SizedBox(height: 12),
+                    ]),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+            ),
 
-              // ── Options ────────────────────────────────────────────────
-              ...List.generate(current.options.length, (optIndex) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: QuestionOptionTile(
-                    text:       current.options[optIndex],
-                    isSelected: selectedoption == optIndex,
-                    primaryA:   AppColors.primaryA,
-                    primaryB:   AppColors.primaryB,
-                    onTap: () {
-                      setState(() {
-                        if (selectedoption != optIndex) {
-                          selectedoption = optIndex;
-                          if (selectedoption == current.correctIndex) {
-                            score++;
-                          }
-                        }
-                      });
-                    },
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 20),
-
-              // ── Next / Finish button ───────────────────────────────────
-              ElevatedButton(
-                onPressed: selectedoption == -1
+            // ── Submit button (pinned to bottom) ───────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+              child: GestureDetector(
+                onTap: _selected == -1
                     ? null
                     : () {
-                        _submitAnswerInBackground(current.id, selectedoption);
-                        _setTimer();
-                        _nextQuestion();
+                        if (_token != null) {
+                          QuestionService.submitAnswer(
+                              q.id, _selected, _token!);
+                        }
+                        _next();
                       },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryA,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: _selected == -1
+                        ? LinearGradient(colors: [
+                            Colors.grey[850]!,
+                            Colors.grey[800]!
+                          ])
+                        : const LinearGradient(
+                            colors: [_purple, _violet],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: _selected != -1
+                        ? [BoxShadow(
+                            color: _purple.withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6))]
+                        : null,
                   ),
-                  elevation: 4,
-                  disabledBackgroundColor: Colors.grey[300],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      questionNumber < total - 1 ? 'Next Question' : 'Finish Quiz',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: Center(
+                    child: Text(
+                      _qIndex < _questions.length - 1
+                          ? 'SUBMIT ANSWER'
+                          : 'FINISH CHALLENGE',
+                      style: TextStyle(
+                          color: _selected == -1
+                              ? Colors.grey[600]
+                              : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_rounded, size: 20),
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+
+          ],
         ),
       ),
     );

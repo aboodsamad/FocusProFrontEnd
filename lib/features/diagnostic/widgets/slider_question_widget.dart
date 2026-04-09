@@ -1,238 +1,167 @@
+import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../models/diagnostic_question.dart';
-import '../../../core/constants/app_colors.dart';
 
-/// Used for screen_habits questions.
-/// Shows a horizontal slider instead of A/B/C/D buttons.
-/// Internally maps the slider position to the closest option and its points.
+/// Glassmorphic slider for screen-habits questions.
+/// Large coloured thumb · glowing track · animated answer display.
 class SliderQuestionWidget extends StatefulWidget {
   final DiagnosticQuestion question;
   final void Function(DiagnosticAnswer answer) onAnswered;
-
-  const SliderQuestionWidget({
-    super.key,
-    required this.question,
-    required this.onAnswered,
-  });
-
-  @override
-  State<SliderQuestionWidget> createState() => _SliderQuestionWidgetState();
+  const SliderQuestionWidget({super.key, required this.question, required this.onAnswered});
+  @override State<SliderQuestionWidget> createState() => _SliderQuestionWidgetState();
 }
 
 class _SliderQuestionWidgetState extends State<SliderQuestionWidget> {
-  // Slider maps 0.0 → option A, 1.0 → B, 2.0 → C, 3.0 → D
-  double _sliderValue = 0.0;
-  bool _hasInteracted = false;
+  double _value = 0.0;
+  bool   _touched = false;
 
-  int get _selectedIndex => _sliderValue.round().clamp(0, 3);
-  String get _selectedOption => ['A', 'B', 'C', 'D'][_selectedIndex];
-  int get _selectedPoints => widget.question.points[_selectedIndex];
-  String get _selectedLabel => widget.question.options[_selectedIndex];
+  int    get _idx     => _value.round().clamp(0, 3);
+  String get _letter  => ['A', 'B', 'C', 'D'][_idx];
+  int    get _pts     => widget.question.points[_idx];
+  String get _optText => widget.question.options[_idx];
 
-  Color get _trackColor {
-    // Green → Blue → Orange → Red as user slides right (worse habits)
-    const colors = [
-      Color(0xFF34D399), // green  (best)
-      AppColors.primaryA, // blue
-      Colors.orange, // orange
-      Colors.redAccent, // red   (worst)
-    ];
-    return colors[_selectedIndex];
-  }
+  // Color goes green → blue → orange → red as habits worsen
+  static const List<Color> _colors = [
+    Color(0xFF34D399),
+    Color(0xFF60A5FA),
+    Colors.orange,
+    Color(0xFFEF4444),
+  ];
+  Color get _c => _colors[_idx];
 
-  void _submit() {
-    widget.onAnswered(DiagnosticAnswer(
-      questionId: widget.question.id,
-      selectedOption: _selectedOption,
-      pointsEarned: _selectedPoints,
-    ));
+  void _submit() => widget.onAnswered(DiagnosticAnswer(
+    questionId: widget.question.id, selectedOption: _letter, pointsEarned: _pts));
+
+  Widget _answerDisplay() {
+    final inner = AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _touched ? _c.withOpacity(0.10) : Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _touched ? _c.withOpacity(0.35) : Colors.white.withOpacity(0.08),
+          width: 1.5,
+        ),
+      ),
+      child: Row(children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _touched ? _c : Colors.white.withOpacity(0.07),
+            boxShadow: _touched
+                ? [BoxShadow(color: _c.withOpacity(0.4), blurRadius: 16)]
+                : null,
+          ),
+          child: Center(child: Text(_letter,
+              style: TextStyle(
+                color: _touched ? Colors.white : Colors.white38,
+                fontWeight: FontWeight.w900, fontSize: 16))),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: Text(
+          _touched ? _optText : 'Drag the slider to select your answer',
+          style: TextStyle(
+            color: _touched ? Colors.white : Colors.white38,
+            fontSize: 14,
+            fontWeight: _touched ? FontWeight.w600 : FontWeight.normal,
+            height: 1.35,
+          ),
+        )),
+      ]),
+    );
+
+    if (kIsWeb) return inner;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: inner,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final opts = widget.question.options;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Selected answer display ──────────────────────────────────────────
-        AnimatedContainer(
+      // ── Selected answer display ────────────────────────────────────────
+      _answerDisplay(),
+
+      const SizedBox(height: 28),
+
+      // ── Slider ─────────────────────────────────────────────────────────
+      SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          activeTrackColor:   _c,
+          inactiveTrackColor: Colors.white.withOpacity(0.08),
+          thumbColor:         _c,
+          thumbShape:         const RoundSliderThumbShape(enabledThumbRadius: 15),
+          overlayColor:       _c.withOpacity(0.15),
+          trackHeight:        5,
+          activeTickMarkColor: Colors.transparent,
+          inactiveTickMarkColor: Colors.transparent,
+        ),
+        child: Slider(
+          value: _value, min: 0, max: 3, divisions: 3,
+          onChanged: (v) => setState(() { _value = v; _touched = true; }),
+        ),
+      ),
+
+      // ── Option labels ──────────────────────────────────────────────────
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(4, (i) {
+            final active = _idx == i;
+            return Expanded(
+              child: Text(
+                widget.question.options[i],
+                textAlign: i == 0 ? TextAlign.left : i == 3 ? TextAlign.right : TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: active ? _colors[i] : Colors.white.withOpacity(0.25),
+                  fontWeight: active ? FontWeight.w800 : FontWeight.normal,
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+
+      const SizedBox(height: 30),
+
+      // ── Confirm button ─────────────────────────────────────────────────
+      GestureDetector(
+        onTap: _touched ? _submit : null,
+        child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.all(16),
+          width: double.infinity, height: 56,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _trackColor.withOpacity(0.13),
-                _trackColor.withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: _trackColor.withOpacity(0.35), width: 1.5),
+            color: _touched ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: _touched
+                ? [BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 28, offset: const Offset(0, 8))]
+                : null,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _trackColor,
-                      _trackColor.withOpacity(0.7),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: _trackColor.withOpacity(0.4),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    _selectedOption,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  _hasInteracted
-                      ? _selectedLabel
-                      : 'Drag the slider to select your answer',
+          child: Center(
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('Confirm',
                   style: TextStyle(
-                    color: _hasInteracted ? Colors.white : Colors.grey[500],
-                    fontSize: 14,
-                    fontWeight: _hasInteracted
-                        ? FontWeight.w500
-                        : FontWeight.normal,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-            ],
+                    color: _touched ? Colors.black : Colors.white24,
+                    fontSize: 16, fontWeight: FontWeight.w900,
+                  )),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded,
+                  color: _touched ? Colors.black : Colors.white24, size: 18),
+            ]),
           ),
         ),
-
-        const SizedBox(height: 28),
-
-        // ── Slider ───────────────────────────────────────────────────────────
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: _trackColor,
-            inactiveTrackColor: Colors.grey[800],
-            thumbColor: _trackColor,
-            thumbShape:
-                const RoundSliderThumbShape(enabledThumbRadius: 14),
-            overlayColor: _trackColor.withOpacity(0.15),
-            trackHeight: 6,
-          ),
-          child: Slider(
-            value: _sliderValue,
-            min: 0,
-            max: 3,
-            divisions: 3,
-            onChanged: (val) {
-              setState(() {
-                _sliderValue = val;
-                _hasInteracted = true;
-              });
-            },
-          ),
-        ),
-
-        // ── Option labels below slider ────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(4, (i) {
-              final isActive = _selectedIndex == i;
-              return Expanded(
-                child: Text(
-                  opts[i],
-                  textAlign: i == 0
-                      ? TextAlign.left
-                      : i == 3
-                          ? TextAlign.right
-                          : TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color:
-                        isActive ? _trackColor : Colors.grey[700],
-                    fontWeight: isActive
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-
-        const SizedBox(height: 32),
-
-        // ── Confirm button ────────────────────────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _hasInteracted
-                    ? [AppColors.primaryA, AppColors.primaryB]
-                    : [Colors.grey[850]!, Colors.grey[850]!],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: _hasInteracted
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primaryA.withOpacity(0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: ElevatedButton(
-              onPressed: _hasInteracted ? _submit : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                disabledBackgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Confirm',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded,
-                      color: Colors.white, size: 18),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+      ),
+    ]);
   }
 }

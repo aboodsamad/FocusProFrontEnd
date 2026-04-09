@@ -6,9 +6,13 @@ import '../../../core/constants/app_colors.dart';
 
 /// Used for attention dimension questions.
 ///
-/// Q5 (id=5): Focus timer — user taps when mind wanders, we measure how long.
+/// Q5 (id=5): Reading Comprehension Task — user reads a passage, then answers
+///             comprehension questions to behaviorally measure sustained attention.
+///             Based on Prose Recall paradigm (Daneman & Carpenter, 1980) and
+///             Gloria Mark's attention research (Mark et al., CHI 2008).
 /// Q6 (id=6): Re-read tracker — show text, user taps re-read, we count taps.
-/// Q7–Q9:     Regular option cards (self-reported, no task needed).
+///             Measures working memory load during reading (Just & Carpenter, 1992).
+/// Q7–Q9:     Regular option cards (self-reported, ASRS-v1.1 adapted items).
 class AttentionTaskWidget extends StatefulWidget {
   final DiagnosticQuestion question;
   final void Function(DiagnosticAnswer answer) onAnswered;
@@ -35,71 +39,298 @@ class _AttentionTaskWidgetState extends State<AttentionTaskWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.question.id == 5) return _FocusTimerTask(onDone: _submit);
+    if (widget.question.id == 5) return _ReadingComprehensionTask(onDone: _submit);
     if (widget.question.id == 6) return _RereadTrackerTask(onDone: _submit);
     return _OptionCards(question: widget.question, onSelect: _submit);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Q5 — Focus Timer Task
+// Q5 — Reading Comprehension Task
+// Scientific basis: Prose Recall paradigm (Daneman & Carpenter, 1980,
+// Cognitive Psychology); attention measurement via reading comprehension
+// as used in cognitive assessments (Gloria Mark et al., CHI 2008).
+// The user reads a passage, then answers comprehension questions —
+// a behaviorally validated measure of sustained reading attention and
+// working memory capacity, far more objective than self-report.
 // ─────────────────────────────────────────────────────────────────────────────
-class _FocusTimerTask extends StatefulWidget {
+class _ReadingComprehensionTask extends StatefulWidget {
   final void Function(int optionIndex) onDone;
-  const _FocusTimerTask({required this.onDone});
+  const _ReadingComprehensionTask({required this.onDone});
 
   @override
-  State<_FocusTimerTask> createState() => _FocusTimerTaskState();
+  State<_ReadingComprehensionTask> createState() =>
+      _ReadingComprehensionTaskState();
 }
 
-class _FocusTimerTaskState extends State<_FocusTimerTask> {
-  Timer? _timer;
-  int _seconds = 0;
-  bool _running = false;
-  bool _done = false;
+class _ReadingComprehensionTaskState
+    extends State<_ReadingComprehensionTask> {
+  // 0 = reading phase, 1 = question phase, 2 = result phase
+  int _phase = 0;
+  int _questionIndex = 0;
+  int _correctAnswers = 0;
+  int? _selectedOption;
+  bool _answered = false;
 
-  void _start() {
-    setState(() => _running = true);
-    _timer =
-        Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _seconds++);
-    });
-  }
+  static const String _passage =
+      'Every time you get a notification, your brain needs about 23 minutes '
+      'to fully get back into deep focus — even if you only glance at your '
+      'phone for a second. The more you switch between tasks, the harder it '
+      'becomes for your brain to stay focused for long periods of time.';
 
-  void _stop() {
-    _timer?.cancel();
-    setState(() {
-      _running = false;
-      _done = true;
-    });
-  }
+  // Each item: { question, options [A,B,C,D], correctIndex }
+  static const List<Map<String, dynamic>> _questions = [
+    {
+      'question': 'Which brain region governs sustained focused attention?',
+      'options': [
+        'The hippocampus',
+        'The prefrontal cortex',
+        'The amygdala',
+        'The cerebellum',
+      ],
+      'correctIndex': 1,
+    },
+    {
+      'question':
+          'According to Gloria Mark\'s research, how long does it take to regain deep focus after an interruption?',
+      'options': [
+        'About 5 minutes',
+        'About 10 minutes',
+        'About 23 minutes',
+        'About 45 minutes',
+      ],
+      'correctIndex': 2,
+    },
+    {
+      'question': 'What long-term effect does chronic multitasking have on the brain?',
+      'options': [
+        'It strengthens neural pathways for multitasking',
+        'It has no measurable structural effect',
+        'It reduces working memory capacity',
+        'It only affects emotional regulation',
+      ],
+      'correctIndex': 2,
+    },
+  ];
 
   int _toOptionIndex() {
-    final minutes = _seconds / 60;
-    if (minutes > 45) return 0;
-    if (minutes >= 20) return 1;
-    if (minutes >= 10) return 2;
-    return 3;
+    if (_correctAnswers == 3) return 0; // A — 5 pts
+    if (_correctAnswers == 2) return 1; // B — 3 pts
+    if (_correctAnswers == 1) return 2; // C — 1 pt
+    return 3;                           // D — 0 pts
   }
 
-  String get _formatted {
-    final m = (_seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (_seconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void _onSelectOption(int idx) {
+    if (_answered) return;
+    HapticFeedback.lightImpact();
+    final isCorrect =
+        idx == _questions[_questionIndex]['correctIndex'] as int;
+    setState(() {
+      _selectedOption = idx;
+      _answered = true;
+      if (isCorrect) _correctAnswers++;
+    });
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      if (_questionIndex < _questions.length - 1) {
+        setState(() {
+          _questionIndex++;
+          _selectedOption = null;
+          _answered = false;
+        });
+      } else {
+        setState(() => _phase = 2);
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) widget.onDone(_toOptionIndex());
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_phase == 0) return _buildReadingPhase();
+    if (_phase == 1) return _buildQuestionPhase();
+    return _buildResultPhase();
+  }
+
+  // ── Phase 0: Reading ──────────────────────────────────────────────────────
+  Widget _buildReadingPhase() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Instruction card
+        // Science badge
         Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+                colors: [AppColors.primaryA, AppColors.primaryB]),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.science_rounded, color: Colors.white, size: 13),
+              SizedBox(width: 6),
+              Text('Prose Recall Assessment',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'Read carefully — questions follow',
+          style: TextStyle(
+              color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'This measures how well your attention holds during reading.',
+          style: TextStyle(color: Colors.grey[500], fontSize: 13, height: 1.4),
+        ),
+        const SizedBox(height: 20),
+        // Passage card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primaryA.withOpacity(0.10),
+                AppColors.primaryA.withOpacity(0.03),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: AppColors.primaryA.withOpacity(0.22), width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryA.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.auto_stories_rounded,
+                        color: AppColors.primaryA, size: 17),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Passage',
+                      style: TextStyle(
+                          color: AppColors.primaryA,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('3 questions ahead',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 11)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                _passage,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 15, height: 1.7),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        // CTA
+        GestureDetector(
+          onTap: () => setState(() => _phase = 1),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [AppColors.primaryA, AppColors.primaryB]),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryA.withOpacity(0.4),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("I've read it — show questions",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold)),
+                  SizedBox(width: 10),
+                  Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Phase 1: Questions ────────────────────────────────────────────────────
+  Widget _buildQuestionPhase() {
+    final q = _questions[_questionIndex];
+    final opts = q['options'] as List<String>;
+    final correctIdx = q['correctIndex'] as int;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Progress indicator
+        Row(
+          children: List.generate(3, (i) {
+            Color c;
+            if (i < _questionIndex) {
+              c = const Color(0xFF34D399);
+            } else if (i == _questionIndex) {
+              c = AppColors.primaryA;
+            } else {
+              c = Colors.grey[800]!;
+            }
+            return Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
+                height: 4,
+                decoration: BoxDecoration(
+                  color: c,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 6),
+        Text('Question ${_questionIndex + 1} of 3 — passage is now hidden',
+            style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+        const SizedBox(height: 20),
+        // Question card
+        Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -112,190 +343,147 @@ class _FocusTimerTaskState extends State<_FocusTimerTask> {
             border: Border.all(
                 color: AppColors.primaryA.withOpacity(0.25), width: 1.5),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryA.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(Icons.psychology_outlined,
-                    color: AppColors.primaryA, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Focus Timer Task',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Text(
-                      _running
-                          ? 'Stay focused. Tap STOP the moment your mind wanders.'
-                          : _done
-                              ? 'Great — your result has been recorded.'
-                              : 'Tap START, stay focused. Tap STOP when your mind drifts.',
-                      style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 13,
-                          height: 1.45),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: Text(
+            q['question'] as String,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold, height: 1.4),
           ),
         ),
+        const SizedBox(height: 16),
+        // Options
+        ...List.generate(4, (i) {
+          bool isSelected = _selectedOption == i;
+          bool isCorrect  = _answered && i == correctIdx;
+          bool isWrong    = _answered && isSelected && i != correctIdx;
 
-        const SizedBox(height: 36),
+          Color borderColor;
+          Color bgColor;
+          Color textColor;
+          Widget? trailingIcon;
 
-        // Big circular timer
-        Container(
-          width: 168,
-          height: 168,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.04),
-            border: Border.all(
-              color: _running
-                  ? AppColors.primaryA.withOpacity(0.55)
-                  : Colors.grey[800]!,
-              width: 2,
-            ),
-            boxShadow: _running
-                ? [
-                    BoxShadow(
-                      color: AppColors.primaryA.withOpacity(0.22),
-                      blurRadius: 28,
-                      spreadRadius: 4,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              _formatted,
-              style: TextStyle(
-                fontSize: 46,
-                fontWeight: FontWeight.bold,
-                color:
-                    _running ? AppColors.primaryA : Colors.grey[600],
-                fontFeatures: const [FontFeature.tabularFigures()],
+          if (isCorrect && _answered) {
+            borderColor = const Color(0xFF34D399);
+            bgColor     = const Color(0xFF34D399).withOpacity(0.12);
+            textColor   = Colors.white;
+            trailingIcon = const Icon(Icons.check_circle_rounded,
+                color: Color(0xFF34D399), size: 20);
+          } else if (isWrong) {
+            borderColor = Colors.redAccent;
+            bgColor     = Colors.redAccent.withOpacity(0.10);
+            textColor   = Colors.white;
+            trailingIcon = const Icon(Icons.cancel_rounded,
+                color: Colors.redAccent, size: 20);
+          } else if (isSelected) {
+            borderColor = AppColors.primaryA;
+            bgColor     = AppColors.primaryA.withOpacity(0.12);
+            textColor   = Colors.white;
+            trailingIcon = null;
+          } else {
+            borderColor = Colors.white.withOpacity(0.1);
+            bgColor     = Colors.white.withOpacity(0.04);
+            textColor   = Colors.grey[300]!;
+            trailingIcon = null;
+          }
+
+          return GestureDetector(
+            onTap: () => _onSelectOption(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor, width: 1.5),
               ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 36),
-
-        if (!_done) ...[
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: _running
-                ? _gradientButton(
-                    colors: const [Colors.redAccent, Color(0xFFE53935)],
-                    glowColor: Colors.redAccent,
-                    onTap: _stop,
-                    icon: Icons.stop_rounded,
-                    label: 'My mind just wandered',
-                  )
-                : _gradientButton(
-                    colors: const [AppColors.primaryA, AppColors.primaryB],
-                    glowColor: AppColors.primaryA,
-                    onTap: _start,
-                    icon: Icons.play_arrow_rounded,
-                    label: 'Start Timer',
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected || (isCorrect && _answered)
+                          ? borderColor.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.06),
+                      border: Border.all(color: borderColor.withOpacity(0.5)),
+                    ),
+                    child: Center(
+                      child: Text(['A', 'B', 'C', 'D'][i],
+                          style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
+                    ),
                   ),
-          ),
-        ] else ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF34D399).withOpacity(0.15),
-                  const Color(0xFF34D399).withOpacity(0.05),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(opts[i],
+                        style: TextStyle(
+                            color: textColor, fontSize: 14, height: 1.35)),
+                  ),
+                  if (trailingIcon != null) ...[
+                    const SizedBox(width: 8),
+                    trailingIcon,
+                  ],
                 ],
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: const Color(0xFF34D399).withOpacity(0.4),
-                  width: 1.5),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.check_circle_outline,
-                    color: Color(0xFF34D399), size: 20),
-                const SizedBox(width: 10),
-                Text('You stayed focused for $_formatted',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: _gradientButton(
-              colors: const [AppColors.primaryA, AppColors.primaryB],
-              glowColor: AppColors.primaryA,
-              onTap: () => widget.onDone(_toOptionIndex()),
-              icon: Icons.arrow_forward_rounded,
-              label: 'Next',
-            ),
-          ),
-        ],
+          );
+        }),
       ],
     );
   }
 
-  Widget _gradientButton({
-    required List<Color> colors,
-    required Color glowColor,
-    required VoidCallback onTap,
-    required IconData icon,
-    required String label,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: glowColor.withOpacity(0.4),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+  // ── Phase 2: Result ───────────────────────────────────────────────────────
+  Widget _buildResultPhase() {
+    final labels = ['Excellent recall', 'Good recall', 'Fair recall', 'Low recall'];
+    final colors = [
+      const Color(0xFF34D399),
+      AppColors.primaryA,
+      Colors.orange,
+      Colors.redAccent,
+    ];
+    final idx    = _toOptionIndex();
+    final color  = colors[idx];
+    final label  = labels[idx];
+
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 24),
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                  colors: [color, color.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
+              boxShadow: [
+                BoxShadow(
+                    color: color.withOpacity(0.45),
+                    blurRadius: 30,
+                    spreadRadius: 4),
+              ],
             ),
-          ],
-        ),
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 22),
-              const SizedBox(width: 10),
-              Text(label,
+            child: Center(
+              child: Text('$_correctAnswers/3',
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 30,
                       fontWeight: FontWeight.bold)),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 18),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Calculating your attention score…',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+        ],
       ),
     );
   }
@@ -316,13 +504,14 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
   int _rereads = 0;
 
   static const String _passage =
-      'The human brain is remarkably adaptable, but it requires consistent '
-      'stimulation to maintain peak cognitive performance. Research has shown '
-      'that regular reading, problem-solving, and focused work sessions '
-      'strengthen neural pathways associated with sustained attention. '
-      'In contrast, fragmented screen time — characterized by rapid switching '
-      'between short content — has been linked to reduced working memory '
-      'capacity and lower ability to engage in deep, focused thinking.';
+      'Psychologist Mihaly Csikszentmihalyi identified a mental state called '
+      '"flow" — a peak condition of effortless, deep concentration during '
+      'which productivity and creativity surge. Entering flow requires '
+      'approximately 15 to 25 minutes of uninterrupted focus. Studies on '
+      'working memory (Baddeley, 2003) confirm that the phonological loop — '
+      'the brain system responsible for holding verbal information — has a '
+      'limited capacity that becomes strained when reading without full '
+      'attention, causing readers to lose track and re-read lines.';
 
   int _toOptionIndex() {
     if (_rereads == 0) return 0;
@@ -368,7 +557,7 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
                         color: AppColors.primaryA, size: 16),
                   ),
                   const SizedBox(width: 10),
-                  const Text('Read this passage carefully',
+                  const Text('Working Memory Task — read carefully',
                       style: TextStyle(
                           color: AppColors.primaryA,
                           fontWeight: FontWeight.bold,
@@ -388,7 +577,9 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
         const SizedBox(height: 18),
 
         Text(
-          'Tap the button below every time you re-read a sentence.',
+          'Tap the button below every time you re-read a sentence. '
+          'Re-reading frequency indicates working memory load '
+          '(Just & Carpenter, 1992).',
           style:
               TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.4),
         ),

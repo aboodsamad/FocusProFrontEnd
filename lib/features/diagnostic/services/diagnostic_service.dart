@@ -172,23 +172,224 @@ class DiagnosticService {
   }
 
   // ── Hardcoded fallback (used if API is down) ──────────────────────────────
+  //
+  // Scientific sources per dimension:
+  //   Screen Habits  → Smartphone Addiction Scale-Short Version (SAS-SV)
+  //                    Kwon et al. (2013), PLOS ONE
+  //                    Bergen Social Media Addiction Scale (BSMAS)
+  //                    Andreassen et al. (2016), Psychological Reports
+  //   Attention      → Adult ADHD Self-Report Scale (ASRS-v1.1)
+  //                    Kessler et al. (2005), Psychological Medicine (WHO)
+  //                    Cognitive Failures Questionnaire (CFQ)
+  //                    Broadbent et al. (1982), Journal of Experimental Psychology
+  //   Lifestyle      → Pittsburgh Sleep Quality Index (PSQI)
+  //                    Buysse et al. (1989), Psychiatry Research
+  //                    WHO Physical Activity Guidelines for Adults (2020)
+  //                    Circadian regularity & cognition: Saksvik-Lehouillier
+  //                    et al. (2013), Sleep Medicine
+  //   Learning       → Need for Cognition Scale (NCS)
+  //                    Cacioppo & Petty (1982), JPSP
+  //                    Forgetting Curve / Spaced Repetition
+  //                    Ebbinghaus (1885); Cepeda et al. (2006), Psych. Bulletin
+  //                    Flow & Deep Work: Csikszentmihalyi (1990); Newport (2016)
+  //
+  /// Public wrapper — lets the UI load questions even without a token.
+  static List<DiagnosticQuestion> getFallbackQuestions() => _fallback();
+
   static List<DiagnosticQuestion> _fallback() {
     final raw = [
-      {'id':1,'question_text':'How many hours do you spend on social media daily?','option_a':'Less than 1 hour','option_b':'1–3 hours','option_c':'3–5 hours','option_d':'More than 5 hours','points_a':4,'points_b':2,'points_c':1,'points_d':0,'dimension':'screen_habits','display_order':1},
-      {'id':2,'question_text':'How often do you pick up your phone without a specific reason?','option_a':'Rarely / Never','option_b':'A few times a day','option_c':'Every hour','option_d':'Every few minutes','points_a':4,'points_b':2,'points_c':1,'points_d':0,'dimension':'screen_habits','display_order':2},
-      {'id':3,'question_text':'When you sit down to do something important, how quickly do you reach for your phone?','option_a':'I don\'t, I stay focused','option_b':'After 30+ minutes','option_c':'Within 10–15 minutes','option_d':'Almost immediately','points_a':4,'points_b':3,'points_c':1,'points_d':0,'dimension':'screen_habits','display_order':3},
-      {'id':4,'question_text':'Do you use your phone before sleeping?','option_a':'Never','option_b':'Occasionally','option_c':'Most nights','option_d':'Every night, for a long time','points_a':4,'points_b':3,'points_c':1,'points_d':0,'dimension':'screen_habits','display_order':4},
-      {'id':5,'question_text':'How long can you focus on a single task before your mind wanders?','option_a':'More than 45 minutes','option_b':'20–45 minutes','option_c':'10–20 minutes','option_d':'Less than 10 minutes','points_a':5,'points_b':3,'points_c':1,'points_d':0,'dimension':'attention','display_order':5},
-      {'id':6,'question_text':'When reading something, how often do you re-read the same line?','option_a':'Rarely','option_b':'Sometimes','option_c':'Often','option_d':'Almost always — I can\'t retain what I read','points_a':5,'points_b':3,'points_c':1,'points_d':0,'dimension':'attention','display_order':6},
-      {'id':7,'question_text':'How do you usually handle a task that requires deep thinking?','option_a':'I sit and work through it fully','option_b':'I work through it but take small breaks','option_c':'I struggle and often switch to something easier','option_d':'I avoid it or postpone it','points_a':5,'points_b':3,'points_c':1,'points_d':0,'dimension':'attention','display_order':7},
-      {'id':8,'question_text':'Do you find yourself thinking about other things while someone is talking to you?','option_a':'Rarely','option_b':'Sometimes','option_c':'Often','option_d':'Almost always','points_a':5,'points_b':3,'points_c':1,'points_d':0,'dimension':'attention','display_order':8},
-      {'id':9,'question_text':'After finishing a session of scrolling, how do you feel?','option_a':'I rarely scroll mindlessly','option_b':'Fine, it was a short break','option_c':'A bit drained or empty','option_d':'Very drained, like I wasted time','points_a':5,'points_b':3,'points_c':1,'points_d':0,'dimension':'attention','display_order':9},
-      {'id':10,'question_text':'How many hours of sleep do you get on average?','option_a':'7–9 hours','option_b':'6–7 hours','option_c':'5–6 hours','option_d':'Less than 5 hours','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'lifestyle','display_order':10},
-      {'id':11,'question_text':'How often do you exercise or do physical activity?','option_a':'Daily or almost daily','option_b':'3–4 times a week','option_c':'Once a week','option_d':'Rarely or never','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'lifestyle','display_order':11},
-      {'id':12,'question_text':'How would you describe your daily routine?','option_a':'Very structured and consistent','option_b':'Mostly structured','option_c':'Somewhat chaotic','option_d':'No real routine','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'lifestyle','display_order':12},
-      {'id':13,'question_text':'How often do you read books, articles, or educational content?','option_a':'Daily','option_b':'A few times a week','option_c':'Rarely','option_d':'Never','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'learning','display_order':13},
-      {'id':14,'question_text':'When you learn something new, how well do you retain it?','option_a':'Very well, I remember most of it','option_b':'Fairly well','option_c':'I forget quickly','option_d':'I barely retain anything','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'learning','display_order':14},
-      {'id':15,'question_text':'How do you feel about tasks that take long periods of focused effort?','option_a':'I enjoy them','option_b':'I tolerate them fine','option_c':'I find them very uncomfortable','option_d':'I actively avoid them','points_a':3,'points_b':2,'points_c':1,'points_d':0,'dimension':'learning','display_order':15},
+      // ── SCREEN HABITS (SAS-SV / BSMAS) ─────────────────────────────────
+      {
+        'id': 1,
+        'question_text':
+            'How often do you use your phone for longer than you originally intended?',
+        'option_a': 'Rarely or never',
+        'option_b': 'Sometimes',
+        'option_c': 'Often',
+        'option_d': 'Almost always',
+        'points_a': 4, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'screen_habits', 'display_order': 1,
+        // Source: SAS-SV Item 1 — Kwon et al., 2013
+      },
+      {
+        'id': 2,
+        'question_text':
+            'How often do you feel restless or uncomfortable when you cannot check your phone?',
+        'option_a': 'Never — I feel no urge',
+        'option_b': 'Occasionally',
+        'option_c': 'Often',
+        'option_d': 'Almost always — I feel anxious without it',
+        'points_a': 4, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'screen_habits', 'display_order': 2,
+        // Source: BSMAS Withdrawal dimension — Andreassen et al., 2016
+      },
+      {
+        'id': 3,
+        'question_text':
+            'How often do you use your phone within the hour before sleeping?',
+        'option_a': 'Never',
+        'option_b': 'Occasionally, less than 30 minutes',
+        'option_c': 'Most nights, for 30+ minutes',
+        'option_d': 'Every night, for over an hour',
+        'points_a': 4, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'screen_habits', 'display_order': 3,
+        // Source: Chang et al. (2015), PNAS — pre-sleep screen use & sleep quality
+      },
+      {
+        'id': 4,
+        'question_text':
+            'How often do you check your phone even without receiving a notification?',
+        'option_a': 'Rarely — only when expecting something',
+        'option_b': 'A few times a day',
+        'option_c': 'Every hour or so',
+        'option_d': 'Constantly — it\'s almost automatic',
+        'points_a': 4, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'screen_habits', 'display_order': 4,
+        // Source: BSMAS Salience dimension; phantom vibration — Drouin et al., 2012
+      },
+
+      // ── ATTENTION (ASRS-v1.1 / CFQ) ─────────────────────────────────────
+      {
+        'id': 5,
+        'question_text':
+            'Reading comprehension task — read the passage and answer the questions that follow.',
+        'option_a': 'Answered all questions correctly',
+        'option_b': 'Answered most questions correctly',
+        'option_c': 'Answered some questions correctly',
+        'option_d': 'Struggled to recall the passage',
+        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'attention', 'display_order': 5,
+        // Source: Prose Recall paradigm — Daneman & Carpenter (1980);
+        //         Mark et al. (2008), CHI — attention measurement via reading
+      },
+      {
+        'id': 6,
+        'question_text':
+            'Working memory task — read the passage and tap each time you re-read a sentence.',
+        'option_a': 'Read it once with no re-reads',
+        'option_b': 'Re-read 1–2 sentences',
+        'option_c': 'Re-read 3–4 sentences',
+        'option_d': 'Re-read 5 or more sentences',
+        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'attention', 'display_order': 6,
+        // Source: Just & Carpenter (1992) — working memory in reading comprehension
+      },
+      {
+        'id': 7,
+        'question_text':
+            'How often do you have difficulty sustaining attention during long or repetitive tasks?',
+        'option_a': 'Rarely — I stay on task easily',
+        'option_b': 'Sometimes — I drift but recover',
+        'option_c': 'Often — it disrupts my work',
+        'option_d': 'Almost always — I can rarely stay on task',
+        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'attention', 'display_order': 7,
+        // Source: ASRS-v1.1 Item 2 — Kessler et al. (2005)
+      },
+      {
+        'id': 8,
+        'question_text':
+            'How often do you find your mind wandering when you are trying to concentrate on something?',
+        'option_a': 'Rarely — I can redirect focus easily',
+        'option_b': 'Sometimes — requires some effort',
+        'option_c': 'Often — it disrupts my concentration',
+        'option_d': 'Almost always — I struggle to stay present',
+        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'attention', 'display_order': 8,
+        // Source: CFQ Distractibility subscale — Broadbent et al. (1982)
+      },
+      {
+        'id': 9,
+        'question_text':
+            'After a period of scrolling or switching between apps, how hard is it to return to focused work?',
+        'option_a': 'Easy — I refocus almost immediately',
+        'option_b': 'A few minutes to settle back in',
+        'option_c': '15–30 minutes before I feel focused again',
+        'option_d': 'I struggle to regain focus for an extended period',
+        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'dimension': 'attention', 'display_order': 9,
+        // Source: Attentional switching cost — Rogers & Monsell (1995);
+        //         Gloria Mark: ~23 min to regain focus post-interruption
+      },
+
+      // ── LIFESTYLE (PSQI / WHO Guidelines) ───────────────────────────────
+      {
+        'id': 10,
+        'question_text':
+            'How would you rate the quality of your sleep on most nights?',
+        'option_a': 'Very good — I wake up feeling refreshed',
+        'option_b': 'Fairly good — mostly rested',
+        'option_c': 'Fairly poor — I often feel tired during the day',
+        'option_d': 'Very poor — I rarely feel rested',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'lifestyle', 'display_order': 10,
+        // Source: PSQI Global Sleep Quality component — Buysse et al. (1989)
+      },
+      {
+        'id': 11,
+        'question_text':
+            'How many days per week do you engage in at least 30 minutes of moderate physical activity?',
+        'option_a': '5 or more days',
+        'option_b': '3 to 4 days',
+        'option_c': '1 to 2 days',
+        'option_d': 'Rarely or never',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'lifestyle', 'display_order': 11,
+        // Source: WHO Physical Activity Guidelines for Adults (2020); IPAQ
+      },
+      {
+        'id': 12,
+        'question_text':
+            'How consistent is your daily schedule (wake time, meals, work hours)?',
+        'option_a': 'Very consistent — I follow a structured daily routine',
+        'option_b': 'Mostly consistent with occasional variation',
+        'option_c': 'Quite inconsistent — my schedule varies a lot',
+        'option_d': 'No real routine — each day is unpredictable',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'lifestyle', 'display_order': 12,
+        // Source: Circadian rhythm regularity & cognition
+        //         Saksvik-Lehouillier et al. (2013), Sleep Medicine
+      },
+
+      // ── LEARNING (NCS / Ebbinghaus / Flow) ──────────────────────────────
+      {
+        'id': 13,
+        'question_text':
+            'When you encounter a mentally challenging problem, what is your first reaction?',
+        'option_a': 'I engage with it — I enjoy the mental effort',
+        'option_b': 'I work through it when I need to',
+        'option_c': 'I prefer to find an easier approach',
+        'option_d': 'I avoid it and look for someone else to solve it',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'learning', 'display_order': 13,
+        // Source: Need for Cognition Scale (NCS) — Cacioppo & Petty (1982), JPSP
+      },
+      {
+        'id': 14,
+        'question_text':
+            'How well do you typically remember something new you learned a few days later?',
+        'option_a': 'Very well — I retain most details',
+        'option_b': 'Fairly well — I remember the key points',
+        'option_c': 'Poorly — I forget most of it quickly',
+        'option_d': 'Barely at all — it fades within hours',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'learning', 'display_order': 14,
+        // Source: Ebbinghaus Forgetting Curve (1885);
+        //         Cepeda et al. (2006), Psychological Bulletin — spaced repetition
+      },
+      {
+        'id': 15,
+        'question_text':
+            'How comfortable are you spending 60+ minutes on a single task without switching?',
+        'option_a': 'Very comfortable — I prefer long deep work sessions',
+        'option_b': 'Comfortable — I can do it when needed',
+        'option_c': 'Uncomfortable — I feel the urge to switch after a short time',
+        'option_d': 'Very difficult — I regularly break off to do other things',
+        'points_a': 3, 'points_b': 2, 'points_c': 1, 'points_d': 0,
+        'dimension': 'learning', 'display_order': 15,
+        // Source: Flow theory — Csikszentmihalyi (1990);
+        //         Deep Work concept — Newport (2016)
+      },
     ];
     return raw.map((e) => DiagnosticQuestion.fromFallback(e)).toList();
   }
