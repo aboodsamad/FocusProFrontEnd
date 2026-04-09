@@ -15,9 +15,9 @@ class GameResultResponse {
 
   factory GameResultResponse.fromJson(Map<String, dynamic> json) {
     return GameResultResponse(
-      focusScoreGained: (json['focusScoreGained'] as num).toDouble(),
-      newFocusScore:    (json['newFocusScore']    as num).toDouble(),
-      message:          json['message'] as String,
+      focusScoreGained: (json['focusScoreGained'] as num?)?.toDouble() ?? 0.0,
+      newFocusScore:    (json['newFocusScore']    as num?)?.toDouble() ?? 0.0,
+      message:          (json['message'] as String?) ?? '',
     );
   }
 }

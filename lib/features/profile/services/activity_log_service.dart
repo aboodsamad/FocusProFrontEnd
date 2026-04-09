@@ -20,9 +20,13 @@ class ActivityLogService {
 
       if (resp.statusCode == 200) {
         final List<dynamic> data = jsonDecode(resp.body);
-        return data
-            .map((j) => ActivityLog.fromJson(j as Map<String, dynamic>))
-            .toList();
+        final List<ActivityLog> logs = [];
+        for (final j in data) {
+          try {
+            if (j is Map<String, dynamic>) logs.add(ActivityLog.fromJson(j));
+          } catch (_) {}
+        }
+        return logs;
       }
       return [];
     } catch (e) {

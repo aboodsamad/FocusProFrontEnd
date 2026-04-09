@@ -143,9 +143,8 @@ class _BookDetailPageState
       // Mark this chapter as genuinely completed
       final completedIdx = _currentIndex;
       if (_snippets.isNotEmpty) {
-        BookService.markSnippetComplete(
-          _snippets[completedIdx].id,
-        ); // ← add this
+        BookService.markSnippetComplete(_snippets[completedIdx].id)
+            .catchError((_) {}); // fire-and-forget, errors suppressed
       }
       _completedChapters.add(_currentIndex);
       setState(() {

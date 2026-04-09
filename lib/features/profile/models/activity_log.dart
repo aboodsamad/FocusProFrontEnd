@@ -14,12 +14,18 @@ class ActivityLog {
   });
 
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
+    DateTime date;
+    try {
+      date = DateTime.parse((json['activityDate'] ?? '').toString());
+    } catch (_) {
+      date = DateTime.now();
+    }
     return ActivityLog(
-      id: (json['id'] as num).toInt(),
-      activityType: json['activityType'] as String,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      activityType: (json['activityType'] as String?) ?? 'unknown',
       activityDescription: json['activityDescription'] as String?,
       activityData: json['activityData'] as String?,
-      activityDate: DateTime.parse(json['activityDate'] as String),
+      activityDate: date,
     );
   }
 }
