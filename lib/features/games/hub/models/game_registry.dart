@@ -5,6 +5,7 @@ import '../../memory_matrix/pages/memory_matrix_page.dart';
 import '../../sudoku/pages/sudoku_page.dart';
 import '../../number_stream/pages/number_stream_page.dart';
 import '../../train_of_thought/pages/train_of_thought_page.dart';
+import '../../color_match/pages/color_match_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -62,7 +63,7 @@ class GameRegistry {
       shortDesc:  'Word vs ink color challenge',
       category:   GameCategory.attention,
       difficulty: GameDifficulty.medium,
-      status:     GameStatus.comingSoon,
+      status:     GameStatus.available,
       colorValue: 0xFF10B981,
       icon:       Icons.palette_outlined,
     ),
@@ -131,6 +132,8 @@ class GameRegistry {
         return const NumberStreamPage();
       case 'train_of_thought':
         return const TrainOfThoughtPage();
+      case 'color_match':
+        return const ColorMatchPage();
       default:
         return null;
     }
