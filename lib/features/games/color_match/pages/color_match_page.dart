@@ -592,26 +592,33 @@ class _ColorMatchPageState extends State<ColorMatchPage>
       );
 
   Widget _colorButton(int index, ColorMatchRound round) {
-    final entry   = round.choices[index];
-    final isTapped   = _feedbackShowing && _tappedIndex == index;
+    final entry          = round.choices[index];
+    final isTapped       = _feedbackShowing && _tappedIndex == index;
     final isCorrectEntry = entry.name == round.inkColor.name;
 
-    // Overlay tint: green pulse on correct tap, red on wrong, green hint on
-    // the correct button when player tapped wrong.
-    Color displayColor = entry.color;
-    Border? displayBorder;
+    // Buttons are always neutral — no color hint. Only feedback reveals state.
+    Color bgColor       = _kCard;
+    Color borderColor   = _kBorder;
+    Color labelColor    = Colors.white;
+    double borderWidth  = 1.5;
 
     if (_feedbackShowing) {
       if (isTapped && _lastTapCorrect) {
-        displayColor = Color.lerp(entry.color, Colors.white, 0.22)!;
-        displayBorder = Border.all(color: Colors.white.withOpacity(0.75), width: 2.5);
+        bgColor     = _kAccent.withOpacity(0.18);
+        borderColor = _kAccent;
+        labelColor  = _kAccent;
+        borderWidth = 2.5;
       } else if (isTapped && !_lastTapCorrect) {
-        displayColor = Color.lerp(entry.color, _kWrong, 0.45)!;
-        displayBorder = Border.all(color: _kWrong, width: 2.5);
+        bgColor     = _kWrong.withOpacity(0.18);
+        borderColor = _kWrong;
+        labelColor  = _kWrong;
+        borderWidth = 2.5;
       } else if (!_lastTapCorrect && isCorrectEntry) {
-        // Hint: pulse the correct answer
-        displayColor = Color.lerp(entry.color, _kAccent, 0.35)!;
-        displayBorder = Border.all(color: _kAccent, width: 2.5);
+        // Hint: reveal the correct answer after a wrong tap
+        bgColor     = _kAccent.withOpacity(0.12);
+        borderColor = _kAccent.withOpacity(0.70);
+        labelColor  = _kAccent;
+        borderWidth = 2.5;
       }
     }
 
@@ -622,25 +629,18 @@ class _ColorMatchPageState extends State<ColorMatchPage>
           duration: const Duration(milliseconds: 160),
           height: 70,
           decoration: BoxDecoration(
-            color: displayColor,
+            color: bgColor,
             borderRadius: BorderRadius.circular(16),
-            border: displayBorder,
-            boxShadow: [
-              BoxShadow(
-                  color: entry.color.withOpacity(0.38),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6)),
-            ],
+            border: Border.all(color: borderColor, width: borderWidth),
           ),
           child: Center(
             child: Text(
               entry.name,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: labelColor,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.8,
-                shadows: [Shadow(color: Colors.black38, blurRadius: 5)],
               ),
             ),
           ),

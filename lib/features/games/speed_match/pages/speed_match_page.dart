@@ -1,0 +1,1269 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Design constants  (same palette as other games)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _kBg      = Color(0xFF06090F);
+const _kCard    = Color(0xFF0F1624);
+const _kBorder  = Color(0xFF1E2840);
+const _kAccent  = Color(0xFFF59E0B); // amber — matches registry colorValue
+const _kGold    = Color(0xFFFFD166);
+const _kWrong   = Color(0xFFFF5270);
+const _kCorrect = Color(0xFF10B981);
+const _kMuted   = Color(0xFF6B7A99);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _Phase { idle, countdown, playing, gameOver }
+
+enum SpeedMatchDifficulty { easy, medium, hard }
+
+enum _Shape { circle, square, triangle, star }
+
+class _CardData {
+  final _Shape shape;
+  final Color  color;
+  final String colorName;
+
+  const _CardData({
+    required this.shape,
+    required this.color,
+    required this.colorName,
+  });
+
+  bool matchesBy(SpeedMatchDifficulty difficulty, _CardData other) {
+    switch (difficulty) {
+      case SpeedMatchDifficulty.easy:
+        return colorName == other.colorName;
+      case SpeedMatchDifficulty.medium:
+        return shape == other.shape;
+      case SpeedMatchDifficulty.hard:
+        return colorName == other.colorName && shape == other.shape;
+    }
+  }
+}
+
+const _kShapeColors = [
+  (name: 'Red',    color: Color(0xFFEF4444)),
+  (name: 'Blue',   color: Color(0xFF3B82F6)),
+  (name: 'Green',  color: Color(0xFF10B981)),
+  (name: 'Yellow', color: Color(0xFFFFD166)),
+  (name: 'Purple', color: Color(0xFFA78BFA)),
+  (name: 'Orange', color: Color(0xFFF97316)),
+];
+
+_CardData _randomCard([math.Random? rng]) {
+  rng ??= math.Random();
+  final col   = _kShapeColors[rng.nextInt(_kShapeColors.length)];
+  final shape = _Shape.values[rng.nextInt(_Shape.values.length)];
+  return _CardData(shape: shape, color: col.color, colorName: col.name);
+}
+
+class _GameState {
+  final _Phase               phase;
+  final SpeedMatchDifficulty difficulty;
+  final int                  score;
+  final int                  lives;
+  final int                  streak;
+  final int                  bestStreak;
+  final int                  countdown;
+  final int                  mistakes;
+  final int                  correct;
+  final _CardData?           currentCard;
+  final _CardData?           previousCard;
+
+  const _GameState({
+    required this.phase,
+    required this.difficulty,
+    required this.score,
+    required this.lives,
+    required this.streak,
+    required this.bestStreak,
+    required this.countdown,
+    required this.mistakes,
+    required this.correct,
+    this.currentCard,
+    this.previousCard,
+  });
+
+  factory _GameState.initial(SpeedMatchDifficulty d) => _GameState(
+        phase:       _Phase.idle,
+        difficulty:  d,
+        score:       0,
+        lives:       3,
+        streak:      0,
+        bestStreak:  0,
+        countdown:   3,
+        mistakes:    0,
+        correct:     0,
+      );
+
+  bool? get isMatch {
+    if (currentCard == null || previousCard == null) return null;
+    return currentCard!.matchesBy(difficulty, previousCard!);
+  }
+
+  int get accuracy {
+    final total = correct + mistakes;
+    if (total == 0) return 0;
+    return (correct / total * 100).round();
+  }
+
+  _GameState copyWith({
+    _Phase?               phase,
+    SpeedMatchDifficulty? difficulty,
+    int?                  score,
+    int?                  lives,
+    int?                  streak,
+    int?                  bestStreak,
+    int?                  countdown,
+    int?                  mistakes,
+    int?                  correct,
+    _CardData?            currentCard,
+    _CardData?            previousCard,
+  }) =>
+      _GameState(
+        phase:        phase        ?? this.phase,
+        difficulty:   difficulty   ?? this.difficulty,
+        score:        score        ?? this.score,
+        lives:        lives        ?? this.lives,
+        streak:       streak       ?? this.streak,
+        bestStreak:   bestStreak   ?? this.bestStreak,
+        countdown:    countdown    ?? this.countdown,
+        mistakes:     mistakes     ?? this.mistakes,
+        correct:      correct      ?? this.correct,
+        currentCard:  currentCard  ?? this.currentCard,
+        previousCard: previousCard ?? this.previousCard,
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
+
+class SpeedMatchPage extends StatefulWidget {
+  const SpeedMatchPage({super.key});
+
+  @override
+  State<SpeedMatchPage> createState() => _SpeedMatchPageState();
+}
+
+class _SpeedMatchPageState extends State<SpeedMatchPage>
+    with TickerProviderStateMixin {
+
+  late _GameState _game;
+  DateTime?       _gameStartTime;
+
+  static int _bestScore = 0;
+
+  // ── Per-card shrinking timer ─────────────────────────────────────────────
+  late AnimationController _cardTimerCtrl;
+  Timer?                   _cardTimeoutTimer;
+
+  // ── Feedback flash ───────────────────────────────────────────────────────
+  bool                    _feedbackShowing    = false;
+  bool                    _lastAnswerCorrect  = false;
+  late AnimationController _feedbackCtrl;
+  late Animation<double>  _feedbackOpacity;
+
+  // ── Game-over fade ───────────────────────────────────────────────────────
+  late AnimationController _gameOverCtrl;
+  late Animation<double>  _gameOverFade;
+
+  // ── Countdown pulse ──────────────────────────────────────────────────────
+  late AnimationController _cdCtrl;
+  late Animation<double>  _cdScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _game = _GameState.initial(SpeedMatchDifficulty.medium);
+
+    _cardTimerCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 3));
+
+    _feedbackCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _feedbackOpacity = CurvedAnimation(
+        parent: _feedbackCtrl, curve: Curves.easeOut);
+
+    _gameOverCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 450));
+    _gameOverFade = CurvedAnimation(
+        parent: _gameOverCtrl, curve: Curves.easeOut);
+
+    _cdCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(
+        CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
+  }
+
+  @override
+  void dispose() {
+    _cardTimerCtrl.dispose();
+    _feedbackCtrl.dispose();
+    _gameOverCtrl.dispose();
+    _cdCtrl.dispose();
+    _cardTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Per-card timer duration — shortens as score grows
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Duration _cardDuration() {
+    final base = _game.difficulty == SpeedMatchDifficulty.easy   ? 3.0
+               : _game.difficulty == SpeedMatchDifficulty.medium ? 2.5
+               : 2.0;
+    final reduced = (base - _game.score * 0.04).clamp(0.7, base);
+    return Duration(milliseconds: (reduced * 1000).round());
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Game flow
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _startGame() {
+    HapticFeedback.mediumImpact();
+    _cardTimeoutTimer?.cancel();
+    _cardTimerCtrl.stop();
+    setState(() {
+      _game = _GameState.initial(_game.difficulty)
+          .copyWith(phase: _Phase.countdown, countdown: 3);
+      _feedbackShowing = false;
+    });
+    _runCountdown();
+  }
+
+  Future<void> _runCountdown() async {
+    for (int i = 3; i >= 1; i--) {
+      if (!mounted) return;
+      setState(() => _game = _game.copyWith(countdown: i));
+      _cdCtrl.forward(from: 0);
+      await Future.delayed(const Duration(milliseconds: 850));
+    }
+    if (!mounted) return;
+    _beginPlaying();
+  }
+
+  void _beginPlaying() {
+    _gameStartTime = DateTime.now();
+    final firstCard = _randomCard();
+    setState(() {
+      _game = _game.copyWith(
+        phase:       _Phase.playing,
+        currentCard: firstCard,
+      );
+      _feedbackShowing = false;
+    });
+    _startCardTimer();
+  }
+
+  void _startCardTimer() {
+    _cardTimeoutTimer?.cancel();
+    final dur = _cardDuration();
+    _cardTimerCtrl.duration = dur;
+    _cardTimerCtrl.forward(from: 0);
+    _cardTimeoutTimer = Timer(dur, _onCardTimeout);
+  }
+
+  void _onCardTimeout() {
+    if (_game.phase != _Phase.playing || _feedbackShowing) return;
+    // First card has no previous — just advance silently
+    if (_game.previousCard == null) {
+      _nextCard();
+    } else {
+      _handleAnswer(tappedYes: null, timedOut: true);
+    }
+  }
+
+  void _onYes() {
+    if (_game.phase != _Phase.playing || _feedbackShowing) return;
+    if (_game.previousCard == null) return;
+    HapticFeedback.lightImpact();
+    _handleAnswer(tappedYes: true);
+  }
+
+  void _onNo() {
+    if (_game.phase != _Phase.playing || _feedbackShowing) return;
+    if (_game.previousCard == null) return;
+    HapticFeedback.lightImpact();
+    _handleAnswer(tappedYes: false);
+  }
+
+  void _handleAnswer({required bool? tappedYes, bool timedOut = false}) {
+    _cardTimeoutTimer?.cancel();
+    _cardTimerCtrl.stop();
+
+    final correct = !timedOut && (tappedYes == _game.isMatch);
+
+    setState(() {
+      _feedbackShowing   = true;
+      _lastAnswerCorrect = correct;
+    });
+    _feedbackCtrl.forward(from: 0);
+
+    if (correct) {
+      final newStreak = _game.streak + 1;
+      setState(() => _game = _game.copyWith(
+        score:      _game.score + 1,
+        streak:     newStreak,
+        bestStreak: newStreak > _game.bestStreak ? newStreak : _game.bestStreak,
+        correct:    _game.correct + 1,
+      ));
+      Future.delayed(const Duration(milliseconds: 380), () {
+        if (mounted) _nextCard();
+      });
+    } else {
+      HapticFeedback.heavyImpact();
+      final newLives = _game.lives - 1;
+      setState(() => _game = _game.copyWith(
+        lives:    newLives,
+        streak:   0,
+        mistakes: _game.mistakes + 1,
+      ));
+      if (newLives <= 0) {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) _endGame();
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) _nextCard();
+        });
+      }
+    }
+  }
+
+  void _nextCard() {
+    if (!mounted) return;
+    setState(() {
+      _game = _game.copyWith(
+        previousCard: _game.currentCard,
+        currentCard:  _randomCard(),
+      );
+      _feedbackShowing = false;
+    });
+    _startCardTimer();
+  }
+
+  void _endGame() {
+    _cardTimeoutTimer?.cancel();
+    _cardTimerCtrl.stop();
+    if (_game.score > _bestScore) _bestScore = _game.score;
+    setState(() => _game = _game.copyWith(phase: _Phase.gameOver));
+    _gameOverCtrl.forward(from: 0);
+    _submitResult();
+  }
+
+  Future<void> _submitResult() async {
+    final timePlayed = _gameStartTime != null
+        ? DateTime.now().difference(_gameStartTime!).inSeconds
+        : 0;
+    final result = await GameService.submitResult(
+      gameType:          'speed_match',
+      score:             _game.score,
+      timePlayedSeconds: timePlayed,
+      completed:         false,
+      levelReached:      _game.difficulty.index + 1,
+      mistakes:          _game.mistakes,
+    );
+    if (result != null && mounted) {
+      context.read<UserProvider>().updateFocusScore(result.newFocusScore);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_game.phase == _Phase.playing) {
+          _cardTimeoutTimer?.cancel();
+          _cardTimerCtrl.stop();
+          await _submitResult();
+        }
+        if (mounted) Navigator.pop(context);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: _kBg,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    _buildHeader(),
+                    if (_game.phase == _Phase.playing) _buildCardTimerBar(),
+                    Expanded(child: _buildBody()),
+                  ],
+                ),
+                if (_feedbackShowing) _buildFeedbackOverlay(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Feedback overlay ─────────────────────────────────────────────────────
+
+  Widget _buildFeedbackOverlay() {
+    final color = _lastAnswerCorrect ? _kCorrect : _kWrong;
+    return IgnorePointer(
+      child: FadeTransition(
+        opacity: _feedbackOpacity,
+        child: Container(color: color.withOpacity(0.10)),
+      ),
+    );
+  }
+
+  // ── Header ───────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    final isPlaying = _game.phase == _Phase.playing;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Row(
+        children: [
+          _BackButton(onTap: () => Navigator.pop(context)),
+          const Spacer(),
+          if (isPlaying) ...[
+            _ScoreChip(score: _game.score, streak: _game.streak),
+            const SizedBox(width: 10),
+          ],
+          if (isPlaying)
+            _LivesRow(lives: _game.lives)
+          else
+            const SizedBox(width: 40),
+        ],
+      ),
+    );
+  }
+
+  // ── Per-card shrinking timer bar ─────────────────────────────────────────
+
+  Widget _buildCardTimerBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: AnimatedBuilder(
+        animation: _cardTimerCtrl,
+        builder: (_, __) {
+          final fraction = (1.0 - _cardTimerCtrl.value).clamp(0.0, 1.0);
+          final barColor = fraction > 0.55 ? _kAccent
+              : fraction > 0.28 ? _kGold
+              : _kWrong;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 6,
+              backgroundColor: Colors.white.withOpacity(0.07),
+              valueColor: AlwaysStoppedAnimation(barColor),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Body router ──────────────────────────────────────────────────────────
+
+  Widget _buildBody() {
+    switch (_game.phase) {
+      case _Phase.idle:
+        return _buildIdleScreen();
+      case _Phase.countdown:
+        return _buildCountdownScreen();
+      case _Phase.playing:
+        return _buildPlayScreen();
+      case _Phase.gameOver:
+        return FadeTransition(
+            opacity: _gameOverFade, child: _buildGameOverScreen());
+    }
+  }
+
+  // ── Idle screen ──────────────────────────────────────────────────────────
+
+  Widget _buildIdleScreen() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+      child: Column(
+        children: [
+          // Glow icon
+          Container(
+            width: 90, height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                  colors: [_kAccent.withOpacity(0.28), _kAccent.withOpacity(0.04)]),
+              border: Border.all(color: _kAccent.withOpacity(0.35), width: 1.5),
+            ),
+            child: const Icon(Icons.bolt_rounded, color: _kAccent, size: 42),
+          ),
+          const SizedBox(height: 18),
+          const Text('Speed Match',
+              style: TextStyle(color: Colors.white, fontSize: 28,
+                  fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          const SizedBox(height: 10),
+          Text(
+            'Does this card match the previous one?\nTap YES or NO before time runs out!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.5),
+          ),
+          const SizedBox(height: 18),
+
+          // How-to example
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _kCard,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _ExampleCard(
+                        shape: _Shape.circle,
+                        color: const Color(0xFFEF4444),
+                        label: 'Previous'),
+                    const Icon(Icons.arrow_forward_rounded,
+                        color: _kMuted, size: 20),
+                    _ExampleCard(
+                        shape: _Shape.circle,
+                        color: const Color(0xFFEF4444),
+                        label: 'Current'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: _kCorrect, size: 16),
+                    SizedBox(width: 6),
+                    Text('Same color → tap YES  (Easy)',
+                        style: TextStyle(color: _kMuted, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Best score badge
+          if (_bestScore > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: _kGold.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _kGold.withOpacity(0.3)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
+                const SizedBox(width: 6),
+                Text('Best: $_bestScore cards',
+                    style: const TextStyle(color: _kGold, fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ),
+            const SizedBox(height: 20),
+          ] else
+            const SizedBox(height: 4),
+
+          // Difficulty selector
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Difficulty',
+                style: TextStyle(color: Colors.white, fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: SpeedMatchDifficulty.values.map((d) {
+              final active = _game.difficulty == d;
+              final label  = d == SpeedMatchDifficulty.easy   ? 'Easy'
+                           : d == SpeedMatchDifficulty.medium ? 'Medium'
+                           : 'Hard';
+              final hint   = d == SpeedMatchDifficulty.easy   ? 'Color'
+                           : d == SpeedMatchDifficulty.medium ? 'Shape'
+                           : 'Both';
+              final col    = d == SpeedMatchDifficulty.easy   ? _kCorrect
+                           : d == SpeedMatchDifficulty.medium ? _kGold
+                           : _kWrong;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      right: d != SpeedMatchDifficulty.hard ? 8 : 0),
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _game = _game.copyWith(difficulty: d)),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: active ? col.withOpacity(0.16) : _kCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: active ? col.withOpacity(0.55) : _kBorder),
+                      ),
+                      child: Column(children: [
+                        Text(label,
+                            style: TextStyle(
+                                color: active ? col : Colors.grey[500],
+                                fontWeight: FontWeight.w700, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text('Match: $hint',
+                            style: TextStyle(
+                                color: active
+                                    ? col.withOpacity(0.65)
+                                    : Colors.grey[700],
+                                fontSize: 10)),
+                      ]),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 30),
+
+          // Start button
+          GestureDetector(
+            onTap: _startGame,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFD97706), _kAccent]),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: _kAccent.withOpacity(0.38),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10)),
+                ],
+              ),
+              child: const Center(
+                child: Text('Start',
+                    style: TextStyle(color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17, letterSpacing: 0.6)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Countdown screen ─────────────────────────────────────────────────────
+
+  Widget _buildCountdownScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ScaleTransition(
+            scale: _cdScale,
+            child: Text(
+              '${_game.countdown}',
+              style: const TextStyle(
+                  color: _kAccent, fontSize: 96,
+                  fontWeight: FontWeight.w800, letterSpacing: -4),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text('Get ready…',
+              style: TextStyle(color: _kMuted, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  // ── Play screen ──────────────────────────────────────────────────────────
+
+  Widget _buildPlayScreen() {
+    final card        = _game.currentCard;
+    if (card == null) return const SizedBox.shrink();
+    final isFirstCard = _game.previousCard == null;
+
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+
+        // Match criterion label
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Match by: ',
+                style: TextStyle(color: _kMuted, fontSize: 13)),
+            Text(
+              _game.difficulty == SpeedMatchDifficulty.easy
+                  ? 'COLOR'
+                  : _game.difficulty == SpeedMatchDifficulty.medium
+                      ? 'SHAPE'
+                      : 'COLOR + SHAPE',
+              style: const TextStyle(
+                  color: _kAccent, fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Cards area
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isFirstCard ? 'Memorise this card!' : 'Does it match?',
+                  style: TextStyle(
+                      color: _kMuted, fontSize: 12, letterSpacing: 0.3),
+                ),
+                const SizedBox(height: 10),
+
+                // Current card (large)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) {
+                    final scale = Tween<double>(begin: 0.82, end: 1.0).animate(
+                        CurvedAnimation(
+                            parent: anim, curve: Curves.elasticOut));
+                    return ScaleTransition(
+                        scale: scale,
+                        child: FadeTransition(opacity: anim, child: child));
+                  },
+                  child: _ShapeCard(
+                    key: ValueKey(_game.score * 100 + card.shape.index),
+                    card: card,
+                    size: 136,
+                    feedbackColor: _feedbackShowing
+                        ? (_lastAnswerCorrect ? _kCorrect : _kWrong)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // YES / NO buttons — hidden until second card appears
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+          child: isFirstCard
+              ? Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _kBorder),
+                  ),
+                  child: const Center(
+                    child: Text('Memorise this card!',
+                        style: TextStyle(color: _kMuted, fontSize: 15,
+                            fontWeight: FontWeight.w500)),
+                  ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: _AnswerButton(
+                        label:   'YES',
+                        color:   _kCorrect,
+                        icon:    Icons.check_rounded,
+                        onTap:   _onYes,
+                        enabled: !_feedbackShowing,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _AnswerButton(
+                        label:   'NO',
+                        color:   _kWrong,
+                        icon:    Icons.close_rounded,
+                        onTap:   _onNo,
+                        enabled: !_feedbackShowing,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  // ── Game over screen ─────────────────────────────────────────────────────
+
+  Widget _buildGameOverScreen() {
+    final isNewBest = _game.score > 0 && _game.score >= _bestScore;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 90, height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kWrong.withOpacity(0.10),
+                border:
+                    Border.all(color: _kWrong.withOpacity(0.3), width: 1.5),
+              ),
+              child: const Icon(Icons.bolt_rounded, color: _kWrong, size: 42),
+            ),
+            const SizedBox(height: 20),
+            const Text('Game Over',
+                style: TextStyle(color: Colors.white, fontSize: 32,
+                    fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+            if (isNewBest) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _kGold.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _kGold.withOpacity(0.4)),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.emoji_events_rounded, color: _kGold, size: 14),
+                  SizedBox(width: 5),
+                  Text('New Best!',
+                      style: TextStyle(color: _kGold, fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 28),
+            _StatRow(label: 'Cards Matched', value: '${_game.score}',
+                valueColor: _kAccent),
+            const SizedBox(height: 8),
+            _StatRow(label: 'Best Streak',   value: '×${_game.bestStreak}',
+                valueColor: _kGold),
+            const SizedBox(height: 8),
+            _StatRow(label: 'Accuracy',      value: '${_game.accuracy}%',
+                valueColor: const Color(0xFF818CF8)),
+            const SizedBox(height: 8),
+            _StatRow(label: 'Mistakes',      value: '${_game.mistakes}',
+                valueColor: _kWrong),
+            const SizedBox(height: 44),
+            _PrimaryButton(label: 'Play Again', onTap: _startGame),
+            const SizedBox(height: 12),
+            _SecondaryButton(
+                label: 'Exit', onTap: () => Navigator.pop(context)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shape card widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ShapeCard extends StatelessWidget {
+  final _CardData card;
+  final double    size;
+  final Color?    feedbackColor;
+
+  const _ShapeCard({
+    super.key,
+    required this.card,
+    required this.size,
+    required this.feedbackColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasFeedback   = feedbackColor != null;
+    final borderColor   = hasFeedback ? feedbackColor! : _kBorder;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      width: size + 36,
+      height: size + 36,
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor.withOpacity(hasFeedback ? 0.85 : 1.0),
+          width: hasFeedback ? 2.5 : 1.5,
+        ),
+        boxShadow: hasFeedback
+            ? [
+                BoxShadow(
+                    color: feedbackColor!.withOpacity(0.28),
+                    blurRadius: 22,
+                    spreadRadius: 2),
+              ]
+            : null,
+      ),
+      child: Center(
+        child: CustomPaint(
+          size: Size(size, size),
+          painter: _ShapePainter(shape: card.shape, color: card.color),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shape painter  (circle, square, triangle, star)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ShapePainter extends CustomPainter {
+  final _Shape shape;
+  final Color  color;
+
+  const _ShapePainter({required this.shape, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final glow = Paint()
+      ..color = color.withOpacity(0.22)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+
+    switch (shape) {
+      case _Shape.circle:
+        canvas.drawCircle(c, r * 0.98, glow);
+        canvas.drawCircle(c, r * 0.78, fill);
+        break;
+
+      case _Shape.square:
+        final s    = r * 1.32;
+        final rect = Rect.fromCenter(center: c, width: s, height: s);
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(rect, const Radius.circular(10)), glow);
+        final inner = Rect.fromCenter(
+            center: c, width: s * 0.84, height: s * 0.84);
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(inner, const Radius.circular(8)), fill);
+        break;
+
+      case _Shape.triangle:
+        final gPath = Path()
+          ..moveTo(c.dx, c.dy - r * 1.02)
+          ..lineTo(c.dx + r * 1.02, c.dy + r * 0.72)
+          ..lineTo(c.dx - r * 1.02, c.dy + r * 0.72)
+          ..close();
+        final fPath = Path()
+          ..moveTo(c.dx, c.dy - r * 0.86)
+          ..lineTo(c.dx + r * 0.86, c.dy + r * 0.60)
+          ..lineTo(c.dx - r * 0.86, c.dy + r * 0.60)
+          ..close();
+        canvas.drawPath(gPath, glow);
+        canvas.drawPath(fPath, fill);
+        break;
+
+      case _Shape.star:
+        canvas.drawPath(_starPath(c, r * 1.02, r * 0.42, 5), glow);
+        canvas.drawPath(_starPath(c, r * 0.86, r * 0.36, 5), fill);
+        break;
+    }
+  }
+
+  Path _starPath(Offset center, double outerR, double innerR, int points) {
+    final path = Path();
+    for (int i = 0; i < points * 2; i++) {
+      final angle = (i * math.pi / points) - math.pi / 2;
+      final rad   = i.isEven ? outerR : innerR;
+      final x     = center.dx + rad * math.cos(angle);
+      final y     = center.dy + rad * math.sin(angle);
+      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+    }
+    return path..close();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShapePainter old) =>
+      old.shape != shape || old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small example card for idle screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ExampleCard extends StatelessWidget {
+  final _Shape shape;
+  final Color  color;
+  final String label;
+
+  const _ExampleCard({
+    required this.shape,
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              color: _kCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Center(
+              child: CustomPaint(
+                size: const Size(34, 34),
+                painter: _ShapePainter(shape: shape, color: color),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(label,
+              style: const TextStyle(color: _kMuted, fontSize: 10)),
+        ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Answer button  (YES / NO)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AnswerButton extends StatelessWidget {
+  final String      label;
+  final Color       color;
+  final IconData    icon;
+  final VoidCallback onTap;
+  final bool        enabled;
+
+  const _AnswerButton({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: enabled ? 1.0 : 0.45,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.40)),
+              boxShadow: [
+                BoxShadow(
+                    color: color.withOpacity(0.14),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6)),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 8),
+                Text(label,
+                    style: TextStyle(
+                        color: color, fontSize: 17,
+                        fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared small widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kBorder),
+          ),
+          child: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white, size: 16),
+        ),
+      );
+}
+
+class _ScoreChip extends StatelessWidget {
+  final int score;
+  final int streak;
+  const _ScoreChip({required this.score, required this.streak});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.star_rounded, color: _kGold, size: 14),
+          const SizedBox(width: 5),
+          Text('$score',
+              style: const TextStyle(color: Colors.white, fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+          if (streak > 1) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _kAccent.withOpacity(0.20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('×$streak',
+                  style: const TextStyle(color: _kAccent, fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ]),
+      );
+}
+
+class _LivesRow extends StatelessWidget {
+  final int lives;
+  const _LivesRow({required this.lives});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          3,
+          (i) => Padding(
+            padding: const EdgeInsets.only(left: 3),
+            child: Icon(
+              i < lives
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              color: i < lives ? _kWrong : Colors.grey[700],
+              size: 18,
+            ),
+          ),
+        ),
+      );
+}
+
+class _StatRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color  valueColor;
+  const _StatRow(
+      {required this.label, required this.value, required this.valueColor});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(color: _kMuted, fontSize: 14)),
+          Text(value,
+              style: TextStyle(
+                  color: valueColor, fontSize: 14,
+                  fontWeight: FontWeight.w700)),
+        ],
+      );
+}
+
+class _PrimaryButton extends StatelessWidget {
+  final String      label;
+  final VoidCallback onTap;
+  const _PrimaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+                colors: [Color(0xFFD97706), _kAccent]),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                  color: _kAccent.withOpacity(0.38),
+                  blurRadius: 22,
+                  offset: const Offset(0, 9)),
+            ],
+          ),
+          child: Center(
+            child: Text(label,
+                style: const TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16, letterSpacing: 0.3)),
+          ),
+        ),
+      );
+}
+
+class _SecondaryButton extends StatelessWidget {
+  final String      label;
+  final VoidCallback onTap;
+  const _SecondaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Center(
+            child: Text(label,
+                style: const TextStyle(color: _kMuted,
+                    fontWeight: FontWeight.w600, fontSize: 15)),
+          ),
+        ),
+      );
+}

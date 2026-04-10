@@ -6,6 +6,8 @@ import '../../sudoku/pages/sudoku_page.dart';
 import '../../number_stream/pages/number_stream_page.dart';
 import '../../train_of_thought/pages/train_of_thought_page.dart';
 import '../../color_match/pages/color_match_page.dart';
+import '../../speed_match/pages/speed_match_page.dart';
+import '../../pattern_trail/pages/pattern_trail_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -52,7 +54,7 @@ class GameRegistry {
       shortDesc:  'Match cards at high speed',
       category:   GameCategory.speed,
       difficulty: GameDifficulty.easy,
-      status:     GameStatus.comingSoon,
+      status:     GameStatus.available,
       colorValue: 0xFFF59E0B,
       icon:       Icons.bolt_rounded,
     ),
@@ -85,8 +87,8 @@ class GameRegistry {
       shortDesc:  'Repeat the dot sequence',
       category:   GameCategory.memory,
       difficulty: GameDifficulty.hard,
-      status:     GameStatus.comingSoon,
-      colorValue: 0xFF06B6D4,
+      status:     GameStatus.available,
+      colorValue: 0xFF378ADD,
       icon:       Icons.timeline_rounded,
     ),
     GameItem(
@@ -134,6 +136,10 @@ class GameRegistry {
         return const TrainOfThoughtPage();
       case 'color_match':
         return const ColorMatchPage();
+      case 'speed_match':
+        return const SpeedMatchPage();
+      case 'pattern_trail':
+        return const PatternTrailPage();
       default:
         return null;
     }
