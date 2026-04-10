@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static String get baseUrl => kIsWeb
-      ? 'http://localhost:8080'
-      : 'http://localhost:8080';
+      ? 'https://focusprobackend.onrender.com'
+      : 'https://focusprobackend.onrender.com';
 
   // ── Token storage ──────────────────────────────────────────────────────────
   static Future<void> saveToken(String token) async {
