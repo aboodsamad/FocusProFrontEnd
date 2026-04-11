@@ -6,26 +6,19 @@ import '../models/ai_question_model.dart';
 class AiService {
   static String get _base => AuthService.baseUrl;
 
-  static Future<Map<String, String>> _headers() async {
-    final token = await AuthService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
   // ── Snippet comprehension ─────────────────────────────────────────────────
 
-  /// GET /ai/snippet/{snippetId}/questions
-  /// Fetches (or generates) 3 comprehension questions for the given snippet.
-  static Future<List<AiQuestionModel>> getSnippetQuestions(int snippetId) async {
+  static Future<List<AiQuestionModel>> getSnippetQuestions(int snippetId, String token) async {
     try {
       final resp = await http
           .get(
             Uri.parse('$_base/ai/snippet/$snippetId/questions'),
-            headers: await _headers(),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
           )
-          .timeout(const Duration(seconds: 20)); // AI generation can take a few secs
+          .timeout(const Duration(seconds: 20));
 
       if (resp.statusCode == 200) {
         final List<dynamic> data = jsonDecode(resp.body);
@@ -41,16 +34,16 @@ class AiService {
     }
   }
 
-  /// POST /ai/snippet/{snippetId}/submit
-  /// Submits the user's answers and returns pass/fail + focus score result.
-  /// [answers] = { questionId: chosenLetter }  e.g. { 1: 'A', 2: 'C', 3: 'B' }
   static Future<SnippetCheckResult?> submitSnippetAnswers(
-      int snippetId, Map<int, String> answers) async {
+      int snippetId, Map<int, String> answers, String token) async {
     try {
       final resp = await http
           .post(
             Uri.parse('$_base/ai/snippet/$snippetId/submit'),
-            headers: await _headers(),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({'answers': answers.map((k, v) => MapEntry(k.toString(), v))}),
           )
           .timeout(const Duration(seconds: 10));
@@ -69,14 +62,15 @@ class AiService {
 
   // ── Retention test ────────────────────────────────────────────────────────
 
-  /// GET /ai/retention/generate
-  /// Generates a fresh retention test from past completed snippets.
-  static Future<List<AiQuestionModel>> generateRetentionTest() async {
+  static Future<List<AiQuestionModel>> generateRetentionTest(String token) async {
     try {
       final resp = await http
           .get(
             Uri.parse('$_base/ai/retention/generate'),
-            headers: await _headers(),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
           )
           .timeout(const Duration(seconds: 25));
 
@@ -94,15 +88,16 @@ class AiService {
     }
   }
 
-  /// POST /ai/retention/submit
-  /// Submits answers to the retention test and returns score delta.
   static Future<RetentionTestResult?> submitRetentionTest(
-      Map<int, String> answers) async {
+      Map<int, String> answers, String token) async {
     try {
       final resp = await http
           .post(
             Uri.parse('$_base/ai/retention/submit'),
-            headers: await _headers(),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({'answers': answers.map((k, v) => MapEntry(k.toString(), v))}),
           )
           .timeout(const Duration(seconds: 10));

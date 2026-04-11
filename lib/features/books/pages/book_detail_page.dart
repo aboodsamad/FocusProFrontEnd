@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:capstone_front_end/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../../core/constants/app_colors.dart';
@@ -6,6 +7,7 @@ import '../models/book_model.dart';
 import '../models/book_snippet_model.dart';
 import '../services/book_service.dart';
 import '../../ai_flutter/widgets/snippet_check_sheet.dart';
+
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
@@ -107,7 +109,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       // Mark this chapter as genuinely completed
       final completedIdx = _currentIndex;
       final snippetId = _snippets[completedIdx].id;
-      final passed = await showSnippetCheckSheet(context, snippetId: snippetId);
+      final token = await AuthService.getToken() ?? '';
+      final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
       if (passed) _completedChapters.add(completedIdx);
       setState(() {
         _ttsPlaying = false;
@@ -289,16 +292,12 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (_current == null) return;
     final completedIdx = _currentIndex;
     final snippetId = _current!.id;
-
-    // AI comprehension check — replaces the old markSnippetComplete call
-    // The sheet handles marking complete server-side on pass
-    final passed = await showSnippetCheckSheet(context, snippetId: snippetId);
-
+    final token = await AuthService.getToken() ?? '';
+    final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
     if (passed) {
       _completedChapters.add(completedIdx);
       setState(() {});
     }
-
     if (_currentIndex < _snippets.length - 1) {
       _goTo(_currentIndex + 1);
     } else {

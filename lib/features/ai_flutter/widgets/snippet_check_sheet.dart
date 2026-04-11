@@ -2,40 +2,33 @@ import 'package:flutter/material.dart';
 import '../models/ai_question_model.dart';
 import '../services/ai_service.dart';
 
-// ── Design tokens (matching your existing dark theme) ─────────────────────────
-const _bg      = Color(0xFF080B14);
-const _cardBg  = Color(0xFF0F1524);
-const _purple  = Color(0xFF8B5CF6);
-const _violet  = Color(0xFFA78BFA);
-const _green   = Color(0xFF34D399);
-const _red     = Color(0xFFEF4444);
+const _bg     = Color(0xFF080B14);
+const _cardBg = Color(0xFF0F1524);
+const _purple = Color(0xFF8B5CF6);
+const _violet = Color(0xFFA78BFA);
+const _green  = Color(0xFF34D399);
+const _red    = Color(0xFFEF4444);
 
-/// Shows as a full-screen bottom sheet right after the user finishes a snippet.
-/// Call it like this from book_detail_page.dart:
-///
-/// ```dart
-/// await showSnippetCheckSheet(context, snippetId: snippet.id);
-/// ```
-///
-/// Returns true if the user passed, false if they failed or dismissed.
 Future<bool> showSnippetCheckSheet(
   BuildContext context, {
   required int snippetId,
+  required String token,
 }) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    isDismissible: false,   // user must go through the check
+    isDismissible: false,
     enableDrag: false,
-    builder: (_) => _SnippetCheckSheet(snippetId: snippetId),
+    builder: (_) => _SnippetCheckSheet(snippetId: snippetId, token: token),
   );
   return result ?? false;
 }
 
 class _SnippetCheckSheet extends StatefulWidget {
   final int snippetId;
-  const _SnippetCheckSheet({required this.snippetId});
+  final String token;
+  const _SnippetCheckSheet({required this.snippetId, required this.token});
 
   @override
   State<_SnippetCheckSheet> createState() => _SnippetCheckSheetState();
@@ -44,19 +37,17 @@ class _SnippetCheckSheet extends StatefulWidget {
 class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     with SingleTickerProviderStateMixin {
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  List<AiQuestionModel> _questions  = [];
-  final Map<int, String> _answers   = {}; // questionId → chosen letter
-  int    _currentIndex              = 0;
-  bool   _loading                   = true;
-  bool   _submitting                = false;
+  List<AiQuestionModel> _questions = [];
+  final Map<int, String> _answers  = {};
+  int     _currentIndex            = 0;
+  bool    _loading                 = true;
+  bool    _submitting              = false;
   String? _error;
   SnippetCheckResult? _result;
 
   late AnimationController _fadeCtrl;
   late Animation<double>   _fadeAnim;
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -72,10 +63,9 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     super.dispose();
   }
 
-  // ── Data ──────────────────────────────────────────────────────────────────
   Future<void> _loadQuestions() async {
     setState(() { _loading = true; _error = null; });
-    final q = await AiService.getSnippetQuestions(widget.snippetId);
+    final q = await AiService.getSnippetQuestions(widget.snippetId, widget.token);
     if (!mounted) return;
     if (q.isEmpty) {
       setState(() { _loading = false; _error = 'Could not load questions. Try again.'; });
@@ -88,10 +78,8 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
   Future<void> _submit() async {
     if (_answers.length < _questions.length) return;
     setState(() => _submitting = true);
-
-    final result = await AiService.submitSnippetAnswers(widget.snippetId, _answers);
+    final result = await AiService.submitSnippetAnswers(widget.snippetId, _answers, widget.token);
     if (!mounted) return;
-
     setState(() { _submitting = false; _result = result; });
   }
 
@@ -103,9 +91,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     });
   }
 
-  bool get _allAnswered => _answers.length == _questions.length;
-
-  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -115,7 +100,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(children: [
-        // Drag handle
         Container(
           margin: const EdgeInsets.only(top: 12),
           width: 40, height: 4,
@@ -130,13 +114,12 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
   }
 
   Widget _buildBody() {
-    if (_loading)   return _buildLoading();
-    if (_error != null) return _buildError();
+    if (_loading)        return _buildLoading();
+    if (_error != null)  return _buildError();
     if (_result != null) return _buildResult();
     return _buildQuestions();
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
   Widget _buildLoading() {
     return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Container(
@@ -163,7 +146,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     ]);
   }
 
-  // ── Error ─────────────────────────────────────────────────────────────────
   Widget _buildError() {
     return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.error_outline, color: _red, size: 52),
@@ -179,9 +161,8 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     ]);
   }
 
-  // ── Questions ─────────────────────────────────────────────────────────────
   Widget _buildQuestions() {
-    final q = _questions[_currentIndex];
+    final q      = _questions[_currentIndex];
     final isLast = _currentIndex == _questions.length - 1;
     final chosen = _answers[q.questionId];
 
@@ -190,8 +171,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-          // Header
           Row(children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -213,7 +192,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
           const SizedBox(height: 6),
 
-          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -226,7 +204,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
           const SizedBox(height: 24),
 
-          // Question text
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -243,7 +220,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
           const SizedBox(height: 20),
 
-          // Options
           for (final letter in ['A', 'B', 'C', 'D'])
             _OptionTile(
               letter: letter,
@@ -254,7 +230,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
           const Spacer(),
 
-          // Next / Submit button
           if (chosen != null)
             _GradientButton(
               label: isLast
@@ -267,18 +242,14 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     );
   }
 
-  // ── Result ────────────────────────────────────────────────────────────────
   Widget _buildResult() {
-    final r = _result!;
+    final r     = _result!;
     final color = r.passed ? _green : _red;
-    final icon  = r.passed ? Icons.check_circle_outline : Icons.cancel_outlined;
     final emoji = r.passed ? '🎉' : '📖';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(children: [
-
-        // Score circle
         Container(
           width: 110, height: 110,
           decoration: BoxDecoration(
@@ -329,7 +300,6 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
         const SizedBox(height: 28),
 
-        // Per-question breakdown
         const Align(
           alignment: Alignment.centerLeft,
           child: Text('Results', style: TextStyle(
@@ -338,8 +308,7 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
         const SizedBox(height: 12),
 
         for (int i = 0; i < r.results.length; i++)
-          _ResultRow(index: i + 1, result: r.results[i],
-              question: _questions[i]),
+          _ResultRow(index: i + 1, result: r.results[i], question: _questions[i]),
 
         const SizedBox(height: 28),
 
@@ -361,18 +330,15 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
   }
 }
 
-// ── Option tile ───────────────────────────────────────────────────────────────
 class _OptionTile extends StatelessWidget {
-  final String   letter;
-  final String   text;
-  final bool     isSelected;
+  final String letter;
+  final String text;
+  final bool   isSelected;
   final VoidCallback onTap;
 
   const _OptionTile({
-    required this.letter,
-    required this.text,
-    required this.isSelected,
-    required this.onTap,
+    required this.letter, required this.text,
+    required this.isSelected, required this.onTap,
   });
 
   @override
@@ -386,16 +352,13 @@ class _OptionTile extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           gradient: isSelected
-              ? const LinearGradient(colors: [_purple, _violet])
-              : null,
+              ? const LinearGradient(colors: [_purple, _violet]) : null,
           color: isSelected ? null : _cardBg,
           border: Border.all(
-            color: isSelected ? Colors.transparent : Colors.white12,
-            width: 1.5,
-          ),
+              color: isSelected ? Colors.transparent : Colors.white12,
+              width: 1.5),
         ),
         child: Row(children: [
-          // Letter badge
           Container(
             width: 30, height: 30,
             decoration: BoxDecoration(
@@ -420,14 +383,12 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-// ── Result row ────────────────────────────────────────────────────────────────
 class _ResultRow extends StatelessWidget {
-  final int            index;
-  final AiAnswerResult result;
+  final int             index;
+  final AiAnswerResult  result;
   final AiQuestionModel question;
 
-  const _ResultRow({
-      required this.index, required this.result, required this.question});
+  const _ResultRow({required this.index, required this.result, required this.question});
 
   @override
   Widget build(BuildContext context) {
@@ -444,8 +405,7 @@ class _ResultRow extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(correct ? Icons.check_circle : Icons.cancel,
-              color: color, size: 18),
+          Icon(correct ? Icons.check_circle : Icons.cancel, color: color, size: 18),
           const SizedBox(width: 8),
           Expanded(child: Text('Q$index: ${question.questionText}',
               style: const TextStyle(color: Colors.white70, fontSize: 13),
@@ -463,7 +423,6 @@ class _ResultRow extends StatelessWidget {
   }
 }
 
-// ── Reusable gradient button ──────────────────────────────────────────────────
 class _GradientButton extends StatelessWidget {
   final String    label;
   final VoidCallback? onTap;
@@ -487,7 +446,8 @@ class _GradientButton extends StatelessWidget {
                 end: Alignment.centerRight),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [BoxShadow(
-                color: _purple.withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 6))],
+                color: _purple.withOpacity(0.4), blurRadius: 16,
+                offset: const Offset(0, 6))],
           ),
           child: Center(child: Text(label,
               style: const TextStyle(color: Colors.white,

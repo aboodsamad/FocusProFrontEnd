@@ -1,3 +1,4 @@
+import 'package:capstone_front_end/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../models/ai_question_model.dart';
 import '../services/ai_service.dart';
@@ -57,28 +58,30 @@ class _RetentionTestPageState extends State<RetentionTestPage>
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  Future<void> _loadTest() async {
-    setState(() { _loading = true; _error = null; _answers.clear(); _currentIndex = 0; _result = null; });
-    final q = await AiService.generateRetentionTest();
-    if (!mounted) return;
-    if (q.isEmpty) {
-      setState(() {
-        _loading = false;
-        _error = 'Not enough completed snippets yet.\nFinish a few more snippets first!';
-      });
-      return;
-    }
-    setState(() { _questions = q; _loading = false; });
-    _fadeCtrl.forward();
+Future<void> _loadTest() async {
+  setState(() { _loading = true; _error = null; _answers.clear(); _currentIndex = 0; _result = null; });
+  final token = await AuthService.getToken() ?? '';
+  final q = await AiService.generateRetentionTest(token);
+  if (!mounted) return;
+  if (q.isEmpty) {
+    setState(() {
+      _loading = false;
+      _error = 'Not enough completed snippets yet.\nFinish a few more snippets first!';
+    });
+    return;
   }
+  setState(() { _questions = q; _loading = false; });
+  _fadeCtrl.forward();
+}
 
-  Future<void> _submit() async {
-    if (_answers.length < _questions.length) return;
-    setState(() => _submitting = true);
-    final result = await AiService.submitRetentionTest(_answers);
-    if (!mounted) return;
-    setState(() { _submitting = false; _result = result; });
-  }
+Future<void> _submit() async {
+  if (_answers.length < _questions.length) return;
+  setState(() => _submitting = true);
+  final token = await AuthService.getToken() ?? '';
+  final result = await AiService.submitRetentionTest(_answers, token);
+  if (!mounted) return;
+  setState(() { _submitting = false; _result = result; });
+}
 
   void _nextQuestion() {
     _fadeCtrl.reverse().then((_) {
