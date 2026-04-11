@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../models/book_model.dart';
 import '../models/book_snippet_model.dart';
 import '../services/book_service.dart';
+import '../../ai_flutter/widgets/snippet_check_sheet.dart';
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
@@ -12,20 +13,13 @@ class BookDetailPage extends StatefulWidget {
   /// If true, opens directly in the TTS audio player mode
   final bool audioMode;
 
-  const BookDetailPage({
-    Key? key,
-    required this.book,
-    this.audioMode = false,
-  }) : super(key: key);
+  const BookDetailPage({Key? key, required this.book, this.audioMode = false}) : super(key: key);
 
   @override
-  State<BookDetailPage> createState() =>
-      _BookDetailPageState();
+  State<BookDetailPage> createState() => _BookDetailPageState();
 }
 
-class _BookDetailPageState
-    extends State<BookDetailPage>
-    with TickerProviderStateMixin {
+class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStateMixin {
   // ── Data ──────────────────────────────────────────────────────────────────
   List<BookSnippetModel> _snippets = [];
   bool _loading = true;
@@ -41,10 +35,8 @@ class _BookDetailPageState
   bool _ttsPlaying = false;
   double _ttsProgress = 0.0;
   double _ttsSpeed = 1.0;
-  final Set<int> _completedChapters =
-      {}; // tracks actually-read chapters
-  DateTime?
-  _speakStartTime; // used to animate progress bar
+  final Set<int> _completedChapters = {}; // tracks actually-read chapters
+  DateTime? _speakStartTime; // used to animate progress bar
 
   // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _enterCtrl;
@@ -62,33 +54,17 @@ class _BookDetailPageState
     super.initState();
     _audioMode = widget.audioMode;
 
-    _enterCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(
-        milliseconds: 1200,
-      ),
-    )..repeat(reverse: true);
-    _pulseAnim =
-        Tween<double>(
-          begin: 0.92,
-          end: 1.0,
-        ).animate(
-          CurvedAnimation(
-            parent: _pulseCtrl,
-            curve: Curves.easeInOut,
-          ),
-        );
+    _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    _pulseAnim = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _pageController = PageController();
     _initWaveBars();
     // Use post-frame so _initTts (async) runs after first build
-    WidgetsBinding.instance.addPostFrameCallback((
-      _,
-    ) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _initTts();
     });
     _loadSnippets();
@@ -97,23 +73,12 @@ class _BookDetailPageState
   void _initWaveBars() {
     final rng = math.Random(42);
     for (int i = 0; i < _waveBarCount; i++) {
-      final dur = Duration(
-        milliseconds: 400 + rng.nextInt(600),
-      );
-      final ctrl = AnimationController(
-        vsync: this,
-        duration: dur,
-      )..repeat(reverse: true);
-      final anim =
-          Tween<double>(
-            begin: 0.15 + rng.nextDouble() * 0.25,
-            end: 0.55 + rng.nextDouble() * 0.45,
-          ).animate(
-            CurvedAnimation(
-              parent: ctrl,
-              curve: Curves.easeInOut,
-            ),
-          );
+      final dur = Duration(milliseconds: 400 + rng.nextInt(600));
+      final ctrl = AnimationController(vsync: this, duration: dur)..repeat(reverse: true);
+      final anim = Tween<double>(
+        begin: 0.15 + rng.nextDouble() * 0.25,
+        end: 0.55 + rng.nextDouble() * 0.45,
+      ).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
       _barCtrls.add(ctrl);
       _barAnims.add(anim);
     }
@@ -133,20 +98,17 @@ class _BookDetailPageState
         _ttsPlaying = true;
         _ttsProgress = 0;
       });
-      for (final c in _barCtrls)
-        c.repeat(reverse: true);
+      for (final c in _barCtrls) c.repeat(reverse: true);
       _startProgressTimer();
     });
 
-    _tts.setCompletionHandler(() {
+    _tts.setCompletionHandler(() async {
       if (!mounted) return;
       // Mark this chapter as genuinely completed
       final completedIdx = _currentIndex;
-      if (_snippets.isNotEmpty) {
-        BookService.markSnippetComplete(_snippets[completedIdx].id)
-            .catchError((_) {}); // fire-and-forget, errors suppressed
-      }
-      _completedChapters.add(_currentIndex);
+      final snippetId = _snippets[completedIdx].id;
+      final passed = await showSnippetCheckSheet(context, snippetId: snippetId);
+      if (passed) _completedChapters.add(completedIdx);
       setState(() {
         _ttsPlaying = false;
         _ttsProgress = 1.0;
@@ -155,31 +117,19 @@ class _BookDetailPageState
       // Auto-advance without calling stop() — engine already finished
       if (_currentIndex < _snippets.length - 1) {
         final next = _currentIndex + 1;
-        Future.delayed(
-          const Duration(milliseconds: 600),
-          () {
-            if (!mounted) return;
-            setState(() {
-              _currentIndex = next;
-              _ttsProgress = 0;
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted) return;
+          setState(() {
+            _currentIndex = next;
+            _ttsProgress = 0;
+          });
+          _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+          if (_audioMode) {
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (mounted) _ttsPlay();
             });
-            _pageController.animateToPage(
-              next,
-              duration: const Duration(
-                milliseconds: 350,
-              ),
-              curve: Curves.easeInOut,
-            );
-            if (_audioMode) {
-              Future.delayed(
-                const Duration(milliseconds: 400),
-                () {
-                  if (mounted) _ttsPlay();
-                },
-              );
-            }
-          },
-        );
+          }
+        });
       }
     });
 
@@ -204,44 +154,24 @@ class _BookDetailPageState
         setState(() {
           _ttsPlaying = true;
         });
-      for (final c in _barCtrls)
-        c.repeat(reverse: true);
+      for (final c in _barCtrls) c.repeat(reverse: true);
     });
   }
 
   // Timer-based progress: estimates position from elapsed time vs word count
   void _startProgressTimer() {
-    final snippet = _snippets.isNotEmpty
-        ? _snippets[_currentIndex]
-        : null;
+    final snippet = _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
     if (snippet == null) return;
     // Estimate total duration: words / (speed * 2.5 words-per-second)
-    final wordCount = snippet.snippetText
-        .split(' ')
-        .length;
-    final estimatedSeconds =
-        wordCount / (_ttsSpeed * 2.5);
+    final wordCount = snippet.snippetText.split(' ').length;
+    final estimatedSeconds = wordCount / (_ttsSpeed * 2.5);
 
     Future.doWhile(() async {
-      await Future.delayed(
-        const Duration(milliseconds: 200),
-      );
-      if (!mounted ||
-          !_ttsPlaying ||
-          _speakStartTime == null)
-        return false;
-      final elapsed =
-          DateTime.now()
-              .difference(_speakStartTime!)
-              .inMilliseconds /
-          1000;
-      final progress =
-          (elapsed / estimatedSeconds).clamp(
-            0.0,
-            0.98,
-          );
-      if (mounted)
-        setState(() => _ttsProgress = progress);
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted || !_ttsPlaying || _speakStartTime == null) return false;
+      final elapsed = DateTime.now().difference(_speakStartTime!).inMilliseconds / 1000;
+      final progress = (elapsed / estimatedSeconds).clamp(0.0, 0.98);
+      if (mounted) setState(() => _ttsProgress = progress);
       return _ttsPlaying; // keep looping while playing
     });
   }
@@ -257,32 +187,38 @@ class _BookDetailPageState
   }
 
   // ── Data loading ───────────────────────────────────────────────────────────
-Future<void> _loadSnippets() async {
-  setState(() { _loading = true; _error = null; });
-  try {
-    final snippets = await BookService.getSnippets(widget.book.id);
-
-    // No need for a second API call — isCompleted already comes with each snippet
-    final completedIndices = <int>{};
-    for (int i = 0; i < snippets.length; i++) {
-      if (snippets[i].isCompleted) completedIndices.add(i);
-    }
-
+  Future<void> _loadSnippets() async {
     setState(() {
-      _snippets = snippets;
-      _completedChapters..clear()..addAll(completedIndices);
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
-    _enterCtrl.forward();
-  } catch (e) {
-    setState(() { _error = e.toString(); _loading = false; });
+    try {
+      final snippets = await BookService.getSnippets(widget.book.id);
+
+      // No need for a second API call — isCompleted already comes with each snippet
+      final completedIndices = <int>{};
+      for (int i = 0; i < snippets.length; i++) {
+        if (snippets[i].isCompleted) completedIndices.add(i);
+      }
+
+      setState(() {
+        _snippets = snippets;
+        _completedChapters
+          ..clear()
+          ..addAll(completedIndices);
+        _loading = false;
+      });
+      _enterCtrl.forward();
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
-}
 
   // ── TTS controls ───────────────────────────────────────────────────────────
-  String get _currentText => _snippets.isNotEmpty
-      ? _snippets[_currentIndex].snippetText
-      : '';
+  String get _currentText => _snippets.isNotEmpty ? _snippets[_currentIndex].snippetText : '';
 
   // RULE: always stop first (fire-and-forget), wait, then speak.
   // Never lock, never await speak() — on web it never resolves while playing.
@@ -291,9 +227,7 @@ Future<void> _loadSnippets() async {
     try {
       _tts.stop();
     } catch (_) {} // fire-and-forget stop
-    await Future.delayed(
-      const Duration(milliseconds: 300),
-    ); // let browser settle
+    await Future.delayed(const Duration(milliseconds: 300)); // let browser settle
     if (!mounted) return;
     if (mounted)
       setState(() {
@@ -328,19 +262,10 @@ Future<void> _loadSnippets() async {
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────
-  BookSnippetModel? get _current =>
-      _snippets.isNotEmpty
-      ? _snippets[_currentIndex]
-      : null;
+  BookSnippetModel? get _current => _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
 
-  Future<void> _goTo(
-    int i, {
-    bool autoPlay = false,
-  }) async {
-    if (i < 0 ||
-        i >= _snippets.length ||
-        !mounted)
-      return;
+  Future<void> _goTo(int i, {bool autoPlay = false}) async {
+    if (i < 0 || i >= _snippets.length || !mounted) return;
     // Stop unconditionally — don't check _ttsPlaying, it may be stale
     try {
       _tts.stop();
@@ -353,25 +278,27 @@ Future<void> _loadSnippets() async {
       _currentIndex = i;
     });
     for (final c in _barCtrls) c.stop();
-    _pageController.animateToPage(
-      i,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
-    );
+    _pageController.animateToPage(i, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     if (autoPlay && _audioMode) {
-      await Future.delayed(
-        const Duration(milliseconds: 500),
-      );
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) await _ttsPlay();
     }
   }
 
-Future<void> _markAndNext() async {
+  Future<void> _markAndNext() async {
     if (_current == null) return;
-    final completedIdx = _currentIndex; // ← capture before goTo
-    try { await BookService.markSnippetComplete(_current!.id); } catch (_) {}
-    _completedChapters.add(completedIdx); // ← add this
-    setState(() {}); // ← and this
+    final completedIdx = _currentIndex;
+    final snippetId = _current!.id;
+
+    // AI comprehension check — replaces the old markSnippetComplete call
+    // The sheet handles marking complete server-side on pass
+    final passed = await showSnippetCheckSheet(context, snippetId: snippetId);
+
+    if (passed) {
+      _completedChapters.add(completedIdx);
+      setState(() {});
+    }
+
     if (_currentIndex < _snippets.length - 1) {
       _goTo(_currentIndex + 1);
     } else {
@@ -390,8 +317,7 @@ Future<void> _markAndNext() async {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _CompletionSheet(book: widget.book),
+      builder: (_) => _CompletionSheet(book: widget.book),
     );
   }
 
@@ -406,9 +332,7 @@ Future<void> _markAndNext() async {
     [Color(0xFFEAB308), Color(0xFF713F12)],
     [Color(0xFF14B8A6), Color(0xFF134E4A)],
   ];
-  List<Color> get _palette =>
-      _palettes[widget.book.id %
-          _palettes.length];
+  List<Color> get _palette => _palettes[widget.book.id % _palettes.length];
 
   Color get _levelColor {
     switch (widget.book.level) {
@@ -426,10 +350,8 @@ Future<void> _markAndNext() async {
   // ── Root build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    if (_audioMode && _snippets.isNotEmpty)
-      return _buildAudioPlayer();
-    if (_readingMode && _snippets.isNotEmpty)
-      return _buildReaderMode();
+    if (_audioMode && _snippets.isNotEmpty) return _buildAudioPlayer();
+    if (_readingMode && _snippets.isNotEmpty) return _buildReaderMode();
     return Scaffold(
       backgroundColor: const Color(0xFF080D1A),
       body: SafeArea(
@@ -442,10 +364,7 @@ Future<void> _markAndNext() async {
                 child: Column(
                   children: [
                     _buildTopBar(),
-                    Expanded(
-                      child:
-                          _buildDetailContent(),
-                    ),
+                    Expanded(child: _buildDetailContent()),
                   ],
                 ),
               ),
@@ -453,54 +372,27 @@ Future<void> _markAndNext() async {
     );
   }
 
-  Widget _buildLoader() => const Center(
-    child: CircularProgressIndicator(
-      color: AppColors.primaryA,
-      strokeWidth: 2.5,
-    ),
-  );
+  Widget _buildLoader() => const Center(child: CircularProgressIndicator(color: AppColors.primaryA, strokeWidth: 2.5));
 
   Widget _buildError() => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.error_outline_rounded,
-          color: Colors.grey[600],
-          size: 40,
-        ),
+        Icon(Icons.error_outline_rounded, color: Colors.grey[600], size: 40),
         const SizedBox(height: 12),
-        Text(
-          'Failed to load',
-          style: TextStyle(
-            color: Colors.grey[500],
-          ),
-        ),
+        Text('Failed to load', style: TextStyle(color: Colors.grey[500])),
         const SizedBox(height: 16),
         GestureDetector(
           onTap: _loadSnippets,
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  AppColors.primaryA,
-                  AppColors.primaryB,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(
-                10,
-              ),
+              gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
               'Retry',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -511,12 +403,7 @@ Future<void> _markAndNext() async {
   // ── Detail screen top bar ──────────────────────────────────────────────────
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
           GestureDetector(
@@ -525,22 +412,11 @@ Future<void> _markAndNext() async {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(
-                  0.06,
-                ),
-                borderRadius:
-                    BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    0.08,
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70,
-                size: 16,
-              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 16),
             ),
           ),
           const SizedBox(width: 14),
@@ -549,11 +425,7 @@ Future<void> _markAndNext() async {
               widget.book.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           if (_snippets.isNotEmpty) ...[
@@ -567,22 +439,11 @@ Future<void> _markAndNext() async {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(
-                    0xFFEC4899,
-                  ).withOpacity(0.12),
-                  borderRadius:
-                      BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(
-                      0xFFEC4899,
-                    ).withOpacity(0.3),
-                  ),
+                  color: const Color(0xFFEC4899).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.3)),
                 ),
-                child: const Icon(
-                  Icons.headphones_rounded,
-                  color: Color(0xFFEC4899),
-                  size: 18,
-                ),
+                child: const Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 18),
               ),
             ),
             const SizedBox(width: 8),
@@ -593,45 +454,20 @@ Future<void> _markAndNext() async {
                 _audioMode = false;
               }),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.primaryA,
-                      AppColors.primaryB,
-                    ],
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryA
-                          .withOpacity(0.4),
-                      blurRadius: 12,
-                    ),
-                  ],
+                  gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                    Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
                     SizedBox(width: 4),
                     Text(
                       'Read',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -647,15 +483,9 @@ Future<void> _markAndNext() async {
   Widget _buildDetailContent() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        32,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildCoverHero(),
           const SizedBox(height: 24),
@@ -680,54 +510,29 @@ Future<void> _markAndNext() async {
         height: 200,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: _palette,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _palette[0].withOpacity(0.5),
-              blurRadius: 40,
-              offset: const Offset(0, 16),
-            ),
-          ],
+          gradient: LinearGradient(colors: _palette, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          boxShadow: [BoxShadow(color: _palette[0].withOpacity(0.5), blurRadius: 40, offset: const Offset(0, 16))],
         ),
         child: Stack(
           children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _CoverPainter(
-                  widget.book.id,
-                ),
-              ),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _CoverPainter(widget.book.id))),
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.menu_book_rounded,
-                    color: Colors.white54,
-                    size: 48,
-                  ),
+                  const Icon(Icons.menu_book_rounded, color: Colors.white54, size: 48),
                   const SizedBox(height: 8),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       widget.book.title,
                       textAlign: TextAlign.center,
                       maxLines: 3,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                         height: 1.3,
                       ),
                     ),
@@ -743,54 +548,31 @@ Future<void> _markAndNext() async {
 
   Widget _buildMeta() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           widget.book.title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            height: 1.2,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
         ),
         const SizedBox(height: 6),
-        Text(
-          'by ${widget.book.author}',
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 14,
-          ),
-        ),
+        Text('by ${widget.book.author}', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
         const SizedBox(height: 14),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _MetaChip(
-              icon: Icons
-                  .signal_cellular_alt_rounded,
-              label: widget.book.levelLabel,
-              color: _levelColor,
-            ),
-            _MetaChip(
-              icon: Icons.category_rounded,
-              label: widget.book.category,
-              color: AppColors.primaryA,
-            ),
+            _MetaChip(icon: Icons.signal_cellular_alt_rounded, label: widget.book.levelLabel, color: _levelColor),
+            _MetaChip(icon: Icons.category_rounded, label: widget.book.category, color: AppColors.primaryA),
             if (widget.book.totalPages != null)
               _MetaChip(
                 icon: Icons.auto_stories_rounded,
-                label:
-                    '${widget.book.totalPages} pages',
+                label: '${widget.book.totalPages} pages',
                 color: const Color(0xFF06B6D4),
               ),
             if (_snippets.isNotEmpty)
               _MetaChip(
                 icon: Icons.layers_rounded,
-                label:
-                    '${_snippets.length} chapters',
+                label: '${_snippets.length} chapters',
                 color: const Color(0xFF10B981),
               ),
           ],
@@ -801,39 +583,21 @@ Future<void> _markAndNext() async {
 
   Widget _buildDescription() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'About this book',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFF0F1624),
-            borderRadius: BorderRadius.circular(
-              14,
-            ),
-            border: Border.all(
-              color: Colors.white.withOpacity(
-                0.06,
-              ),
-            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-          child: Text(
-            widget.book.description,
-            style: TextStyle(
-              color: Colors.grey[300],
-              fontSize: 13,
-              height: 1.6,
-            ),
-          ),
+          child: Text(widget.book.description, style: TextStyle(color: Colors.grey[300], fontSize: 13, height: 1.6)),
         ),
       ],
     );
@@ -843,68 +607,39 @@ Future<void> _markAndNext() async {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primaryB.withOpacity(0.3),
-            AppColors.primaryA.withOpacity(0.12),
-          ],
-        ),
+        gradient: LinearGradient(colors: [AppColors.primaryB.withOpacity(0.3), AppColors.primaryA.withOpacity(0.12)]),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primaryA.withOpacity(
-            0.2,
-          ),
-        ),
+        border: Border.all(color: AppColors.primaryA.withOpacity(0.2)),
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Row(
                 children: [
-                  Icon(
-                    Icons.track_changes_rounded,
-                    color: AppColors.primaryA,
-                    size: 16,
-                  ),
+                  Icon(Icons.track_changes_rounded, color: AppColors.primaryA, size: 16),
                   SizedBox(width: 8),
                   Text(
                     'Your progress',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
               ),
               Text(
                 '${_completedChapters.length} / ${_snippets.length} chapters',
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: Colors.grey[500], fontSize: 11),
               ),
             ],
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(
-              6,
-            ),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value:
-                  _completedChapters.length /
-                  math.max(_snippets.length, 1),
+              value: _completedChapters.length / math.max(_snippets.length, 1),
               minHeight: 6,
-              backgroundColor: Colors.white
-                  .withOpacity(0.07),
-              valueColor:
-                  const AlwaysStoppedAnimation(
-                    AppColors.primaryA,
-                  ),
+              backgroundColor: Colors.white.withOpacity(0.07),
+              valueColor: const AlwaysStoppedAnimation(AppColors.primaryA),
             ),
           ),
         ],
@@ -914,16 +649,11 @@ Future<void> _markAndNext() async {
 
   Widget _buildSnippetList() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Chapters',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         ...List.generate(_snippets.length, (i) {
@@ -931,9 +661,7 @@ Future<void> _markAndNext() async {
           return _SnippetListTile(
             snippet: s,
             index: i,
-            isRead: _completedChapters.contains(
-              i,
-            ),
+            isRead: _completedChapters.contains(i),
             isCurrent: i == _currentIndex,
             onTap: () => setState(() {
               _currentIndex = i;
@@ -962,8 +690,7 @@ Future<void> _markAndNext() async {
             _buildAudioTopBar(),
             Expanded(
               child: SingleChildScrollView(
-                physics:
-                    const BouncingScrollPhysics(),
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
                     const SizedBox(height: 32),
@@ -993,12 +720,7 @@ Future<void> _markAndNext() async {
 
   Widget _buildAudioTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        14,
-        20,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Row(
         children: [
           // Collapse
@@ -1014,22 +736,11 @@ Future<void> _markAndNext() async {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(
-                  0.05,
-                ),
-                borderRadius:
-                    BorderRadius.circular(9),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    0.06,
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Colors.white60,
-                size: 22,
-              ),
+              child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white60, size: 22),
             ),
           ),
           const Spacer(),
@@ -1037,20 +748,12 @@ Future<void> _markAndNext() async {
             children: [
               const Text(
                 'NOW LISTENING',
-                style: TextStyle(
-                  color: Color(0xFFEC4899),
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Color(0xFFEC4899), fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 2),
               Text(
                 'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
               ),
             ],
           ),
@@ -1069,22 +772,11 @@ Future<void> _markAndNext() async {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(
-                  0.05,
-                ),
-                borderRadius:
-                    BorderRadius.circular(9),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    0.06,
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: Colors.white60,
-                size: 17,
-              ),
+              child: const Icon(Icons.menu_book_rounded, color: Colors.white60, size: 17),
             ),
           ),
         ],
@@ -1096,46 +788,26 @@ Future<void> _markAndNext() async {
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, __) => Transform.scale(
-        scale: _ttsPlaying
-            ? _pulseAnim.value
-            : 1.0,
+        scale: _ttsPlaying ? _pulseAnim.value : 1.0,
         child: Container(
           width: 210,
           height: 210,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                _palette[0].withOpacity(0.9),
-                _palette[1].withOpacity(0.7),
-              ],
-            ),
+            gradient: RadialGradient(colors: [_palette[0].withOpacity(0.9), _palette[1].withOpacity(0.7)]),
             boxShadow: [
               BoxShadow(
-                color: _palette[0].withOpacity(
-                  _ttsPlaying ? 0.55 : 0.22,
-                ),
+                color: _palette[0].withOpacity(_ttsPlaying ? 0.55 : 0.22),
                 blurRadius: _ttsPlaying ? 70 : 30,
-                spreadRadius: _ttsPlaying
-                    ? 14
-                    : 4,
+                spreadRadius: _ttsPlaying ? 14 : 4,
               ),
             ],
           ),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              CustomPaint(
-                painter: _CoverPainter(
-                  widget.book.id,
-                ),
-                size: const Size(210, 210),
-              ),
-              const Icon(
-                Icons.menu_book_rounded,
-                color: Colors.white54,
-                size: 68,
-              ),
+              CustomPaint(painter: _CoverPainter(widget.book.id), size: const Size(210, 210)),
+              const Icon(Icons.menu_book_rounded, color: Colors.white54, size: 68),
             ],
           ),
         ),
@@ -1145,32 +817,16 @@ Future<void> _markAndNext() async {
 
   Widget _buildAudioTitleInfo() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         children: [
           Text(
-            _snippets.isNotEmpty
-                ? _snippets[_currentIndex]
-                      .snippetTitle
-                : widget.book.title,
+            _snippets.isNotEmpty ? _snippets[_currentIndex].snippetTitle : widget.book.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              height: 1.3,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.3),
           ),
           const SizedBox(height: 8),
-          Text(
-            widget.book.author,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 14,
-            ),
-          ),
+          Text(widget.book.author, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
         ],
       ),
     );
@@ -1180,50 +836,24 @@ Future<void> _markAndNext() async {
     return SizedBox(
       height: 52,
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
-        crossAxisAlignment:
-            CrossAxisAlignment.end,
-        children: List.generate(_waveBarCount, (
-          i,
-        ) {
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(_waveBarCount, (i) {
           return AnimatedBuilder(
             animation: _barAnims[i],
             builder: (_, __) {
-              final h = _ttsPlaying
-                  ? 8 + _barAnims[i].value * 44
-                  : 6.0;
-              final center =
-                  (i - _waveBarCount ~/ 2).abs() <
-                  _waveBarCount ~/ 5;
+              final h = _ttsPlaying ? 8 + _barAnims[i].value * 44 : 6.0;
+              final center = (i - _waveBarCount ~/ 2).abs() < _waveBarCount ~/ 5;
               return Container(
                 width: 3,
                 height: h,
-                margin:
-                    const EdgeInsets.symmetric(
-                      horizontal: 1.5,
-                    ),
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
                 decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2),
                   gradient: LinearGradient(
                     colors: _ttsPlaying
-                        ? [
-                            _palette[0],
-                            _palette[1],
-                          ]
-                        : [
-                            Colors.white
-                                .withOpacity(
-                                  center
-                                      ? 0.15
-                                      : 0.07,
-                                ),
-                            Colors.white
-                                .withOpacity(
-                                  0.04,
-                                ),
-                          ],
+                        ? [_palette[0], _palette[1]]
+                        : [Colors.white.withOpacity(center ? 0.15 : 0.07), Colors.white.withOpacity(0.04)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -1238,44 +868,24 @@ Future<void> _markAndNext() async {
 
   Widget _buildTtsProgressBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(
-              4,
-            ),
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: _ttsProgress,
               minHeight: 3,
-              backgroundColor: Colors.white
-                  .withOpacity(0.07),
-              valueColor: AlwaysStoppedAnimation(
-                _palette[0],
-              ),
+              backgroundColor: Colors.white.withOpacity(0.07),
+              valueColor: AlwaysStoppedAnimation(_palette[0]),
             ),
           ),
           const SizedBox(height: 8),
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Chapter ${_currentIndex + 1}',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 11,
-                ),
-              ),
-              Text(
-                '${(_ttsProgress * 100).toInt()}%',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 11,
-                ),
-              ),
+              Text('Chapter ${_currentIndex + 1}', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
+              Text('${(_ttsProgress * 100).toInt()}%', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
             ],
           ),
         ],
@@ -1284,57 +894,26 @@ Future<void> _markAndNext() async {
   }
 
   Widget _buildSpeedSelector() {
-    const speeds = [
-      0.5,
-      0.75,
-      1.0,
-      1.25,
-      1.5,
-      2.0,
-    ];
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: speeds.map((s) {
-        final selected =
-            (_ttsSpeed - s).abs() < 0.01;
+        final selected = (_ttsSpeed - s).abs() < 0.01;
         return GestureDetector(
           onTap: () => _setSpeed(s),
           child: AnimatedContainer(
-            duration: const Duration(
-              milliseconds: 180,
-            ),
-            margin: const EdgeInsets.symmetric(
-              horizontal: 4,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 5,
-            ),
+            duration: const Duration(milliseconds: 180),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: selected
-                  ? _palette[0].withOpacity(0.2)
-                  : Colors.white.withOpacity(
-                      0.04,
-                    ),
-              borderRadius: BorderRadius.circular(
-                16,
-              ),
-              border: Border.all(
-                color: selected
-                    ? _palette[0].withOpacity(0.6)
-                    : Colors.white.withOpacity(
-                        0.06,
-                      ),
-              ),
+              color: selected ? _palette[0].withOpacity(0.2) : Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: selected ? _palette[0].withOpacity(0.6) : Colors.white.withOpacity(0.06)),
             ),
             child: Text(
-              s == s.roundToDouble()
-                  ? '${s.toInt()}x'
-                  : '${s}x',
+              s == s.roundToDouble() ? '${s.toInt()}x' : '${s}x',
               style: TextStyle(
-                color: selected
-                    ? _palette[0]
-                    : Colors.grey[600],
+                color: selected ? _palette[0] : Colors.grey[600],
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
@@ -1347,102 +926,53 @@ Future<void> _markAndNext() async {
 
   Widget _buildAudioMainControls() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 32,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Previous
           _AudioBtn(
             icon: Icons.skip_previous_rounded,
             size: 28,
-            color: _currentIndex > 0
-                ? Colors.white70
-                : Colors.white24,
-            onTap: _currentIndex > 0
-                ? () => _goTo(
-                    _currentIndex - 1,
-                    autoPlay: _ttsPlaying,
-                  )
-                : null,
+            color: _currentIndex > 0 ? Colors.white70 : Colors.white24,
+            onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1, autoPlay: _ttsPlaying) : null,
           ),
           // Replay
-          _AudioBtn(
-            icon: Icons.replay_rounded,
-            size: 24,
-            color: Colors.white60,
-            onTap: () => _ttsPlay(),
-          ),
+          _AudioBtn(icon: Icons.replay_rounded, size: 24, color: Colors.white60, onTap: () => _ttsPlay()),
           // Play / Pause — big center button
           GestureDetector(
-            onTap: _ttsPlaying
-                ? _ttsStop
-                : _ttsPlay,
+            onTap: _ttsPlaying ? _ttsStop : _ttsPlay,
             child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 200,
-              ),
+              duration: const Duration(milliseconds: 200),
               width: 72,
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: _palette,
-                ),
+                gradient: LinearGradient(colors: _palette),
                 boxShadow: [
                   BoxShadow(
-                    color: _palette[0]
-                        .withOpacity(
-                          _ttsPlaying
-                              ? 0.55
-                              : 0.3,
-                        ),
-                    blurRadius: _ttsPlaying
-                        ? 30
-                        : 16,
-                    spreadRadius: _ttsPlaying
-                        ? 4
-                        : 1,
+                    color: _palette[0].withOpacity(_ttsPlaying ? 0.55 : 0.3),
+                    blurRadius: _ttsPlaying ? 30 : 16,
+                    spreadRadius: _ttsPlaying ? 4 : 1,
                   ),
                 ],
               ),
-              child: Icon(
-                _ttsPlaying
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 36,
-              ),
+              child: Icon(_ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 36),
             ),
           ),
           // Stop
           _AudioBtn(
             icon: Icons.stop_rounded,
             size: 24,
-            color: _ttsPlaying
-                ? Colors.white60
-                : Colors.white24,
+            color: _ttsPlaying ? Colors.white60 : Colors.white24,
             onTap: _ttsPlaying ? _ttsStop : null,
           ),
           // Next
           _AudioBtn(
             icon: Icons.skip_next_rounded,
             size: 28,
-            color:
-                _currentIndex <
-                    _snippets.length - 1
-                ? Colors.white70
-                : Colors.white24,
-            onTap:
-                _currentIndex <
-                    _snippets.length - 1
-                ? () => _goTo(
-                    _currentIndex + 1,
-                    autoPlay: _ttsPlaying,
-                  )
-                : null,
+            color: _currentIndex < _snippets.length - 1 ? Colors.white70 : Colors.white24,
+            onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1, autoPlay: _ttsPlaying) : null,
           ),
         ],
       ),
@@ -1451,31 +981,18 @@ Future<void> _markAndNext() async {
 
   Widget _buildAudioChapterList() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
               const Text(
                 'Chapters',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
-              Text(
-                '${_snippets.length} total',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 11,
-                ),
-              ),
+              Text('${_snippets.length} total', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
             ],
           ),
         ),
@@ -1483,44 +1000,17 @@ Future<void> _markAndNext() async {
         ...List.generate(_snippets.length, (i) {
           final s = _snippets[i];
           final active = i == _currentIndex;
-          final done = _completedChapters
-              .contains(i);
+          final done = _completedChapters.contains(i);
           return GestureDetector(
-            onTap: () =>
-                _goTo(i, autoPlay: _ttsPlaying),
+            onTap: () => _goTo(i, autoPlay: _ttsPlaying),
             child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 200,
-              ),
-              margin: const EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                6,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: active
-                    ? _palette[0].withOpacity(
-                        0.12,
-                      )
-                    : Colors.white.withOpacity(
-                        0.03,
-                      ),
-                borderRadius:
-                    BorderRadius.circular(12),
-                border: Border.all(
-                  color: active
-                      ? _palette[0].withOpacity(
-                          0.4,
-                        )
-                      : Colors.white.withOpacity(
-                          0.04,
-                        ),
-                ),
+                color: active ? _palette[0].withOpacity(0.12) : Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: active ? _palette[0].withOpacity(0.4) : Colors.white.withOpacity(0.04)),
               ),
               child: Row(
                 children: [
@@ -1530,30 +1020,20 @@ Future<void> _markAndNext() async {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: done
-                          ? const Color(
-                              0xFF10B981,
-                            ).withOpacity(0.15)
+                          ? const Color(0xFF10B981).withOpacity(0.15)
                           : active
-                          ? _palette[0]
-                                .withOpacity(0.2)
-                          : Colors.white
-                                .withOpacity(
-                                  0.03,
-                                ),
+                          ? _palette[0].withOpacity(0.2)
+                          : Colors.white.withOpacity(0.03),
                     ),
                     child: Icon(
                       done
                           ? Icons.check_rounded
                           : active
-                          ? Icons
-                                .graphic_eq_rounded
-                          : Icons
-                                .radio_button_unchecked_rounded,
+                          ? Icons.graphic_eq_rounded
+                          : Icons.radio_button_unchecked_rounded,
                       size: 14,
                       color: done
-                          ? const Color(
-                              0xFF10B981,
-                            )
+                          ? const Color(0xFF10B981)
                           : active
                           ? _palette[0]
                           : Colors.grey[700],
@@ -1564,27 +1044,16 @@ Future<void> _markAndNext() async {
                     child: Text(
                       s.snippetTitle,
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: active
-                            ? Colors.white
-                            : Colors.grey[500],
+                        color: active ? Colors.white : Colors.grey[500],
                         fontSize: 13,
-                        fontWeight: active
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
                   if (s.durationSeconds != null)
-                    Text(
-                      s.durationLabel,
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: 10,
-                      ),
-                    ),
+                    Text(s.durationLabel, style: TextStyle(color: Colors.grey[700], fontSize: 10)),
                 ],
               ),
             ),
@@ -1609,13 +1078,8 @@ Future<void> _markAndNext() async {
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _snippets.length,
-                onPageChanged: (i) => setState(
-                  () => _currentIndex = i,
-                ),
-                itemBuilder: (_, i) =>
-                    _ReaderPage(
-                      snippet: _snippets[i],
-                    ),
+                onPageChanged: (i) => setState(() => _currentIndex = i),
+                itemBuilder: (_, i) => _ReaderPage(snippet: _snippets[i]),
               ),
             ),
             _buildReaderControls(),
@@ -1627,62 +1091,36 @@ Future<void> _markAndNext() async {
 
   Widget _buildReaderTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        14,
-        20,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => setState(
-              () => _readingMode = false,
-            ),
+            onTap: () => setState(() => _readingMode = false),
             child: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(
-                  0.05,
-                ),
-                borderRadius:
-                    BorderRadius.circular(9),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    0.06,
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(
-                Icons.close_rounded,
-                color: Colors.white60,
-                size: 18,
-              ),
+              child: const Icon(Icons.close_rounded, color: Colors.white60, size: 18),
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.book.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 11),
                 ),
               ],
             ),
@@ -1694,38 +1132,20 @@ Future<void> _markAndNext() async {
               _audioMode = true;
             }),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(
-                  0xFFEC4899,
-                ).withOpacity(0.1),
-                borderRadius:
-                    BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(
-                    0xFFEC4899,
-                  ).withOpacity(0.3),
-                ),
+                color: const Color(0xFFEC4899).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.3)),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.headphones_rounded,
-                    color: Color(0xFFEC4899),
-                    size: 14,
-                  ),
+                  Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 14),
                   SizedBox(width: 5),
                   Text(
                     'Listen',
-                    style: TextStyle(
-                      color: Color(0xFFEC4899),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Color(0xFFEC4899), fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1733,30 +1153,15 @@ Future<void> _markAndNext() async {
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 4,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primaryA
-                  .withOpacity(0.15),
-              borderRadius: BorderRadius.circular(
-                12,
-              ),
-              border: Border.all(
-                color: AppColors.primaryA
-                    .withOpacity(0.3),
-              ),
+              color: AppColors.primaryA.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
             ),
             child: Text(
-              _current?.pageNumber != null
-                  ? 'p.${_current!.pageNumber}'
-                  : '${_currentIndex + 1}/${_snippets.length}',
-              style: const TextStyle(
-                color: AppColors.primaryA,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
+              _current?.pageNumber != null ? 'p.${_current!.pageNumber}' : '${_currentIndex + 1}/${_snippets.length}',
+              style: const TextStyle(color: AppColors.primaryA, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -1766,90 +1171,49 @@ Future<void> _markAndNext() async {
 
   Widget _buildReaderProgress() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Row(
-        children: List.generate(
-          _snippets.length,
-          (i) {
-            final done = _completedChapters
-                .contains(i);
-            final active = i == _currentIndex;
-            return Expanded(
-              child: Container(
-                height: 3,
-                margin: EdgeInsets.only(
-                  right: i < _snippets.length - 1
-                      ? 2
-                      : 0,
-                ),
-                decoration: BoxDecoration(
-                  color: done
-                      ? AppColors.primaryA
-                      : active
-                      ? AppColors.primaryA
-                            .withOpacity(0.5)
-                      : Colors.white.withOpacity(
-                          0.07,
-                        ),
-                  borderRadius:
-                      BorderRadius.circular(2),
-                ),
+        children: List.generate(_snippets.length, (i) {
+          final done = _completedChapters.contains(i);
+          final active = i == _currentIndex;
+          return Expanded(
+            child: Container(
+              height: 3,
+              margin: EdgeInsets.only(right: i < _snippets.length - 1 ? 2 : 0),
+              decoration: BoxDecoration(
+                color: done
+                    ? AppColors.primaryA
+                    : active
+                    ? AppColors.primaryA.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(2),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
 
   Widget _buildReaderControls() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        24,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Row(
         children: [
           GestureDetector(
-            onTap: _currentIndex > 0
-                ? () => _goTo(_currentIndex - 1)
-                : null,
+            onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1) : null,
             child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 150,
-              ),
+              duration: const Duration(milliseconds: 150),
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: _currentIndex > 0
-                    ? Colors.white.withOpacity(
-                        0.06,
-                      )
-                    : Colors.white.withOpacity(
-                        0.02,
-                      ),
-                borderRadius:
-                    BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    _currentIndex > 0
-                        ? 0.1
-                        : 0.04,
-                  ),
-                ),
+                color: _currentIndex > 0 ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(_currentIndex > 0 ? 0.1 : 0.04)),
               ),
               child: Icon(
                 Icons.arrow_back_rounded,
-                color: _currentIndex > 0
-                    ? Colors.white60
-                    : Colors.white12,
+                color: _currentIndex > 0 ? Colors.white60 : Colors.white12,
                 size: 20,
               ),
             ),
@@ -1861,51 +1225,23 @@ Future<void> _markAndNext() async {
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.primaryA,
-                      AppColors.primaryB,
-                    ],
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryA
-                          .withOpacity(0.4),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                    ),
-                  ],
+                  gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 16, spreadRadius: 1)],
                 ),
                 child: Center(
                   child: Row(
-                    mainAxisSize:
-                        MainAxisSize.min,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _currentIndex <
-                                _snippets.length -
-                                    1
-                            ? Icons.check_rounded
-                            : Icons
-                                  .emoji_events_rounded,
+                        _currentIndex < _snippets.length - 1 ? Icons.check_rounded : Icons.emoji_events_rounded,
                         color: Colors.white,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _currentIndex <
-                                _snippets.length -
-                                    1
-                            ? 'Done & Next'
-                            : 'Complete Book',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight:
-                              FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                        _currentIndex < _snippets.length - 1 ? 'Done & Next' : 'Complete Book',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                     ],
                   ),
@@ -1915,45 +1251,21 @@ Future<void> _markAndNext() async {
           ),
           const SizedBox(width: 12),
           GestureDetector(
-            onTap:
-                _currentIndex <
-                    _snippets.length - 1
-                ? () => _goTo(_currentIndex + 1)
-                : null,
+            onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1) : null,
             child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 150,
-              ),
+              duration: const Duration(milliseconds: 150),
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color:
-                    _currentIndex <
-                        _snippets.length - 1
-                    ? Colors.white.withOpacity(
-                        0.06,
-                      )
-                    : Colors.white.withOpacity(
-                        0.02,
-                      ),
-                borderRadius:
-                    BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(
-                    _currentIndex <
-                            _snippets.length - 1
-                        ? 0.1
-                        : 0.04,
-                  ),
-                ),
+                color: _currentIndex < _snippets.length - 1
+                    ? Colors.white.withOpacity(0.06)
+                    : Colors.white.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(_currentIndex < _snippets.length - 1 ? 0.1 : 0.04)),
               ),
               child: Icon(
                 Icons.arrow_forward_rounded,
-                color:
-                    _currentIndex <
-                        _snippets.length - 1
-                    ? Colors.white60
-                    : Colors.white12,
+                color: _currentIndex < _snippets.length - 1 ? Colors.white60 : Colors.white12,
                 size: 20,
               ),
             ),
@@ -1971,36 +1283,21 @@ class _ReaderPage extends StatelessWidget {
   final BookSnippetModel snippet;
   const _ReaderPage({required this.snippet});
 
-  List<String> get _paragraphs => snippet
-      .snippetText
-      .split(RegExp(r'\n+'))
-      .map((p) => p.trim())
-      .where((p) => p.isNotEmpty)
-      .toList();
+  List<String> get _paragraphs =>
+      snippet.snippetText.split(RegExp(r'\n+')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth =
-        MediaQuery.of(context).size.width > 680
-        ? 640.0
-        : double.infinity;
+    final maxWidth = MediaQuery.of(context).size.width > 680 ? 640.0 : double.infinity;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: maxWidth,
-          ),
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              32,
-              32,
-              32,
-              48,
-            ),
+            padding: const EdgeInsets.fromLTRB(32, 32, 32, 48),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Column(
@@ -2008,132 +1305,72 @@ class _ReaderPage extends StatelessWidget {
                       Text(
                         '— ${snippet.sequenceOrder != null ? 'Chapter ${snippet.sequenceOrder}' : '§'} —',
                         style: TextStyle(
-                          color: AppColors
-                              .primaryA
-                              .withOpacity(0.6),
+                          color: AppColors.primaryA.withOpacity(0.6),
                           fontSize: 11,
                           letterSpacing: 3,
-                          fontWeight:
-                              FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         snippet.snippetTitle,
-                        textAlign:
-                            TextAlign.center,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
-                          fontWeight:
-                              FontWeight.w700,
+                          fontWeight: FontWeight.w700,
                           height: 1.3,
                           letterSpacing: -0.3,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Container(width: 40, height: 1, color: AppColors.primaryA.withOpacity(0.3)),
                           Container(
-                            width: 40,
-                            height: 1,
-                            color: AppColors
-                                .primaryA
-                                .withOpacity(0.3),
-                          ),
-                          Container(
-                            margin:
-                                const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
                             width: 6,
                             height: 6,
-                            decoration:
-                                BoxDecoration(
-                                  color: AppColors
-                                      .primaryA
-                                      .withOpacity(
-                                        0.5,
-                                      ),
-                                  shape: BoxShape
-                                      .circle,
-                                ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryA.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                          Container(
-                            width: 40,
-                            height: 1,
-                            color: AppColors
-                                .primaryA
-                                .withOpacity(0.3),
-                          ),
+                          Container(width: 40, height: 1, color: AppColors.primaryA.withOpacity(0.3)),
                         ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
-                ..._paragraphs
-                    .asMap()
-                    .entries
-                    .map(
-                      (e) => Padding(
-                        padding:
-                            const EdgeInsets.only(
-                              bottom: 20,
-                            ),
-                        child: Text(
-                          e.key == 0
-                              ? e.value
-                              : '    ${e.value}',
-                          textAlign:
-                              TextAlign.justify,
-                          style: const TextStyle(
-                            color: Color(
-                              0xFFCDD5E0,
-                            ),
-                            fontSize: 17,
-                            height: 1.95,
-                            letterSpacing: 0.15,
-                            fontWeight:
-                                FontWeight.w400,
-                          ),
-                        ),
+                ..._paragraphs.asMap().entries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      e.key == 0 ? e.value : '    ${e.value}',
+                      textAlign: TextAlign.justify,
+                      style: const TextStyle(
+                        color: Color(0xFFCDD5E0),
+                        fontSize: 17,
+                        height: 1.95,
+                        letterSpacing: 0.15,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Center(
                   child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 24,
-                        height: 1,
-                        color: Colors.white
-                            .withOpacity(0.08),
-                      ),
+                      Container(width: 24, height: 1, color: Colors.white.withOpacity(0.08)),
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
-                        child: Icon(
-                          Icons.auto_awesome,
-                          color: AppColors
-                              .primaryA
-                              .withOpacity(0.3),
-                          size: 12,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Icon(Icons.auto_awesome, color: AppColors.primaryA.withOpacity(0.3), size: 12),
                       ),
-                      Container(
-                        width: 24,
-                        height: 1,
-                        color: Colors.white
-                            .withOpacity(0.08),
-                      ),
+                      Container(width: 24, height: 1, color: Colors.white.withOpacity(0.08)),
                     ],
                   ),
                 ),
@@ -2155,37 +1392,21 @@ class _AudioBtn extends StatelessWidget {
   final double size;
   final Color color;
   final VoidCallback? onTap;
-  const _AudioBtn({
-    required this.icon,
-    required this.size,
-    required this.color,
-    required this.onTap,
-  });
+  const _AudioBtn({required this.icon, required this.size, required this.color, required this.onTap});
   @override
-  Widget build(BuildContext context) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withOpacity(
-              onTap != null ? 0.05 : 0.02,
-            ),
-            border: Border.all(
-              color: Colors.white.withOpacity(
-                onTap != null ? 0.08 : 0.03,
-              ),
-            ),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: size,
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(onTap != null ? 0.05 : 0.02),
+        border: Border.all(color: Colors.white.withOpacity(onTap != null ? 0.08 : 0.03)),
+      ),
+      child: Icon(icon, color: color, size: size),
+    ),
+  );
 }
 
 class _SnippetListTile extends StatelessWidget {
@@ -2202,27 +1423,19 @@ class _SnippetListTile extends StatelessWidget {
     required this.onAudioTap,
   });
   @override
-  Widget build(
-    BuildContext context,
-  ) => GestureDetector(
+  Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isCurrent
-            ? AppColors.primaryA.withOpacity(0.08)
-            : const Color(0xFF0F1624),
+        color: isCurrent ? AppColors.primaryA.withOpacity(0.08) : const Color(0xFF0F1624),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isCurrent
-              ? AppColors.primaryA.withOpacity(
-                  0.35,
-                )
+              ? AppColors.primaryA.withOpacity(0.35)
               : isRead
-              ? const Color(
-                  0xFF10B981,
-                ).withOpacity(0.2)
+              ? const Color(0xFF10B981).withOpacity(0.2)
               : Colors.white.withOpacity(0.05),
         ),
       ),
@@ -2234,26 +1447,16 @@ class _SnippetListTile extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isRead
-                  ? const Color(
-                      0xFF10B981,
-                    ).withOpacity(0.15)
+                  ? const Color(0xFF10B981).withOpacity(0.15)
                   : isCurrent
-                  ? AppColors.primaryA
-                        .withOpacity(0.15)
-                  : Colors.white.withOpacity(
-                      0.04,
-                    ),
+                  ? AppColors.primaryA.withOpacity(0.15)
+                  : Colors.white.withOpacity(0.04),
               border: Border.all(
                 color: isRead
-                    ? const Color(
-                        0xFF10B981,
-                      ).withOpacity(0.4)
+                    ? const Color(0xFF10B981).withOpacity(0.4)
                     : isCurrent
-                    ? AppColors.primaryA
-                          .withOpacity(0.5)
-                    : Colors.white.withOpacity(
-                        0.08,
-                      ),
+                    ? AppColors.primaryA.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.08),
               ),
             ),
             child: Icon(
@@ -2273,8 +1476,7 @@ class _SnippetListTile extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   snippet.snippetTitle,
@@ -2290,16 +1492,9 @@ class _SnippetListTile extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (snippet.durationSeconds !=
-                    null) ...[
+                if (snippet.durationSeconds != null) ...[
                   const SizedBox(height: 2),
-                  Text(
-                    '${snippet.durationLabel} read',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 11,
-                    ),
-                  ),
+                  Text('${snippet.durationLabel} read', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
                 ],
               ],
             ),
@@ -2310,29 +1505,15 @@ class _SnippetListTile extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: const Color(
-                  0xFFEC4899,
-                ).withOpacity(0.1),
+                color: const Color(0xFFEC4899).withOpacity(0.1),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(
-                    0xFFEC4899,
-                  ).withOpacity(0.25),
-                ),
+                border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.25)),
               ),
-              child: const Icon(
-                Icons.headphones_rounded,
-                color: Color(0xFFEC4899),
-                size: 14,
-              ),
+              child: const Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 14),
             ),
           ),
           const SizedBox(width: 6),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: Colors.grey[700],
-            size: 18,
-          ),
+          Icon(Icons.chevron_right_rounded, color: Colors.grey[700], size: 18),
         ],
       ),
     ),
@@ -2343,23 +1524,14 @@ class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _MetaChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+  const _MetaChip({required this.icon, required this.label, required this.color});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: 10,
-      vertical: 5,
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
       color: color.withOpacity(0.1),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-        color: color.withOpacity(0.25),
-      ),
+      border: Border.all(color: color.withOpacity(0.25)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -2368,11 +1540,7 @@ class _MetaChip extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
         ),
       ],
     ),
@@ -2384,30 +1552,13 @@ class _CompletionSheet extends StatelessWidget {
   const _CompletionSheet({required this.book});
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.fromLTRB(
-      16,
-      0,
-      16,
-      24,
-    ),
+    margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
       color: const Color(0xFF0F1624),
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(
-        color: AppColors.primaryA.withOpacity(
-          0.3,
-        ),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.primaryA.withOpacity(
-            0.2,
-          ),
-          blurRadius: 40,
-          spreadRadius: 4,
-        ),
-      ],
+      border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
+      boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.2), blurRadius: 40, spreadRadius: 4)],
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -2415,45 +1566,22 @@ class _CompletionSheet extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                AppColors.primaryA,
-                AppColors.primaryB,
-              ],
-            ),
+            gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryA
-                    .withOpacity(0.4),
-                blurRadius: 20,
-              ),
-            ],
+            boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 20)],
           ),
-          child: const Icon(
-            Icons.emoji_events_rounded,
-            color: Colors.white,
-            size: 32,
-          ),
+          child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 32),
         ),
         const SizedBox(height: 16),
         const Text(
           'Book Completed! 🎉',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
           'You finished "${book.title}". Great job keeping your focus!',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 13,
-            height: 1.5,
-          ),
+          style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
         ),
         const SizedBox(height: 20),
         GestureDetector(
@@ -2463,28 +1591,15 @@ class _CompletionSheet extends StatelessWidget {
           },
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  AppColors.primaryA,
-                  AppColors.primaryB,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(
-                14,
-              ),
+              gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(
               child: Text(
                 'Back to Library',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
           ),
@@ -2506,10 +1621,7 @@ class _CoverPainter extends CustomPainter {
       ..strokeWidth = 1.5;
     for (int i = 0; i < 5; i++) {
       canvas.drawCircle(
-        Offset(
-          rng.nextDouble() * size.width,
-          rng.nextDouble() * size.height,
-        ),
+        Offset(rng.nextDouble() * size.width, rng.nextDouble() * size.height),
         20 + rng.nextDouble() * 50,
         paint,
       );
@@ -2517,6 +1629,5 @@ class _CoverPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CoverPainter old) =>
-      old.seed != seed;
+  bool shouldRepaint(_CoverPainter old) => old.seed != seed;
 }
