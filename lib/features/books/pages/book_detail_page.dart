@@ -8,7 +8,6 @@ import '../models/book_snippet_model.dart';
 import '../services/book_service.dart';
 import '../../ai_flutter/widgets/snippet_check_sheet.dart';
 
-
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
 
@@ -110,6 +109,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       final completedIdx = _currentIndex;
       final snippetId = _snippets[completedIdx].id;
       final token = await AuthService.getToken() ?? '';
+      print('TOKEN BEING SENT: $token');
       final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
       if (passed) _completedChapters.add(completedIdx);
       setState(() {
