@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
  
 import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 import '../models/train_of_thought_model.dart';
  
@@ -46,8 +47,10 @@ enum _Phase { idle, playing, complete, gameOver }
 // ─────────────────────────────────────────────────────────────────────────────
  
 class TrainOfThoughtPage extends StatefulWidget {
-  const TrainOfThoughtPage({super.key});
- 
+  final int startLevel;
+
+  const TrainOfThoughtPage({super.key, this.startLevel = 1});
+
   @override
   State<TrainOfThoughtPage> createState() => _TOTState();
 }
@@ -98,7 +101,7 @@ class _TOTState extends State<TrainOfThoughtPage>
       ..repeat(reverse: true);
  
     _ticker = createTicker(_onTick);
-    _loadLevel(1);
+    _loadLevel(widget.startLevel);
   }
  
   @override
@@ -292,6 +295,9 @@ class _TOTState extends State<TrainOfThoughtPage>
   Future<void> _submitResult({required bool completed}) async {
     final elapsed =
         (DateTime.now().millisecondsSinceEpoch - _startEpoch) ~/ 1000;
+    // Completing a level unlocks the next one; failing keeps the current level unlocked.
+    final unlockLevel = completed ? _level + 1 : _level;
+    await GameProgressService.unlockUpToLevel('train_of_thought', unlockLevel);
     final result = await GameService.submitResult(
       gameType: 'train_of_thought',
       score: _correct * 100,

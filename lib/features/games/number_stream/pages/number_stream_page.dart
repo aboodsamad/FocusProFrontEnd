@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/number_stream_model.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 import '../../../../features/home/providers/user_provider.dart';
 
@@ -41,7 +42,9 @@ class _Particle {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NumberStreamPage extends StatefulWidget {
-  const NumberStreamPage({super.key});
+  final int startLevel;
+
+  const NumberStreamPage({super.key, this.startLevel = 1});
 
   @override
   State<NumberStreamPage> createState() => _NumberStreamPageState();
@@ -128,7 +131,8 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     _startTime = DateTime.now();
     resetEqCounter(); // reset equation ID counter so IDs start from 1 each game
     setState(() {
-      _game    = NumberStreamState.initial().copyWith(phase: NumberStreamPhase.countdown);
+      _game    = NumberStreamState.initial()
+          .copyWith(level: widget.startLevel, phase: NumberStreamPhase.countdown);
       _cdValue = 3;
       _particles.clear();
     });
@@ -256,6 +260,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     final secs = _startTime != null
         ? DateTime.now().difference(_startTime!).inSeconds
         : 0;
+    await GameProgressService.unlockUpToLevel('number_stream', _game.level);
     final result = await GameService.submitResult(
       gameType:          'number_stream',
       score:             _game.score,

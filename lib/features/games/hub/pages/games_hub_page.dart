@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../models/game_item.dart';
 import '../models/game_registry.dart';
 import '../widgets/game_hub_card.dart';
+import 'level_roadmap_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GamesHubPage
@@ -58,12 +59,24 @@ class _GamesHubPageState extends State<GamesHubPage>
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   void _openGame(GameItem game) {
+    if (GameRegistry.hasRoadmap(game.id)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LevelRoadmapPage(
+            gameId:      game.id,
+            title:       game.title,
+            color:       Color(game.colorValue),
+            totalLevels: GameRegistry.totalLevels(game.id),
+            pageBuilder: (level) => GameRegistry.levelPageFor(game.id, level)!,
+          ),
+        ),
+      );
+      return;
+    }
     final page = GameRegistry.pageFor(game.id);
-    if (page == null) return; // coming soon — button is disabled anyway
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    if (page == null) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

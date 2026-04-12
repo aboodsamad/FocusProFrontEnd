@@ -8,6 +8,7 @@ import '../../train_of_thought/pages/train_of_thought_page.dart';
 import '../../color_match/pages/color_match_page.dart';
 import '../../speed_match/pages/speed_match_page.dart';
 import '../../pattern_trail/pages/pattern_trail_page.dart';
+import '../../services/game_progress_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameRegistry
@@ -123,8 +124,6 @@ class GameRegistry {
   /// Returns the Flutter [Widget] page for a given game id.
   /// Import all game pages here — one place to maintain.
   static Widget? pageFor(String id) {
-    // Import game pages at the top of this file when you add them.
-    // They are imported inside the switch to avoid circular deps.
     switch (id) {
       case 'memory_matrix':
         return const MemoryMatrixPage();
@@ -144,4 +143,27 @@ class GameRegistry {
         return null;
     }
   }
+
+  /// Returns a game page that starts at [startLevel].
+  /// Only valid for games that have a level roadmap.
+  static Widget? levelPageFor(String id, int startLevel) {
+    switch (id) {
+      case 'memory_matrix':
+        return MemoryMatrixPage(startLevel: startLevel);
+      case 'number_stream':
+        return NumberStreamPage(startLevel: startLevel);
+      case 'train_of_thought':
+        return TrainOfThoughtPage(startLevel: startLevel);
+      case 'pattern_trail':
+        return PatternTrailPage(startLevel: startLevel);
+      default:
+        return null;
+    }
+  }
+
+  /// True for games that use the level roadmap.
+  static bool hasRoadmap(String id) => GameProgressService.hasRoadmap(id);
+
+  /// Total levels for roadmap games.
+  static int totalLevels(String id) => GameProgressService.totalLevels(id);
 }

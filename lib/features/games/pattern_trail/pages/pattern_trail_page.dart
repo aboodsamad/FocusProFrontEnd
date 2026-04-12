@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,7 +106,9 @@ class _GameState {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class PatternTrailPage extends StatefulWidget {
-  const PatternTrailPage({super.key});
+  final int startLevel;
+
+  const PatternTrailPage({super.key, this.startLevel = 1});
 
   @override
   State<PatternTrailPage> createState() => _PatternTrailPageState();
@@ -140,10 +143,19 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   late final AnimationController _cdCtrl;
   late final Animation<double>   _cdScale;
 
+  int _seqLenForLevel(PatternTrailDifficulty d, int level) {
+    final base = d == PatternTrailDifficulty.hard ? 4 : 3;
+    return base + (level - 1);
+  }
+
   @override
   void initState() {
     super.initState();
-    _game = _GameState.initial(PatternTrailDifficulty.medium);
+    const d = PatternTrailDifficulty.medium;
+    _game = _GameState.initial(d).copyWith(
+      level:          widget.startLevel,
+      sequenceLength: _seqLenForLevel(d, widget.startLevel),
+    );
 
     _dotCtrl = List.generate(
       16,
@@ -201,8 +213,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     HapticFeedback.mediumImpact();
     for (final c in _dotCtrl) { c.stop(); c.reset(); }
     setState(() {
-      _game = _GameState.initial(_game.difficulty)
-          .copyWith(phase: _Phase.countdown, countdown: 3);
+      _game = _GameState.initial(_game.difficulty).copyWith(
+        level:          widget.startLevel,
+        sequenceLength: _seqLenForLevel(_game.difficulty, widget.startLevel),
+        phase:          _Phase.countdown,
+        countdown:      3,
+      );
       _highlightedDot = null;
       _correctlyTapped.clear();
       _feedbackDot    = null;
@@ -374,6 +390,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
+    await GameProgressService.unlockUpToLevel('pattern_trail', _game.level);
     final result = await GameService.submitResult(
       gameType:          'pattern_trail',
       score:             _game.score,

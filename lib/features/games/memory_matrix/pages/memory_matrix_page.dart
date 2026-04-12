@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../features/home/providers/user_provider.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 import '../models/memory_matrix_model.dart';
 import '../widgets/memory_matrix_grid.dart';
@@ -17,7 +18,9 @@ import '../widgets/memory_matrix_idle_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MemoryMatrixPage extends StatefulWidget {
-  const MemoryMatrixPage({super.key});
+  final int startLevel;
+
+  const MemoryMatrixPage({super.key, this.startLevel = 1});
 
   @override
   State<MemoryMatrixPage> createState() => _MemoryMatrixPageState();
@@ -63,8 +66,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   @override
   void initState() {
     super.initState();
-    const initialGridSize = 9; // level 1
-    _game = MemoryMatrixState.initial(initialGridSize);
+    final initialGridSize = MemoryMatrixState.gridSizeForLevel(widget.startLevel);
+    _game = MemoryMatrixState.initial(initialGridSize).copyWith(level: widget.startLevel);
 
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400))..forward();
 
@@ -137,11 +140,12 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     HapticFeedback.mediumImpact();
     _cancelInputTimer();
     _gameStartTime = DateTime.now();
-    const startLevel = 1;
+    final startLevel = widget.startLevel;
     final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
     _ensureCellControllers(gs);
     setState(() {
-      _game = MemoryMatrixState.initial(gs).copyWith(phase: MemoryMatrixPhase.countdown);
+      _game = MemoryMatrixState.initial(gs)
+          .copyWith(level: startLevel, phase: MemoryMatrixPhase.countdown);
     });
     _runCountdown();
   }
@@ -307,6 +311,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
 
   Future<void> _submitGameResult() async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
+    await GameProgressService.unlockUpToLevel('memory_matrix', _game.level);
     final result = await GameService.submitResult(
       gameType: 'memory_matrix',
       score: _game.score,

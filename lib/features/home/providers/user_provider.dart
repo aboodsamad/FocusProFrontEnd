@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/auth_service.dart';
 import '../services/user_service.dart';
+import '../../games/services/game_progress_service.dart';
  
 class UserProvider extends ChangeNotifier {
   // ── State ──────────────────────────────────────────────────────────────────
@@ -64,6 +65,9 @@ class UserProvider extends ChangeNotifier {
     if (status == 200) {
       await _loadFromPrefs();  // re-read updated values
       notifyListeners();       // widgets rebuild with fresh data
+      // Sync level progress from backend (merge – local values are never overwritten
+      // by lower remote values, so this is safe to call anytime).
+      GameProgressService.syncFromBackend();
     } else if (status == 401 || status == 403) {
       // Token is expired or invalid — log out so routing sends user to login
       await logout();
