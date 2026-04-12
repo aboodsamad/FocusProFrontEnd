@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/auth_service.dart';
 import '../../home/providers/user_provider.dart';
 import '../models/activity_log.dart';
 import '../services/activity_log_service.dart';
@@ -20,7 +23,6 @@ const _categories = [
   _Category(label: 'Reading', icon: Icons.menu_book_rounded,           types: ['BOOK_SNIPPET_READ']),
   _Category(label: 'Habits',  icon: Icons.check_circle_outline_rounded,types: ['HABIT_CREATED','HABIT_UPDATED','HABIT_DELETED','HABIT_COMPLETED']),
   _Category(label: 'Rooms',   icon: Icons.groups_rounded,              types: ['FOCUS_ROOM_CREATED','FOCUS_ROOM_JOINED']),
-  _Category(label: 'Account', icon: Icons.manage_accounts_rounded,     types: ['LOGIN','LOGOUT','REGISTER','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','BASELINE_TEST_COMPLETE']),
 ];
 
 // ── Time filter ────────────────────────────────────────────────────────────────
@@ -59,6 +61,42 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
+// ── Snippet history model ──────────────────────────────────────────────────────
+class _SnippetHistoryItem {
+  final int     snippetId;
+  final String  snippetTitle;
+  final int     bookId;
+  final String  bookTitle;
+  final int     questionCount;
+  final String? attemptResult; // "PASSED", "FAILED", or null
+  final DateTime? createdAt;
+
+  const _SnippetHistoryItem({
+    required this.snippetId,
+    required this.snippetTitle,
+    required this.bookId,
+    required this.bookTitle,
+    required this.questionCount,
+    this.attemptResult,
+    this.createdAt,
+  });
+
+  factory _SnippetHistoryItem.fromJson(Map<String, dynamic> j) {
+    DateTime? dt;
+    try { dt = DateTime.parse(j['createdAt'] as String); } catch (_) {}
+    return _SnippetHistoryItem(
+      snippetId:     (j['snippetId']     as num).toInt(),
+      snippetTitle:  j['snippetTitle']   as String,
+      bookId:        (j['bookId']        as num).toInt(),
+      bookTitle:     j['bookTitle']      as String,
+      questionCount: (j['questionCount'] as num).toInt(),
+      attemptResult: j['attemptResult']  as String?,
+      createdAt:     dt,
+    );
+  }
+}
+
+// ── Page state ────────────────────────────────────────────────────────────────
 class _ProfilePageState extends State<ProfilePage>
     with TickerProviderStateMixin {
   late AnimationController _animController;
@@ -69,6 +107,12 @@ class _ProfilePageState extends State<ProfilePage>
   List<ActivityLog> _logs = [];
   bool _logsLoading = true;
   _TimeFilter _timeFilter = _TimeFilter.all;
+
+  // ── AI history state ───────────────────────────────────────────────────────
+  List<_SnippetHistoryItem> _aiHistory = [];
+  bool   _aiHistoryLoading = true;
+  bool   _aiHistoryToday   = false;   // false = all-time
+  String? _aiBookFilter;              // null = all books
 
   @override
   void initState() {
@@ -87,12 +131,57 @@ class _ProfilePageState extends State<ProfilePage>
       ..addListener(() => setState(() {}));
 
     _loadLogs();
+    _loadAiHistory();
   }
 
   Future<void> _loadLogs() async {
     final logs = await ActivityLogService.fetchLogs();
     if (mounted) setState(() { _logs = logs; _logsLoading = false; });
   }
+
+  Future<void> _loadAiHistory() async {
+    final token = await AuthService.getToken();
+    if (token == null) {
+      if (mounted) setState(() => _aiHistoryLoading = false);
+      return;
+    }
+    try {
+      final resp = await http.get(
+        Uri.parse('${AuthService.baseUrl}/ai/history'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200 && mounted) {
+        final List<dynamic> data = jsonDecode(resp.body) as List<dynamic>;
+        setState(() {
+          _aiHistory = data
+              .map((e) => _SnippetHistoryItem.fromJson(e as Map<String, dynamic>))
+              .toList();
+          _aiHistoryLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => _aiHistoryLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _aiHistoryLoading = false);
+    }
+  }
+
+  List<_SnippetHistoryItem> get _filteredAiHistory {
+    final now = DateTime.now();
+    return _aiHistory.where((item) {
+      if (_aiHistoryToday) {
+        final dt = item.createdAt;
+        if (dt == null) return false;
+        if (dt.year != now.year || dt.month != now.month || dt.day != now.day) return false;
+      }
+      if (_aiBookFilter != null && item.bookTitle != _aiBookFilter) return false;
+      return true;
+    }).toList();
+  }
+
+  List<String> get _aiBookTitles =>
+      _aiHistory.map((e) => e.bookTitle).toSet().toList()..sort();
 
   @override
   void dispose() {
@@ -154,6 +243,7 @@ class _ProfilePageState extends State<ProfilePage>
                 SliverToBoxAdapter(child: _buildInfoSection(user)),
                 SliverToBoxAdapter(child: _buildScoreSection(score, scoreColor)),
                 SliverToBoxAdapter(child: _buildJourneySection()),
+                SliverToBoxAdapter(child: _buildAiHistorySection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
@@ -322,6 +412,118 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ]),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ── AI Question History Section ─────────────────────────────────────────────
+
+  Widget _buildAiHistorySection() {
+    final items   = _filteredAiHistory;
+    final books   = _aiBookTitles;
+    const accent  = Color(0xFF818CF8); // indigo accent for AI sections
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ─────────────────────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: accent, size: 16),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'AI Question History',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              if (!_aiHistoryLoading)
+                Text(
+                  '${items.length} snippet${items.length == 1 ? '' : 's'}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // ── Time filter chips ───────────────────────────────────────────────
+          Row(
+            children: [
+              _FilterChip(
+                label: 'All Time',
+                active: !_aiHistoryToday,
+                activeColor: accent,
+                onTap: () => setState(() { _aiHistoryToday = false; }),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Today',
+                active: _aiHistoryToday,
+                activeColor: accent,
+                onTap: () => setState(() { _aiHistoryToday = true; }),
+              ),
+              const Spacer(),
+              // Book filter dropdown
+              if (books.isNotEmpty)
+                _BookFilterDropdown(
+                  books: books,
+                  selected: _aiBookFilter,
+                  onChanged: (v) => setState(() => _aiBookFilter = v),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── Content ─────────────────────────────────────────────────────────
+          if (_aiHistoryLoading)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: CircularProgressIndicator(
+                  color: accent, strokeWidth: 2.5),
+              ),
+            )
+          else if (items.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F1624),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Column(children: [
+                Icon(Icons.auto_awesome_outlined, color: Colors.grey[700], size: 32),
+                const SizedBox(height: 10),
+                Text(
+                  _aiHistoryToday ? 'No AI questions today' : 'No AI questions yet',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Read a book snippet to get AI questions',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 11),
+                ),
+              ]),
+            )
+          else
+            Column(
+              children: items.asMap().entries.map((e) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: e.key == items.length - 1 ? 0 : 10),
+                  child: _SnippetHistoryCard(item: e.value),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -692,4 +894,279 @@ class _ScoreRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScoreRingPainter old) => old.progress != progress || old.color != color;
+}
+
+// ── Filter Chip (AI history) ───────────────────────────────────────────────────
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? activeColor.withOpacity(0.15) : const Color(0xFF0F1624),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? activeColor.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? activeColor : Colors.grey[500],
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Book Filter Dropdown ───────────────────────────────────────────────────────
+class _BookFilterDropdown extends StatelessWidget {
+  final List<String> books;
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  const _BookFilterDropdown({
+    required this.books,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF818CF8);
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1624),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected != null
+              ? accent.withOpacity(0.5)
+              : Colors.white.withOpacity(0.1),
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: selected,
+          isDense: true,
+          dropdownColor: const Color(0xFF111827),
+          icon: Icon(
+            Icons.expand_more_rounded,
+            size: 16,
+            color: selected != null ? accent : Colors.grey[500],
+          ),
+          hint: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.book_outlined, size: 13, color: Colors.grey[500]),
+              const SizedBox(width: 5),
+              Text('Book', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+            ],
+          ),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text('All Books', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            ),
+            ...books.map((b) => DropdownMenuItem<String?>(
+              value: b,
+              child: Text(
+                b.length > 22 ? '${b.substring(0, 20)}…' : b,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            )),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Snippet History Card ───────────────────────────────────────────────────────
+class _SnippetHistoryCard extends StatelessWidget {
+  final _SnippetHistoryItem item;
+  const _SnippetHistoryCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF818CF8);
+    final result = item.attemptResult;
+    final passed = result == 'PASSED';
+    final failed = result == 'FAILED';
+
+    final badgeColor = passed
+        ? const Color(0xFF10B981)
+        : failed
+            ? const Color(0xFFEF4444)
+            : const Color(0xFF6B7A99);
+
+    final badgeLabel = passed
+        ? 'Passed'
+        : failed
+            ? 'Failed'
+            : 'Pending';
+
+    final badgeIcon = passed
+        ? Icons.check_circle_rounded
+        : failed
+            ? Icons.cancel_rounded
+            : Icons.hourglass_empty_rounded;
+
+    String? dateLabel;
+    final dt = item.createdAt;
+    if (dt != null) {
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 1) {
+        dateLabel = 'Just now';
+      } else if (diff.inMinutes < 60) {
+        dateLabel = '${diff.inMinutes}m ago';
+      } else if (diff.inHours < 24) {
+        dateLabel = '${diff.inHours}h ago';
+      } else if (diff.inDays < 7) {
+        dateLabel = '${diff.inDays}d ago';
+      } else {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateLabel = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1624),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: passed
+              ? const Color(0xFF10B981).withOpacity(0.2)
+              : failed
+                  ? const Color(0xFFEF4444).withOpacity(0.15)
+                  : Colors.white.withOpacity(0.06),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.auto_awesome_rounded, color: accent, size: 18),
+          ),
+          const SizedBox(width: 12),
+
+          // Middle content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Book title
+                Text(
+                  item.bookTitle,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                // Snippet title
+                Text(
+                  item.snippetTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                // Meta row
+                Row(
+                  children: [
+                    // Question count pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.quiz_outlined, size: 11, color: accent.withOpacity(0.8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.questionCount} Q',
+                            style: TextStyle(color: accent.withOpacity(0.9), fontSize: 10, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Date
+                    if (dateLabel != null)
+                      Text(
+                        dateLabel,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Right badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: badgeColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: badgeColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(badgeIcon, size: 12, color: badgeColor),
+                const SizedBox(width: 4),
+                Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
