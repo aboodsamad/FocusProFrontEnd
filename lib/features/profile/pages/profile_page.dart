@@ -68,7 +68,9 @@ class _SnippetHistoryItem {
   final int     bookId;
   final String  bookTitle;
   final int     questionCount;
-  final String? attemptResult; // "PASSED", "FAILED", or null
+  final String? attemptResult;  // "PASSED", "FAILED", or null
+  final int?    correctCount;   // how many correct, null if never submitted
+  final int?    totalCount;     // total questions attempted, null if never submitted
   final DateTime? createdAt;
 
   const _SnippetHistoryItem({
@@ -78,6 +80,8 @@ class _SnippetHistoryItem {
     required this.bookTitle,
     required this.questionCount,
     this.attemptResult,
+    this.correctCount,
+    this.totalCount,
     this.createdAt,
   });
 
@@ -91,6 +95,8 @@ class _SnippetHistoryItem {
       bookTitle:     j['bookTitle']      as String,
       questionCount: (j['questionCount'] as num).toInt(),
       attemptResult: j['attemptResult']  as String?,
+      correctCount:  j['correctCount']  != null ? (j['correctCount'] as num).toInt() : null,
+      totalCount:    j['totalCount']    != null ? (j['totalCount']   as num).toInt() : null,
       createdAt:     dt,
     );
   }
@@ -516,13 +522,17 @@ class _ProfilePageState extends State<ProfilePage>
               ]),
             )
           else
-            Column(
-              children: items.asMap().entries.map((e) {
-                return Padding(
-                  padding: EdgeInsets.only(bottom: e.key == items.length - 1 ? 0 : 10),
-                  child: _SnippetHistoryCard(item: e.value),
-                );
-              }).toList(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: items.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 10),
+                  child: _SnippetHistoryCard(item: items[i]),
+                ),
+              ),
             ),
         ],
       ),
@@ -661,10 +671,23 @@ class _ProfilePageState extends State<ProfilePage>
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: Column(
-                children: filtered.asMap().entries.map((e) {
-                  return _ActivityTile(log: e.value, isLast: e.key == filtered.length - 1);
-                }).toList(),
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, i) => Divider(
+                    height: 1,
+                    color: Colors.white.withOpacity(0.05),
+                    indent: 66,
+                  ),
+                  itemBuilder: (_, i) => _ActivityTile(
+                    log: filtered[i],
+                    isLast: i == filtered.length - 1,
+                  ),
+                ),
               ),
             ),
         ],
@@ -806,49 +829,44 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = _meta(log.activityType);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: meta.color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(meta.icon, color: meta.color, size: 18),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: meta.color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(meta.icon, color: meta.color, size: 18),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              log.activityDescription ?? meta.label,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  log.activityDescription ?? meta.label,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 3),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: meta.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(height: 3),
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: meta.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(meta.label,
-                        style: TextStyle(color: meta.color, fontSize: 10, fontWeight: FontWeight.w600)),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(_timeAgo(log.activityDate),
-                      style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-                ]),
-              ]),
-            ),
+                child: Text(meta.label,
+                    style: TextStyle(color: meta.color, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+              Text(_timeAgo(log.activityDate),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+            ]),
           ]),
         ),
-        if (!isLast) Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 66),
-      ],
+      ]),
     );
   }
 }
@@ -1014,6 +1032,7 @@ class _SnippetHistoryCard extends StatelessWidget {
     final result = item.attemptResult;
     final passed = result == 'PASSED';
     final failed = result == 'FAILED';
+    final attempted = passed || failed;
 
     final badgeColor = passed
         ? const Color(0xFF10B981)
@@ -1021,22 +1040,26 @@ class _SnippetHistoryCard extends StatelessWidget {
             ? const Color(0xFFEF4444)
             : const Color(0xFF6B7A99);
 
-    final badgeLabel = passed
-        ? 'Passed'
-        : failed
-            ? 'Failed'
-            : 'Pending';
-
-    final badgeIcon = passed
+    final badgeLabel = passed ? 'Passed' : failed ? 'Failed' : 'Pending';
+    final badgeIcon  = passed
         ? Icons.check_circle_rounded
         : failed
             ? Icons.cancel_rounded
             : Icons.hourglass_empty_rounded;
 
+    // Score label e.g. "2 / 3"
+    final hasScore = attempted && item.correctCount != null && item.totalCount != null;
+    final scoreLabel = hasScore ? '${item.correctCount} / ${item.totalCount}' : null;
+
+    // Score percentage for progress bar (0.0 – 1.0)
+    final scorePct = hasScore
+        ? (item.correctCount! / item.totalCount!).clamp(0.0, 1.0)
+        : 0.0;
+
     String? dateLabel;
     final dt = item.createdAt;
     if (dt != null) {
-      final now = DateTime.now();
+      final now  = DateTime.now();
       final diff = now.difference(dt);
       if (diff.inMinutes < 1) {
         dateLabel = 'Just now';
@@ -1065,97 +1088,113 @@ class _SnippetHistoryCard extends StatelessWidget {
                   : Colors.white.withOpacity(0.06),
         ),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: accent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.auto_awesome_rounded, color: accent, size: 18),
-          ),
-          const SizedBox(width: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left icon
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: accent, size: 18),
+              ),
+              const SizedBox(width: 12),
 
-          // Middle content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Book title
-                Text(
-                  item.bookTitle,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                // Snippet title
-                Text(
-                  item.snippetTitle,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // Meta row
-                Row(
+              // Middle content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Question count pill
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: accent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                    Text(
+                      item.bookTitle,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.snippetTitle,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // Meta pills row
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(Icons.quiz_outlined, size: 11, color: accent.withOpacity(0.8)),
                           const SizedBox(width: 4),
                           Text(
                             '${item.questionCount} Q',
-                            style: TextStyle(color: accent.withOpacity(0.9), fontSize: 10, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: accent.withOpacity(0.9),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600),
                           ),
-                        ],
+                        ]),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Date
-                    if (dateLabel != null)
-                      Text(
-                        dateLabel,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 10),
-                      ),
+                      const SizedBox(width: 6),
+                      if (dateLabel != null)
+                        Text(dateLabel,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+                    ]),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
+              ),
+              const SizedBox(width: 10),
 
-          // Right badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: badgeColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+              // Right badge (result)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: badgeColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: badgeColor.withOpacity(0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(badgeIcon, size: 12, color: badgeColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    badgeLabel,
+                    style: TextStyle(
+                        color: badgeColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ]),
+              ),
+            ],
+          ),
+
+          // ── Score row (only when attempted and score data available) ──────────
+          if (hasScore) ...[
+            const SizedBox(height: 10),
+            Row(
               children: [
-                Icon(badgeIcon, size: 12, color: badgeColor),
-                const SizedBox(width: 4),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: scorePct,
+                      minHeight: 5,
+                      backgroundColor: Colors.white.withOpacity(0.06),
+                      valueColor: AlwaysStoppedAnimation(badgeColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Text(
-                  badgeLabel,
+                  '$scoreLabel correct',
                   style: TextStyle(
                     color: badgeColor,
                     fontSize: 11,
@@ -1164,7 +1203,7 @@ class _SnippetHistoryCard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );
