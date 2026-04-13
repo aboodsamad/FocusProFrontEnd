@@ -131,4 +131,36 @@ class FocusRoomService {
           .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
+
+  // ── HTTP: fetch messages (last 50 or incremental after a timestamp) ───────
+  static Future<List<RoomMessage>> fetchMessages(int roomId, String? after) async {
+    final token = await AuthService.getToken();
+    final uri = (after != null && after.isNotEmpty)
+        ? Uri.parse('$_base/rooms/$roomId/messages?after=${Uri.encodeComponent(after)}')
+        : Uri.parse('$_base/rooms/$roomId/messages');
+    final resp = await http
+        .get(uri, headers: {'Authorization': 'Bearer $token'})
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode == 200) {
+      final List<dynamic> list = jsonDecode(resp.body);
+      return list.map((j) => RoomMessage.fromJson(j as Map<String, dynamic>)).toList();
+    }
+    throw Exception('Failed to load messages (${resp.statusCode})');
+  }
+
+  // ── HTTP: send a message ──────────────────────────────────────────────────
+  static Future<RoomMessage> sendMessage(int roomId, String content) async {
+    final token = await AuthService.getToken();
+    final resp = await http
+        .post(
+          Uri.parse('$_base/rooms/$roomId/messages'),
+          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+          body: jsonEncode({'content': content}),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode == 200 || resp.statusCode == 201) {
+      return RoomMessage.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+    }
+    throw Exception('Failed to send message (${resp.statusCode})');
+  }
 }

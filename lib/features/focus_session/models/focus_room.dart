@@ -1,3 +1,30 @@
+class RoomMessage {
+  final int id;
+  final int roomId;
+  final int userId;
+  final String username;
+  final String content;
+  final String sentAt; // ISO-8601 string
+
+  RoomMessage({
+    required this.id,
+    required this.roomId,
+    required this.userId,
+    required this.username,
+    required this.content,
+    required this.sentAt,
+  });
+
+  factory RoomMessage.fromJson(Map<String, dynamic> json) => RoomMessage(
+        id: json['id'],
+        roomId: json['roomId'],
+        userId: json['userId'],
+        username: json['username'] ?? '',
+        content: json['content'] ?? '',
+        sentAt: json['sentAt'] ?? '',
+      );
+}
+
 class RoomMember {
   final String username;
   final String displayName;
