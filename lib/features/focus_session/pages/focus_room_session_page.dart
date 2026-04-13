@@ -466,6 +466,24 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
             ),
           ),
         ],
+        // Delete room (creator only)
+        if (isCreator) ...[
+          GestureDetector(
+            onTap: () => _confirmDeleteRoom(context),
+            child: Container(
+              width: 36, height: 36,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: const Color(0xFFEF4444).withOpacity(0.25)),
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Color(0xFFEF4444), size: 16),
+            ),
+          ),
+        ],
         // Timer
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -484,6 +502,57 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         ),
       ]),
     );
+  }
+
+  Future<void> _confirmDeleteRoom(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1624),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+          SizedBox(width: 10),
+          Text('Delete Room',
+              style: TextStyle(color: Colors.white, fontSize: 18,
+                  fontWeight: FontWeight.bold)),
+        ]),
+        content: Text(
+          'Are you sure you want to delete "${widget.room.name}"? '
+          'This will remove all messages and cannot be undone.',
+          style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await FocusRoomService.deleteRoom(widget.room.id);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e'),
+                backgroundColor: const Color(0xFFEF4444)),
+          );
+        }
+      }
+    }
   }
 
   // ── Members tab ───────────────────────────────────────────────────────────

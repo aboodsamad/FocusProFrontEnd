@@ -508,6 +508,21 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
           ),
         ),
         const SizedBox(width: 8),
+        // Join with code
+        GestureDetector(
+          onTap: _openJoinByCodeSheet,
+          child: Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEC4899).withOpacity(0.10),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.30)),
+            ),
+            child: const Icon(Icons.vpn_key_rounded,
+                color: Color(0xFFEC4899), size: 17),
+          ),
+        ),
+        const SizedBox(width: 8),
         // Refresh
         GestureDetector(
           onTap: _loadRooms,
@@ -657,19 +672,24 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         itemCount: rooms.length,
-        itemBuilder: (_, i) => _RoomCard(
-          room: rooms[i],
-          onTap: () async {
-            final myUsername =
-                context.read<UserProvider>().username ?? '';
-            if (rooms[i].isPrivate) {
-              await _handlePrivateRoomJoin(rooms[i], myUsername);
-            } else {
-              await _navigateToRoom(rooms[i]);
-            }
-            _loadRooms();
-          },
-        ),
+        itemBuilder: (_, i) {
+          final myUsername = context.read<UserProvider>().username ?? '';
+          return _RoomCard(
+            room: rooms[i],
+            myUsername: myUsername,
+            onTap: () async {
+              if (rooms[i].isPrivate) {
+                await _handlePrivateRoomJoin(rooms[i], myUsername);
+              } else {
+                await _navigateToRoom(rooms[i]);
+              }
+              _loadRooms();
+            },
+            onDelete: rooms[i].createdBy == myUsername
+                ? () => _deleteRoom(rooms[i])
+                : null,
+          );
+        },
       ),
     );
   }
@@ -754,14 +774,233 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
       ),
     );
   }
+
+  // ── Join a private room by entering the code directly ─────────────────────
+  void _openJoinByCodeSheet() {
+    final codeCtl = TextEditingController();
+    bool _searching = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0C1120),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 22),
+
+              // Title
+              Row(children: [
+                Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEC4899).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.4)),
+                  ),
+                  child: const Icon(Icons.lock_open_rounded,
+                      color: Color(0xFFEC4899), size: 18),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Join Private Room',
+                        style: TextStyle(color: Colors.white, fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                    Text('Enter the 6-character invite code',
+                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+              ]),
+              const SizedBox(height: 28),
+
+              // Code field
+              TextField(
+                controller: codeCtl,
+                textCapitalization: TextCapitalization.characters,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.bold),
+                maxLength: 6,
+                decoration: InputDecoration(
+                  hintText: 'XXXXXX',
+                  hintStyle: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 26,
+                      letterSpacing: 8),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                          color: const Color(0xFFEC4899).withOpacity(0.25))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                          color: Color(0xFFEC4899), width: 1.5)),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 18),
+                  counterText: '',
+                ),
+                onChanged: (_) => setSheet(() {}),
+              ),
+              const SizedBox(height: 24),
+
+              // Join button
+              SizedBox(
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: codeCtl.text.trim().length == 6 && !_searching
+                      ? () async {
+                          setSheet(() => _searching = true);
+                          try {
+                            final code = codeCtl.text.trim().toUpperCase();
+                            final room = await FocusRoomService.getRoomByCode(code);
+                            if (!mounted) return;
+                            Navigator.pop(ctx);
+                            await _navigateToRoom(room, inviteCode: code);
+                            _loadRooms();
+                          } catch (e) {
+                            setSheet(() => _searching = false);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('$e'),
+                                  backgroundColor: const Color(0xFFEF4444),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      : null,
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: codeCtl.text.trim().length == 6
+                          ? const LinearGradient(
+                              colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)])
+                          : null,
+                      color: codeCtl.text.trim().length != 6
+                          ? Colors.white.withOpacity(0.06)
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: _searching
+                          ? const SizedBox(width: 22, height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5))
+                          : Text(
+                              'Find & Join Room',
+                              style: TextStyle(
+                                color: codeCtl.text.trim().length == 6
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Delete a room (creator only) ──────────────────────────────────────────
+  Future<void> _deleteRoom(FocusRoom room) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1624),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+          SizedBox(width: 10),
+          Text('Delete Room',
+              style: TextStyle(color: Colors.white, fontSize: 18,
+                  fontWeight: FontWeight.bold)),
+        ]),
+        content: Text(
+          'Are you sure you want to delete "${room.name}"? '
+          'This will remove all messages and cannot be undone.',
+          style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await FocusRoomService.deleteRoom(room.id);
+        _loadRooms();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e'),
+                backgroundColor: const Color(0xFFEF4444)),
+          );
+        }
+      }
+    }
+  }
 }
 
 // ── Room card ─────────────────────────────────────────────────────────────────
 
 class _RoomCard extends StatefulWidget {
   final FocusRoom room;
+  final String myUsername;
   final VoidCallback onTap;
-  const _RoomCard({required this.room, required this.onTap});
+  final VoidCallback? onDelete;
+  const _RoomCard({
+    required this.room,
+    required this.myUsername,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   State<_RoomCard> createState() => _RoomCardState();
@@ -898,7 +1137,7 @@ class _RoomCardState extends State<_RoomCard> {
                       ])),
                     ]),
                     const SizedBox(height: 12),
-                    // Bottom row: member count + capacity
+                    // Bottom row: member count + capacity + delete
                     Row(children: [
                       Container(
                         width: 7, height: 7,
@@ -931,6 +1170,32 @@ class _RoomCardState extends State<_RoomCard> {
                             fontSize: 12),
                       ),
                       const Spacer(),
+                      if (widget.onDelete != null) ...[
+                        GestureDetector(
+                          onTap: widget.onDelete,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(7),
+                              border: Border.all(
+                                  color: const Color(0xFFEF4444).withOpacity(0.25)),
+                            ),
+                            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.delete_outline_rounded,
+                                  color: Color(0xFFEF4444), size: 13),
+                              SizedBox(width: 3),
+                              Text('Delete',
+                                  style: TextStyle(
+                                      color: Color(0xFFEF4444),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       if (room.maxMembers > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(

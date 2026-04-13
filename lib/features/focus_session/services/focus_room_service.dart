@@ -123,6 +123,45 @@ class FocusRoomService {
     throw Exception('Failed to load messages (${resp.statusCode})');
   }
 
+  // ── HTTP: find a private room by invite code ──────────────────────────────
+  static Future<FocusRoom> getRoomByCode(String code) async {
+    final token = await AuthService.getToken();
+    final resp = await http
+        .get(
+          Uri.parse('$_base/rooms/by-code/${Uri.encodeComponent(code.trim().toUpperCase())}'),
+          headers: {'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode == 200) {
+      return FocusRoom.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+    }
+    try {
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Room not found');
+    } catch (_) {
+      throw Exception('Room not found for that code');
+    }
+  }
+
+  // ── HTTP: delete a room (creator only) ───────────────────────────────────
+  static Future<void> deleteRoom(int roomId) async {
+    final token = await AuthService.getToken();
+    final resp = await http
+        .delete(
+          Uri.parse('$_base/rooms/$roomId'),
+          headers: {'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode != 200) {
+      try {
+        final body = jsonDecode(resp.body) as Map<String, dynamic>;
+        throw Exception(body['error'] ?? 'Delete failed (${resp.statusCode})');
+      } catch (_) {
+        throw Exception('Delete failed (${resp.statusCode})');
+      }
+    }
+  }
+
   // ── HTTP: send a message ──────────────────────────────────────────────────
   static Future<RoomMessage> sendMessage(int roomId, String content) async {
     final token = await AuthService.getToken();
