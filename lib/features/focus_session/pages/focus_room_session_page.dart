@@ -15,6 +15,7 @@ class FocusRoomSessionPage extends StatefulWidget {
 }
 
 class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
+  // ── presence state ────────────────────────────────────────────────────────
   List<RoomMember> _members = [];
   bool _loading = true;
   String? _error;
@@ -24,6 +25,14 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   final Stopwatch _stopwatch = Stopwatch();
   String _elapsed = '00:00';
   bool _joined = false;
+
+  // ── chat state ────────────────────────────────────────────────────────────
+  List<RoomMessage> _messages = [];
+  Timer? _chatPollTimer;
+  String? _lastMessageTimestamp;
+  final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
+  bool _sendingMessage = false;
 
   @override
   void initState() {
@@ -45,7 +54,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   void dispose() {
     _ticker?.cancel();
     _pollTimer?.cancel();
+    _chatPollTimer?.cancel();
     _stopwatch.stop();
+    _chatController.dispose();
+    _chatScrollController.dispose();
     if (_joined) {
       FocusRoomService.leaveRoomRest(widget.room.id);
     }
@@ -121,8 +133,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
 
   Future<void> _joinAndPoll() async {
     try {
-      final room = await FocusRoomService.joinRoomRest(
-          widget.room.id, _myGoal);
+      final room = await FocusRoomService.joinRoomRest(widget.room.id, _myGoal);
       _joined = true;
       if (mounted) setState(() {
         _members = room.members;
@@ -136,13 +147,73 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       return;
     }
 
-    // Poll every 4 seconds to refresh member list
+    // Load initial messages
+    try {
+      final msgs = await FocusRoomService.fetchMessages(widget.room.id, null);
+      if (mounted && msgs.isNotEmpty) {
+        setState(() {
+          _messages = msgs;
+          _lastMessageTimestamp = msgs.last.sentAt;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {}
+
+    // Poll member list every 4 seconds
     _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
       try {
         final room = await FocusRoomService.getRoom(widget.room.id);
         if (mounted) setState(() => _members = room.members);
       } catch (_) {}
     });
+
+    // Poll for new messages every 2.5 seconds
+    _chatPollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+      try {
+        final newMsgs = await FocusRoomService.fetchMessages(
+            widget.room.id, _lastMessageTimestamp);
+        if (newMsgs.isNotEmpty && mounted) {
+          setState(() {
+            _messages.addAll(newMsgs);
+            _lastMessageTimestamp = newMsgs.last.sentAt;
+          });
+          _scrollToBottom();
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final content = _chatController.text.trim();
+    if (content.isEmpty || _sendingMessage) return;
+
+    setState(() => _sendingMessage = true);
+    _chatController.clear();
+
+    try {
+      final msg = await FocusRoomService.sendMessage(widget.room.id, content);
+      if (mounted) {
+        setState(() {
+          _messages.add(msg);
+          _lastMessageTimestamp = msg.sentAt;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {} finally {
+      if (mounted) setState(() => _sendingMessage = false);
+    }
   }
 
   @override
@@ -162,8 +233,18 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
               child: Text('Error: $_error',
                   style: const TextStyle(color: Colors.red)),
             )))
-          else
-            Expanded(child: _buildContent(myUsername)),
+          else ...[
+            // Members section (top ~45%)
+            Expanded(
+              flex: 45,
+              child: _buildMembersSection(myUsername),
+            ),
+            // Chat section (bottom ~55%)
+            Expanded(
+              flex: 55,
+              child: _buildChatSection(myUsername),
+            ),
+          ],
         ]),
       ),
     );
@@ -214,74 +295,164 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     );
   }
 
-  Widget _buildContent(String myUsername) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                AppColors.primaryB.withOpacity(0.35),
-                AppColors.primaryA.withOpacity(0.18),
-              ]),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primaryA.withOpacity(0.25)),
-            ),
-            child: Row(children: [
-              Container(
-                width: 10, height: 10,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF10B981),
-                  boxShadow: [BoxShadow(color: Color(0xFF10B981), blurRadius: 6)],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing right now',
-                style: const TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w600, fontSize: 13),
-              ),
+  Widget _buildMembersSection(String myUsername) {
+    return Column(children: [
+      // Online indicator bar
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              AppColors.primaryB.withOpacity(0.35),
+              AppColors.primaryA.withOpacity(0.18),
             ]),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primaryA.withOpacity(0.25)),
           ),
-        )),
-        SliverPadding(
-          padding: const EdgeInsets.all(20),
-          sliver: _members.isEmpty
-              ? SliverToBoxAdapter(child: Center(
-                  child: Column(children: [
-                    const SizedBox(height: 40),
-                    const Text('🧑‍💻', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 12),
-                    const Text("You're the only one here",
-                        style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('Others will appear when they join',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  ]),
-                ))
-              : SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, crossAxisSpacing: 12,
-                    mainAxisSpacing: 12, childAspectRatio: 1.05,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _MemberCard(
-                        member: _members[i],
-                        isMe: _members[i].username == myUsername),
-                    childCount: _members.length,
-                  ),
+          child: Row(children: [
+            Container(
+              width: 10, height: 10,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF10B981),
+                boxShadow: [BoxShadow(color: Color(0xFF10B981), blurRadius: 6)],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing right now',
+              style: const TextStyle(color: Colors.white,
+                  fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ]),
+        ),
+      ),
+      // Member grid
+      Expanded(
+        child: _members.isEmpty
+            ? Center(child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🧑‍💻', style: TextStyle(fontSize: 40)),
+                  const SizedBox(height: 8),
+                  const Text("You're the only one here",
+                      style: TextStyle(color: Colors.white,
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text('Others will appear when they join',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                ],
+              ))
+            : GridView.builder(
+                padding: const EdgeInsets.all(16),
+                physics: const BouncingScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, crossAxisSpacing: 10,
+                  mainAxisSpacing: 10, childAspectRatio: 1.1,
+                ),
+                itemCount: _members.length,
+                itemBuilder: (_, i) => _MemberCard(
+                    member: _members[i],
+                    isMe: _members[i].username == myUsername),
+              ),
+      ),
+    ]);
+  }
+
+  Widget _buildChatSection(String myUsername) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1020),
+        border: Border(
+          top: BorderSide(color: AppColors.primaryA.withOpacity(0.2), width: 1),
+        ),
+      ),
+      child: Column(children: [
+        // Chat header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(children: [
+            const Icon(Icons.chat_bubble_outline_rounded,
+                color: AppColors.primaryA, size: 15),
+            const SizedBox(width: 6),
+            const Text('Room Chat',
+                style: TextStyle(color: Colors.white70,
+                    fontSize: 12, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+        // Message list
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(child: Text('No messages yet. Say hi!',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12)))
+              : ListView.builder(
+                  controller: _chatScrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) => _ChatBubble(
+                      message: _messages[i],
+                      isMe: _messages[i].username == myUsername),
                 ),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: 40)),
-      ],
+        // Input row
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.06)),
+            ),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _chatController,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                maxLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendMessage(),
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _sendMessage,
+              child: Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primaryA, AppColors.primaryB],
+                  ),
+                ),
+                child: _sendingMessage
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.send_rounded,
+                        color: Colors.white, size: 17),
+              ),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 }
+
+// ── Member card (unchanged) ───────────────────────────────────────────────────
 
 class _MemberCard extends StatelessWidget {
   final RoomMember member;
@@ -295,7 +466,7 @@ class _MemberCard extends StatelessWidget {
             : member.username[0])
         .toUpperCase();
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1624),
         borderRadius: BorderRadius.circular(16),
@@ -309,7 +480,7 @@ class _MemberCard extends StatelessWidget {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Stack(children: [
           Container(
-            width: 52, height: 52,
+            width: 44, height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -320,12 +491,12 @@ class _MemberCard extends StatelessWidget {
             ),
             child: Center(child: Text(initial,
                 style: const TextStyle(color: Colors.white,
-                    fontSize: 20, fontWeight: FontWeight.bold))),
+                    fontSize: 18, fontWeight: FontWeight.bold))),
           ),
           Positioned(
             right: 0, bottom: 0,
             child: Container(
-              width: 14, height: 14,
+              width: 12, height: 12,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF10B981),
@@ -334,20 +505,111 @@ class _MemberCard extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(isMe ? 'You' : member.displayName,
             style: TextStyle(
                 color: isMe ? AppColors.primaryA : Colors.white,
-                fontSize: 13, fontWeight: FontWeight.bold),
+                fontSize: 12, fontWeight: FontWeight.bold),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         if (member.goal != null && member.goal!.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(member.goal!,
-              style: TextStyle(color: Colors.grey[500], fontSize: 10),
+              style: TextStyle(color: Colors.grey[500], fontSize: 9),
               maxLines: 2, overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center),
         ],
       ]),
+    );
+  }
+}
+
+// ── Chat bubble ───────────────────────────────────────────────────────────────
+
+class _ChatBubble extends StatelessWidget {
+  final RoomMessage message;
+  final bool isMe;
+  const _ChatBubble({required this.message, required this.isMe});
+
+  String _formatTime(String isoTimestamp) {
+    try {
+      final dt = DateTime.parse(isoTimestamp).toLocal();
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: const Color(0xFF1E2A40),
+              child: Text(
+                message.username.isNotEmpty
+                    ? message.username[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(color: Colors.white, fontSize: 10,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (!isMe)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    child: Text(message.username,
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 10)),
+                  ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: isMe
+                        ? const LinearGradient(colors: [
+                            AppColors.primaryA,
+                            AppColors.primaryB,
+                          ])
+                        : null,
+                    color: isMe ? null : const Color(0xFF161E30),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(14),
+                      topRight: const Radius.circular(14),
+                      bottomLeft: Radius.circular(isMe ? 14 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 14),
+                    ),
+                  ),
+                  child: Text(message.content,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
+                  child: Text(_formatTime(message.sentAt),
+                      style: TextStyle(
+                          color: Colors.grey[600], fontSize: 9)),
+                ),
+              ],
+            ),
+          ),
+          if (isMe) const SizedBox(width: 6),
+        ],
+      ),
     );
   }
 }
