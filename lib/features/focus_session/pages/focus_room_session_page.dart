@@ -33,6 +33,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   bool _sendingMessage = false;
+  int _unreadCount = 0;
+
+  // ── tab state ─────────────────────────────────────────────────────────────
+  bool _showChat = false; // false = Members tab, true = Chat tab
 
   @override
   void initState() {
@@ -125,7 +129,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     );
 
     if (!mounted) return;
-    if (goal == null) { Navigator.pop(context); return; }
+    if (goal == null) {
+      Navigator.pop(context);
+      return;
+    }
 
     _myGoal = goal.isEmpty ? null : goal;
     _joinAndPoll();
@@ -133,23 +140,29 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
 
   Future<void> _joinAndPoll() async {
     try {
-      final room = await FocusRoomService.joinRoomRest(widget.room.id, _myGoal);
+      final room =
+          await FocusRoomService.joinRoomRest(widget.room.id, _myGoal);
       _joined = true;
-      if (mounted) setState(() {
-        _members = room.members;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _members = room.members;
+          _loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
       return;
     }
 
     // Load initial messages
     try {
-      final msgs = await FocusRoomService.fetchMessages(widget.room.id, null);
+      final msgs =
+          await FocusRoomService.fetchMessages(widget.room.id, null);
       if (mounted && msgs.isNotEmpty) {
         setState(() {
           _messages = msgs;
@@ -160,15 +173,17 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     } catch (_) {}
 
     // Poll member list every 4 seconds
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 4), (_) async {
       try {
         final room = await FocusRoomService.getRoom(widget.room.id);
         if (mounted) setState(() => _members = room.members);
       } catch (_) {}
     });
 
-    // Poll for new messages every 2.5 seconds
-    _chatPollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+    // Poll for new chat messages every 2.5 seconds
+    _chatPollTimer =
+        Timer.periodic(const Duration(milliseconds: 2500), (_) async {
       try {
         final newMsgs = await FocusRoomService.fetchMessages(
             widget.room.id, _lastMessageTimestamp);
@@ -176,8 +191,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           setState(() {
             _messages.addAll(newMsgs);
             _lastMessageTimestamp = newMsgs.last.sentAt;
+            // Count unread only when the chat tab is not active
+            if (!_showChat) _unreadCount += newMsgs.length;
           });
-          _scrollToBottom();
+          if (_showChat) _scrollToBottom();
         }
       } catch (_) {}
     });
@@ -203,7 +220,8 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     _chatController.clear();
 
     try {
-      final msg = await FocusRoomService.sendMessage(widget.room.id, content);
+      final msg =
+          await FocusRoomService.sendMessage(widget.room.id, content);
       if (mounted) {
         setState(() {
           _messages.add(msg);
@@ -222,33 +240,135 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF080D1A),
       body: SafeArea(
-        child: Column(children: [
-          _buildHeader(),
-          if (_loading)
-            const Expanded(child: Center(
-              child: CircularProgressIndicator(color: AppColors.primaryA)))
-          else if (_error != null)
-            Expanded(child: Center(child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Error: $_error',
-                  style: const TextStyle(color: Colors.red)),
-            )))
-          else ...[
-            // Members section (top ~45%)
-            Expanded(
-              flex: 45,
-              child: _buildMembersSection(myUsername),
-            ),
-            // Chat section (bottom ~55%)
-            Expanded(
-              flex: 55,
-              child: _buildChatSection(myUsername),
-            ),
+        child: Column(
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 12),
+            _buildTabBar(),
+            if (_loading)
+              const Expanded(
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primaryA)))
+            else if (_error != null)
+              Expanded(
+                  child: Center(
+                      child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Error: $_error',
+                    style: const TextStyle(color: Colors.red)),
+              )))
+            else
+              // IndexedStack keeps both views alive so chat polling
+              // and scroll position are preserved when switching tabs
+              Expanded(
+                child: IndexedStack(
+                  index: _showChat ? 1 : 0,
+                  children: [
+                    _buildMembersSection(myUsername),
+                    _buildChatSection(myUsername),
+                  ],
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTabBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(children: [
+          _buildTab(
+            label: 'Members',
+            icon: Icons.people_outline_rounded,
+            active: !_showChat,
+            onTap: () => setState(() => _showChat = false),
+            badge: 0,
+          ),
+          _buildTab(
+            label: 'Chat',
+            icon: Icons.chat_bubble_outline_rounded,
+            active: _showChat,
+            onTap: () => setState(() {
+              _showChat = true;
+              _unreadCount = 0;
+              _scrollToBottom();
+            }),
+            badge: _unreadCount,
+          ),
         ]),
       ),
     );
   }
+
+  Widget _buildTab({
+    required String label,
+    required IconData icon,
+    required bool active,
+    required VoidCallback onTap,
+    required int badge,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            gradient: active
+                ? const LinearGradient(
+                    colors: [AppColors.primaryA, AppColors.primaryB])
+                : null,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 15,
+                  color: active ? Colors.white : Colors.grey[500]),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      color: active ? Colors.white : Colors.grey[500],
+                      fontSize: 13,
+                      fontWeight: active
+                          ? FontWeight.bold
+                          : FontWeight.normal)),
+              if (badge > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$badge',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
     return Padding(
@@ -257,7 +377,8 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
@@ -268,88 +389,111 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           ),
         ),
         const SizedBox(width: 12),
-        Text(widget.room.emoji, style: const TextStyle(fontSize: 22)),
+        Text(widget.room.emoji,
+            style: const TextStyle(fontSize: 22)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(widget.room.name,
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 17, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: AppColors.primaryA.withOpacity(0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
+            border: Border.all(
+                color: AppColors.primaryA.withOpacity(0.3)),
           ),
           child: Row(children: [
-            const Icon(Icons.timer_outlined, color: AppColors.primaryA, size: 14),
+            const Icon(Icons.timer_outlined,
+                color: AppColors.primaryA, size: 14),
             const SizedBox(width: 4),
-            Text(_elapsed, style: const TextStyle(
-                color: AppColors.primaryA,
-                fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(_elapsed,
+                style: const TextStyle(
+                    color: AppColors.primaryA,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13)),
           ]),
         ),
       ]),
     );
   }
 
+  // ── Members tab ───────────────────────────────────────────────────────────
+
   Widget _buildMembersSection(String myUsername) {
     return Column(children: [
-      // Online indicator bar
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
               AppColors.primaryB.withOpacity(0.35),
               AppColors.primaryA.withOpacity(0.18),
             ]),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primaryA.withOpacity(0.25)),
+            border: Border.all(
+                color: AppColors.primaryA.withOpacity(0.25)),
           ),
           child: Row(children: [
             Container(
-              width: 10, height: 10,
+              width: 10,
+              height: 10,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Color(0xFF10B981),
-                boxShadow: [BoxShadow(color: Color(0xFF10B981), blurRadius: 6)],
+                boxShadow: [
+                  BoxShadow(
+                      color: Color(0xFF10B981), blurRadius: 6)
+                ],
               ),
             ),
             const SizedBox(width: 10),
             Text(
               '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing right now',
-              style: const TextStyle(color: Colors.white,
-                  fontWeight: FontWeight.w600, fontSize: 13),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13),
             ),
           ]),
         ),
       ),
-      // Member grid
       Expanded(
         child: _members.isEmpty
-            ? Center(child: Column(
+            ? Center(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('🧑‍💻', style: TextStyle(fontSize: 40)),
-                  const SizedBox(height: 8),
+                  const Text('🧑‍💻',
+                      style: TextStyle(fontSize: 48)),
+                  const SizedBox(height: 12),
                   const Text("You're the only one here",
-                      style: TextStyle(color: Colors.white,
-                          fontWeight: FontWeight.bold, fontSize: 13)),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text('Others will appear when they join',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                      style: TextStyle(
+                          color: Colors.grey[600], fontSize: 12)),
                 ],
               ))
             : GridView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 10,
-                  mainAxisSpacing: 10, childAspectRatio: 1.1,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.05,
                 ),
                 itemCount: _members.length,
                 itemBuilder: (_, i) => _MemberCard(
@@ -360,99 +504,104 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     ]);
   }
 
+  // ── Chat tab ──────────────────────────────────────────────────────────────
+
   Widget _buildChatSection(String myUsername) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1020),
-        border: Border(
-          top: BorderSide(color: AppColors.primaryA.withOpacity(0.2), width: 1),
-        ),
+    return Column(children: [
+      // Message list
+      Expanded(
+        child: _messages.isEmpty
+            ? Center(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('💬',
+                      style: TextStyle(fontSize: 40)),
+                  const SizedBox(height: 12),
+                  const Text('No messages yet',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Be the first to say hi!',
+                      style: TextStyle(
+                          color: Colors.grey[600], fontSize: 12)),
+                ],
+              ))
+            : ListView.builder(
+                controller: _chatScrollController,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                itemCount: _messages.length,
+                itemBuilder: (_, i) => _ChatBubble(
+                    message: _messages[i],
+                    isMe: _messages[i].username == myUsername),
+              ),
       ),
-      child: Column(children: [
-        // Chat header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Row(children: [
-            const Icon(Icons.chat_bubble_outline_rounded,
-                color: AppColors.primaryA, size: 15),
-            const SizedBox(width: 6),
-            const Text('Room Chat',
-                style: TextStyle(color: Colors.white70,
-                    fontSize: 12, fontWeight: FontWeight.w600)),
-          ]),
+      // Input row
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A1020),
+          border: Border(
+            top: BorderSide(
+                color: Colors.white.withOpacity(0.08)),
+          ),
         ),
-        // Message list
-        Expanded(
-          child: _messages.isEmpty
-              ? Center(child: Text('No messages yet. Say hi!',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12)))
-              : ListView.builder(
-                  controller: _chatScrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, i) => _ChatBubble(
-                      message: _messages[i],
-                      isMe: _messages[i].username == myUsername),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _chatController,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 14),
+              maxLines: 1,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+              decoration: InputDecoration(
+                hintText: 'Message the room...',
+                hintStyle: TextStyle(
+                    color: Colors.grey[600], fontSize: 14),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.06),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
                 ),
-        ),
-        // Input row
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.06)),
+              ),
             ),
           ),
-          child: Row(children: [
-            Expanded(
-              child: TextField(
-                controller: _chatController,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                maxLines: 1,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.06),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primaryA,
+                    AppColors.primaryB
+                  ],
                 ),
               ),
+              child: _sendingMessage
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 18),
             ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _sendMessage,
-              child: Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primaryA, AppColors.primaryB],
-                  ),
-                ),
-                child: _sendingMessage
-                    ? const Padding(
-                        padding: EdgeInsets.all(10),
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.send_rounded,
-                        color: Colors.white, size: 17),
-              ),
-            ),
-          ]),
-        ),
-      ]),
-    );
+          ),
+        ]),
+      ),
+    ]);
   }
 }
 
-// ── Member card (unchanged) ───────────────────────────────────────────────────
+// ── Member card ───────────────────────────────────────────────────────────────
 
 class _MemberCard extends StatelessWidget {
   final RoomMember member;
@@ -466,7 +615,7 @@ class _MemberCard extends StatelessWidget {
             : member.username[0])
         .toUpperCase();
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1624),
         borderRadius: BorderRadius.circular(16),
@@ -477,48 +626,66 @@ class _MemberCard extends StatelessWidget {
           width: isMe ? 1.5 : 1.0,
         ),
       ),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Stack(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: isMe
-                    ? [AppColors.primaryA, AppColors.primaryB]
-                    : [const Color(0xFF1E2A40), const Color(0xFF2A3A55)],
+      child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: isMe
+                        ? [AppColors.primaryA, AppColors.primaryB]
+                        : [
+                            const Color(0xFF1E2A40),
+                            const Color(0xFF2A3A55)
+                          ],
+                  ),
+                ),
+                child: Center(
+                    child: Text(initial,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold))),
               ),
-            ),
-            child: Center(child: Text(initial,
-                style: const TextStyle(color: Colors.white,
-                    fontSize: 18, fontWeight: FontWeight.bold))),
-          ),
-          Positioned(
-            right: 0, bottom: 0,
-            child: Container(
-              width: 12, height: 12,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF10B981),
-                border: Border.all(color: const Color(0xFF0F1624), width: 2),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF10B981),
+                    border: Border.all(
+                        color: const Color(0xFF0F1624), width: 2),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 8),
-        Text(isMe ? 'You' : member.displayName,
-            style: TextStyle(
-                color: isMe ? AppColors.primaryA : Colors.white,
-                fontSize: 12, fontWeight: FontWeight.bold),
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        if (member.goal != null && member.goal!.isNotEmpty) ...[
-          const SizedBox(height: 3),
-          Text(member.goal!,
-              style: TextStyle(color: Colors.grey[500], fontSize: 9),
-              maxLines: 2, overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center),
-        ],
-      ]),
+            ]),
+            const SizedBox(height: 10),
+            Text(isMe ? 'You' : member.displayName,
+                style: TextStyle(
+                    color:
+                        isMe ? AppColors.primaryA : Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            if (member.goal != null &&
+                member.goal!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(member.goal!,
+                  style: TextStyle(
+                      color: Colors.grey[500], fontSize: 10),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center),
+            ],
+          ]),
     );
   }
 }
@@ -544,7 +711,7 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment:
             isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -552,33 +719,38 @@ class _ChatBubble extends StatelessWidget {
         children: [
           if (!isMe) ...[
             CircleAvatar(
-              radius: 12,
+              radius: 13,
               backgroundColor: const Color(0xFF1E2A40),
               child: Text(
                 message.username.isNotEmpty
                     ? message.username[0].toUpperCase()
                     : '?',
-                style: const TextStyle(color: Colors.white, fontSize: 10,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isMe)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    padding: const EdgeInsets.only(left: 4, bottom: 3),
                     child: Text(message.username,
                         style: TextStyle(
-                            color: Colors.grey[500], fontSize: 10)),
+                            color: Colors.grey[500],
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500)),
                   ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                      horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     gradient: isMe
                         ? const LinearGradient(colors: [
@@ -588,26 +760,27 @@ class _ChatBubble extends StatelessWidget {
                         : null,
                     color: isMe ? null : const Color(0xFF161E30),
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(14),
-                      topRight: const Radius.circular(14),
-                      bottomLeft: Radius.circular(isMe ? 14 : 4),
-                      bottomRight: Radius.circular(isMe ? 4 : 14),
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isMe ? 16 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 16),
                     ),
                   ),
                   child: Text(message.content,
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 13)),
+                          color: Colors.white, fontSize: 14)),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
+                  padding:
+                      const EdgeInsets.only(top: 3, left: 4, right: 4),
                   child: Text(_formatTime(message.sentAt),
                       style: TextStyle(
-                          color: Colors.grey[600], fontSize: 9)),
+                          color: Colors.grey[600], fontSize: 10)),
                 ),
               ],
             ),
           ),
-          if (isMe) const SizedBox(width: 6),
+          if (isMe) const SizedBox(width: 8),
         ],
       ),
     );
