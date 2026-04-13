@@ -19,70 +19,88 @@ class _ScienceInfo {
 
 const _scienceMap = <String, _ScienceInfo>{
   'memory_matrix': _ScienceInfo(
-    whatItIs: 'A grid lights up a pattern you must recreate from memory.',
-    targets: 'Hippocampus + DLPFC (working memory, spatial recall).',
+    whatItIs:
+        'A grid flashes a pattern for a few seconds — your job is to '
+        'remember it and tap the same squares back.',
+    targets:
+        'Your hippocampus holds the image while your prefrontal cortex '
+        'keeps it alive long enough to act on it.',
     whyInFocusPro:
-        'Based on the N-back task — the most replicated working memory paradigm '
-        'in neuroscience, confirmed across 24 fMRI studies.',
+        'This is basically the N-back task in disguise — the single most '
+        'studied working memory exercise in neuroscience, replicated across '
+        '24 brain-imaging studies.',
   ),
   'sudoku': _ScienceInfo(
-    whatItIs: 'Fill every row, column and box with digits 1–9 with no repeats.',
+    whatItIs:
+        'Place digits 1–9 so no number repeats in any row, column, or box. '
+        'Simple rule, genuinely hard to master.',
     targets:
-        'DLPFC + Medial PFC + Anterior Cingulate Cortex '
-        '(logical reasoning, executive control).',
+        'The front of your brain works overtime here — planning ahead, '
+        'holding constraints in mind, and catching your own mistakes.',
     whyInFocusPro:
-        'Direct fNIRS neuroimaging studies confirmed PFC activation during '
-        'Sudoku rule-based reasoning (Frontiers in Neuroimaging, 2024).',
+        'Brain scans taken while people solve Sudoku show clear spikes in '
+        'prefrontal activity — the same region that suffers most when '
+        'you\'re stressed or sleep-deprived.',
   ),
   'speed_match': _ScienceInfo(
     whatItIs:
-        'Does this card match the previous one? Tap YES or NO before time runs out.',
+        'A card appears — does it match the one before it? '
+        'Tap Yes or No as fast as you can before the timer wins.',
     targets:
-        'Anterior Cingulate Cortex + Inferior Parietal Lobe '
-        '(processing speed, rapid decision-making).',
+        'The part of your brain that detects conflict and the one that '
+        'processes where things are both have to fire together, fast.',
     whyInFocusPro:
-        'Speed-of-processing training showed benefits lasting 10 years in the '
-        'ACTIVE trial — the longest brain training RCT ever conducted.',
+        'The ACTIVE trial — the longest brain-training study ever run — '
+        'found that this exact type of speed training kept paying off '
+        'a full decade later.',
   ),
   'color_match': _ScienceInfo(
-    whatItIs: 'Tap the ink color of the word, not what the word says.',
+    whatItIs:
+        'The word says RED but it\'s printed in blue. Tap the actual ink '
+        'color — not the word. Your brain will fight you on this.',
     targets:
-        'ACC + DLPFC + Right Inferior Frontal Cortex '
-        '(selective attention, inhibitory control).',
+        'You\'re forcing your brain to suppress the obvious answer and pick '
+        'the correct one instead — that\'s pure inhibitory control.',
     whyInFocusPro:
-        'The Stroop task is the gold standard for measuring attention inhibition, '
-        'especially in ADHD research, with 3,000+ citations.',
+        'This is the Stroop task, and it\'s been used in research for '
+        'nearly a century. It\'s the go-to test for attention and impulse '
+        'control, especially in ADHD studies.',
   ),
   'number_stream': _ScienceInfo(
-    whatItIs: 'Solve falling equations before they hit the bottom.',
+    whatItIs:
+        'Equations drift down the screen and you have to solve them '
+        'before they disappear. Speed and accuracy both matter.',
     targets:
-        'Bilateral DLPFC + Intraparietal Sulcus '
-        '(arithmetic processing, working memory).',
+        'Both sides of your prefrontal cortex light up — one for the '
+        'math, one for keeping track of what\'s already gone.',
     whyInFocusPro:
-        'A double-blind RCT using NIRS confirmed bilateral DLPFC activation after '
-        '4 weeks of calculation-based training (Nouchi et al., PLOS ONE, 2013).',
+        'After just 4 weeks of this kind of training, brain scans showed '
+        'measurable growth in working memory and processing speed '
+        '(Nouchi et al., PLOS ONE, 2013).',
   ),
   'pattern_trail': _ScienceInfo(
     whatItIs:
-        'Watch dots light up in sequence, then tap them back in the same order.',
+        'Dots appear one by one — watch the sequence, then tap them '
+        'back in the exact same order from memory.',
     targets:
-        'Hippocampus + Right Frontal + Parietal Cortex '
-        '(visuospatial working memory, sequence memory).',
+        'Spatial memory lives in the hippocampus; keeping the sequence '
+        'straight pulls in your right frontal and parietal regions too.',
     whyInFocusPro:
-        'Direct implementation of the Corsi Block task — a validated clinical '
-        'neuropsychological test used since the 1970s.',
+        'This is a direct version of the Corsi Block test — a staple of '
+        'clinical neuropsychology since the 1970s, still used today to '
+        'assess memory and brain injury.',
   ),
   'train_of_thought': _ScienceInfo(
     whatItIs:
-        'Route trains to matching colored stations by tapping junctions to '
-        'switch tracks before they collide.',
+        'Trains are heading for stations — tap the junctions to reroute '
+        'them to the right color before anything crashes.',
     targets:
-        'ACC + DLPFC + Posterior Parietal Cortex '
-        '(multitasking, task-switching, selective attention).',
+        'You\'re constantly switching between tasks and tracking multiple '
+        'things at once, which hammers your prefrontal and parietal cortex.',
     whyInFocusPro:
-        'Simultaneous multi-object tracking paradigms activate fronto-parietal '
-        'executive networks — a key clinical marker of attention capacity and '
-        'executive control.',
+        'Managing several moving objects simultaneously is one of the '
+        'clearest ways to stress-test executive attention — the skill '
+        'that tends to slip first under fatigue or distraction.',
   ),
 };
 
