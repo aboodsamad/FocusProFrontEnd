@@ -43,7 +43,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   int _unreadCount = 0;
 
   // ── tab state ─────────────────────────────────────────────────────────────
-  bool _showChat = false; // false = Members tab, true = Chat tab
+  bool _showChat = true; // true = Chat tab shown by default
 
   @override
   void initState() {
@@ -269,8 +269,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         child: Column(
           children: [
             _buildHeader(),
-            const SizedBox(height: 12),
-            _buildTabBar(),
+            if (!_loading && _error == null) ...[
+              const SizedBox(height: 12),
+              _buildTabBar(),
+            ],
             if (_loading)
               const Expanded(
                   child: Center(
@@ -325,11 +327,15 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
             label: 'Chat',
             icon: Icons.chat_bubble_outline_rounded,
             active: _showChat,
-            onTap: () => setState(() {
-              _showChat = true;
-              _unreadCount = 0;
-              _scrollToBottom();
-            }),
+            onTap: () {
+              setState(() {
+                _showChat = true;
+                _unreadCount = 0;
+              });
+              // Wait one frame for IndexedStack to surface the ListView
+              // before scrolling, so hasClients is guaranteed true.
+              WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+            },
             badge: _unreadCount,
           ),
         ]),
