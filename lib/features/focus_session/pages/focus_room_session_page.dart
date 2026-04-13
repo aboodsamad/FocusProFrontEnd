@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../models/focus_room.dart';
 import '../services/focus_room_service.dart';
+import 'focus_rooms_page.dart' show categoryColor, categoryEmoji;
 
 class FocusRoomSessionPage extends StatefulWidget {
   final FocusRoom room;
-  const FocusRoomSessionPage({Key? key, required this.room}) : super(key: key);
+  final String? inviteCode; // pre-filled for private rooms joined from rooms list
+  const FocusRoomSessionPage({Key? key, required this.room, this.inviteCode})
+      : super(key: key);
 
   @override
   State<FocusRoomSessionPage> createState() => _FocusRoomSessionPageState();
@@ -20,6 +24,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   bool _loading = true;
   String? _error;
   String? _myGoal;
+  String? _myInviteCode; // used when joining a private room
   Timer? _pollTimer;
   Timer? _ticker;
   final Stopwatch _stopwatch = Stopwatch();
@@ -28,10 +33,12 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
 
   // ── chat state ────────────────────────────────────────────────────────────
   List<RoomMessage> _messages = [];
+  final Set<int> _messageIds = {}; // deduplication guard
   Timer? _chatPollTimer;
   String? _lastMessageTimestamp;
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
+  final FocusNode _chatFocusNode = FocusNode();
   bool _sendingMessage = false;
   int _unreadCount = 0;
 
@@ -62,6 +69,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     _stopwatch.stop();
     _chatController.dispose();
     _chatScrollController.dispose();
+    _chatFocusNode.dispose();
     if (_joined) {
       FocusRoomService.leaveRoomRest(widget.room.id);
     }
@@ -135,13 +143,15 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     }
 
     _myGoal = goal.isEmpty ? null : goal;
+    // Use invite code passed from rooms list (or from creator seeing their own code)
+    _myInviteCode = widget.inviteCode;
     _joinAndPoll();
   }
 
   Future<void> _joinAndPoll() async {
     try {
-      final room =
-          await FocusRoomService.joinRoomRest(widget.room.id, _myGoal);
+      final room = await FocusRoomService.joinRoomRest(
+          widget.room.id, _myGoal, inviteCode: _myInviteCode);
       _joined = true;
       if (mounted) {
         setState(() {
@@ -166,6 +176,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       if (mounted && msgs.isNotEmpty) {
         setState(() {
           _messages = msgs;
+          _messageIds.addAll(msgs.map((m) => m.id));
           _lastMessageTimestamp = msgs.last.sentAt;
         });
         _scrollToBottom();
@@ -187,12 +198,18 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       try {
         final newMsgs = await FocusRoomService.fetchMessages(
             widget.room.id, _lastMessageTimestamp);
-        if (newMsgs.isNotEmpty && mounted) {
+        // Deduplicate: only keep messages whose ID we haven't seen yet.
+        // This prevents a race where the poll fetches a message that
+        // _sendMessage() already appended from the POST response.
+        final unique =
+            newMsgs.where((m) => !_messageIds.contains(m.id)).toList();
+        if (unique.isNotEmpty && mounted) {
           setState(() {
-            _messages.addAll(newMsgs);
-            _lastMessageTimestamp = newMsgs.last.sentAt;
+            _messageIds.addAll(unique.map((m) => m.id));
+            _messages.addAll(unique);
+            _lastMessageTimestamp = unique.last.sentAt;
             // Count unread only when the chat tab is not active
-            if (!_showChat) _unreadCount += newMsgs.length;
+            if (!_showChat) _unreadCount += unique.length;
           });
           if (_showChat) _scrollToBottom();
         }
@@ -218,16 +235,23 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
 
     setState(() => _sendingMessage = true);
     _chatController.clear();
+    // Keep keyboard / text field focused so the user can type again
+    // immediately after hitting Enter, without tapping the field again.
+    _chatFocusNode.requestFocus();
 
     try {
       final msg =
           await FocusRoomService.sendMessage(widget.room.id, content);
       if (mounted) {
-        setState(() {
-          _messages.add(msg);
-          _lastMessageTimestamp = msg.sentAt;
-        });
-        _scrollToBottom();
+        // Only add if the poll timer hasn't already inserted this message.
+        if (!_messageIds.contains(msg.id)) {
+          setState(() {
+            _messageIds.add(msg.id);
+            _messages.add(msg);
+            _lastMessageTimestamp = msg.sentAt;
+          });
+          _scrollToBottom();
+        }
       }
     } catch (_) {} finally {
       if (mounted) setState(() => _sendingMessage = false);
@@ -371,14 +395,17 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final myUsername = context.read<UserProvider>().username ?? '';
+    final isCreator = widget.room.createdBy == myUsername;
+    final code = widget.room.inviteCode;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
@@ -389,35 +416,60 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           ),
         ),
         const SizedBox(width: 12),
-        Text(widget.room.emoji,
-            style: const TextStyle(fontSize: 22)),
+        Text(widget.room.emoji, style: const TextStyle(fontSize: 22)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(widget.room.name,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white,
+                  fontSize: 17, fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis),
         ),
+        // Share invite code button (creator of private rooms only)
+        if (widget.room.isPrivate && isCreator && code != null) ...[
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: code));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Row(children: [
+                  const Icon(Icons.lock_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Invite code copied: $code'),
+                ]),
+                duration: const Duration(seconds: 3),
+              ));
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryA.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
+              ),
+              child: const Row(children: [
+                Icon(Icons.lock_rounded, color: AppColors.primaryA, size: 13),
+                SizedBox(width: 4),
+                Text('Share Code',
+                    style: TextStyle(color: AppColors.primaryA,
+                        fontSize: 11, fontWeight: FontWeight.bold)),
+              ]),
+            ),
+          ),
+        ],
+        // Timer
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: AppColors.primaryA.withOpacity(0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: AppColors.primaryA.withOpacity(0.3)),
+            border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
           ),
           child: Row(children: [
-            const Icon(Icons.timer_outlined,
-                color: AppColors.primaryA, size: 14),
+            const Icon(Icons.timer_outlined, color: AppColors.primaryA, size: 14),
             const SizedBox(width: 4),
-            Text(_elapsed,
-                style: const TextStyle(
-                    color: AppColors.primaryA,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
+            Text(_elapsed, style: const TextStyle(
+                color: AppColors.primaryA,
+                fontWeight: FontWeight.bold, fontSize: 13)),
           ]),
         ),
       ]),
@@ -427,41 +479,71 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   // ── Members tab ───────────────────────────────────────────────────────────
 
   Widget _buildMembersSection(String myUsername) {
+    final catColor = categoryColor(widget.room.category);
+    final maxM = widget.room.maxMembers;
+    final capacityText = maxM > 0
+        ? '${_members.length} / $maxM'
+        : '${_members.length} / ∞';
+
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
-              AppColors.primaryB.withOpacity(0.35),
-              AppColors.primaryA.withOpacity(0.18),
+              catColor.withOpacity(0.20),
+              AppColors.primaryA.withOpacity(0.10),
             ]),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: AppColors.primaryA.withOpacity(0.25)),
+            border: Border.all(color: catColor.withOpacity(0.30)),
           ),
           child: Row(children: [
             Container(
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(
+              width: 10, height: 10,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF10B981),
-                boxShadow: [
-                  BoxShadow(
-                      color: Color(0xFF10B981), blurRadius: 6)
-                ],
+                color: const Color(0xFF10B981),
+                boxShadow: [BoxShadow(
+                    color: const Color(0xFF10B981).withOpacity(0.5),
+                    blurRadius: 6)],
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing right now',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13),
+            // Category badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: catColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(categoryEmoji(widget.room.category),
+                    style: const TextStyle(fontSize: 11)),
+                const SizedBox(width: 4),
+                Text(widget.room.category,
+                    style: TextStyle(color: catColor,
+                        fontSize: 11, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing',
+                style: const TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w600, fontSize: 12),
+              ),
+            ),
+            // Capacity pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(capacityText,
+                  style: TextStyle(color: Colors.grey[400],
+                      fontSize: 11, fontWeight: FontWeight.w500)),
             ),
           ]),
         ),
@@ -551,6 +633,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           Expanded(
             child: TextField(
               controller: _chatController,
+              focusNode: _chatFocusNode,
               style: const TextStyle(
                   color: Colors.white, fontSize: 14),
               maxLines: 1,
