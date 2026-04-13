@@ -256,7 +256,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         }
       }
     } catch (_) {} finally {
-      if (mounted) setState(() => _sendingMessage = false);
+      if (mounted) {
+        setState(() => _sendingMessage = false);
+        _chatFocusNode.requestFocus();
+      }
     }
   }
 
