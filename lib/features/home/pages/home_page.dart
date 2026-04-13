@@ -92,7 +92,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ..sort((a, b) => b.compareTo(a)); // newest first
 
     int streak = 0;
-    DateTime check = todayDate;
+    // Allow streak to begin from today OR yesterday (streak not broken if
+    // the user hasn't done anything yet today but was active yesterday).
+    final yesterday = todayDate.subtract(const Duration(days: 1));
+    DateTime check = (activeDays.isNotEmpty && activeDays.first == todayDate)
+        ? todayDate
+        : yesterday;
     for (final day in activeDays) {
       if (day == check) {
         streak++;
