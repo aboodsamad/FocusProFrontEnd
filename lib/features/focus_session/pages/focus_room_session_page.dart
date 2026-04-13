@@ -24,7 +24,8 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   bool _loading = true;
   String? _error;
   String? _myGoal;
-  String? _myInviteCode; // used when joining a private room
+  String? _myInviteCode;   // invite code passed in from rooms list
+  String? _roomInviteCode; // invite code returned by the join response (has real value)
   Timer? _pollTimer;
   Timer? _ticker;
   final Stopwatch _stopwatch = Stopwatch();
@@ -157,6 +158,8 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         setState(() {
           _members = room.members;
           _loading = false;
+          // Store invite code from join response so the creator can share it
+          _roomInviteCode = room.inviteCode;
         });
       }
     } catch (e) {
@@ -397,7 +400,9 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   Widget _buildHeader() {
     final myUsername = context.read<UserProvider>().username ?? '';
     final isCreator = widget.room.createdBy == myUsername;
-    final code = widget.room.inviteCode;
+    // Use the code from the join response (includes real value even when
+    // navigated from list view where inviteCode is null for privacy)
+    final code = _roomInviteCode ?? widget.room.inviteCode;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
