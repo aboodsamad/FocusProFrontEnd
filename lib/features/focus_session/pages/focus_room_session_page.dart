@@ -6,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../models/focus_room.dart';
 import '../services/focus_room_service.dart';
-import 'focus_rooms_page.dart' show categoryColor, categoryEmoji;
 
 class FocusRoomSessionPage extends StatefulWidget {
   final FocusRoom room;

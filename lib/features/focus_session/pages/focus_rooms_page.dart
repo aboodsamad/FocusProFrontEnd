@@ -7,35 +7,6 @@ import '../models/focus_room.dart';
 import '../services/focus_room_service.dart';
 import 'focus_room_session_page.dart';
 
-// ── Category metadata ─────────────────────────────────────────────────────────
-
-const kCategories = [
-  {'name': 'Study',       'emoji': '📚', 'color': Color(0xFF6C63FF)},
-  {'name': 'Work',        'emoji': '💼', 'color': Color(0xFF10B981)},
-  {'name': 'Creative',    'emoji': '🎨', 'color': Color(0xFFF59E0B)},
-  {'name': 'Fitness',     'emoji': '💪', 'color': Color(0xFFEF4444)},
-  {'name': 'Mindfulness', 'emoji': '🧘', 'color': Color(0xFF06B6D4)},
-  {'name': 'Gaming',      'emoji': '🎮', 'color': Color(0xFF8B5CF6)},
-  {'name': 'Research',    'emoji': '🔬', 'color': Color(0xFF3B82F6)},
-  {'name': 'Other',       'emoji': '🌐', 'color': Color(0xFF6B7280)},
-];
-
-Color categoryColor(String cat) {
-  final match = kCategories.firstWhere(
-    (c) => (c['name'] as String).toLowerCase() == cat.toLowerCase(),
-    orElse: () => kCategories.last,
-  );
-  return match['color'] as Color;
-}
-
-String categoryEmoji(String cat) {
-  final match = kCategories.firstWhere(
-    (c) => (c['name'] as String).toLowerCase() == cat.toLowerCase(),
-    orElse: () => kCategories.last,
-  );
-  return match['emoji'] as String;
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 class FocusRoomsPage extends StatefulWidget {
