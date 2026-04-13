@@ -6,14 +6,18 @@ import '../models/focus_room.dart';
 
 class FocusRoomService {
   static String get _base => AuthService.baseUrl;
-  static String get _wsUrl => _base.replaceFirst('http://', 'ws://').replaceFirst('https://', 'wss://') + '/ws';
+  static String get _wsUrl =>
+      _base.replaceFirst('http://', 'ws://').replaceFirst('https://', 'wss://') + '/ws';
 
-  // ── HTTP: get all rooms ───────────────────────────────────────────────────
-  static Future<List<FocusRoom>> getRooms() async {
+  // ── HTTP: get all rooms (optional category filter) ────────────────────────
+  static Future<List<FocusRoom>> getRooms({String? category}) async {
     final token = await AuthService.getToken();
-    print('TOKEN: $token');
+    final uri = (category != null && category.isNotEmpty && category != 'All')
+        ? Uri.parse('$_base/rooms?category=${Uri.encodeComponent(category)}')
+        : Uri.parse('$_base/rooms');
+
     final resp = await http
-        .get(Uri.parse('$_base/rooms'), headers: {'Authorization': 'Bearer $token'})
+        .get(uri, headers: {'Authorization': 'Bearer $token'})
         .timeout(const Duration(seconds: 8));
 
     if (resp.statusCode == 200) {
@@ -23,7 +27,7 @@ class FocusRoomService {
     throw Exception('Failed to load rooms (${resp.statusCode})');
   }
 
-  // ── HTTP: get a single room with members ─────────────────────────────────
+  // ── HTTP: get a single room with members ──────────────────────────────────
   static Future<FocusRoom> getRoom(int id) async {
     final token = await AuthService.getToken();
     final resp = await http
@@ -36,14 +40,28 @@ class FocusRoomService {
     throw Exception('Failed to load room (${resp.statusCode})');
   }
 
-  // ── HTTP: create a room ───────────────────────────────────────────────────
-  static Future<FocusRoom> createRoom(String name, String emoji) async {
+  // ── HTTP: create a room ────────────────────────────────────────────────────
+  static Future<FocusRoom> createRoom({
+    required String name,
+    required String emoji,
+    String category = 'Study',
+    String? description,
+    int maxMembers = 0,
+    bool isPrivate = false,
+  }) async {
     final token = await AuthService.getToken();
     final resp = await http
         .post(
           Uri.parse('$_base/rooms'),
           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-          body: jsonEncode({'name': name, 'emoji': emoji}),
+          body: jsonEncode({
+            'name': name,
+            'emoji': emoji,
+            'category': category,
+            'description': description,
+            'maxMembers': maxMembers,
+            'isPrivate': isPrivate,
+          }),
         )
         .timeout(const Duration(seconds: 8));
 
@@ -53,86 +71,43 @@ class FocusRoomService {
     throw Exception('Failed to create room (${resp.statusCode})');
   }
 
-  // ── WebSocket: connect and return the StompClient ────────────────────────
-  // The caller (FocusRoomSessionPage) owns the client and must call
-  // client.deactivate() in its dispose() method.
-  static Future<StompClient> connect({
-    required int roomId,
-    required String? goal,
-    required void Function(RoomEvent event) onEvent,
-    required void Function(String error) onError,
-  }) async {
-    final token = await AuthService.getToken();
-
-    late StompClient client;
-
-    client = StompClient(
-      config: StompConfig(
-        url: _wsUrl,
-        // Pass the JWT in STOMP connect headers — the server reads this via Principal
-        stompConnectHeaders: {'Authorization': 'Bearer $token'},
-        webSocketConnectHeaders: {'Authorization': 'Bearer $token'},
-        onConnect: (frame) {
-          // Step 1: subscribe to the room's topic to receive events
-          client.subscribe(
-            destination: '/topic/room/$roomId',
-            callback: (frame) {
-              if (frame.body == null) return;
-              try {
-                final json = jsonDecode(frame.body!) as Map<String, dynamic>;
-                onEvent(RoomEvent.fromJson(json));
-              } catch (e) {
-                onError('Failed to parse event: $e');
-              }
-            },
-          );
-
-          // Step 2: tell the server we joined
-          client.send(destination: '/app/room/$roomId/join', body: jsonEncode({'goal': goal ?? ''}));
-        },
-        onDisconnect: (_) {},
-        onStompError: (frame) => onError(frame.body ?? 'STOMP error'),
-        onWebSocketError: (error) => onError('WebSocket error: $error'),
-        onDebugMessage: (_) {}, // silence debug logs in prod
-      ),
-    );
-
-    client.activate();
-    return client;
-  }
-
-  // ── WebSocket: send a leave event ────────────────────────────────────────
-  static void sendLeave(StompClient client, int roomId) {
-    if (client.connected) {
-      client.send(destination: '/app/room/$roomId/leave');
-    }
-  }
-
-  static Future<FocusRoom> joinRoomRest(int roomId, String? goal) async {
+  // ── HTTP: join a room ──────────────────────────────────────────────────────
+  static Future<FocusRoom> joinRoomRest(int roomId, String? goal,
+      {String? inviteCode}) async {
     final token = await AuthService.getToken();
     final resp = await http
         .post(
           Uri.parse('$_base/rooms/$roomId/join'),
           headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-          body: jsonEncode({'goal': goal ?? ''}),
+          body: jsonEncode({'goal': goal ?? '', 'inviteCode': inviteCode ?? ''}),
         )
         .timeout(const Duration(seconds: 8));
+
     if (resp.statusCode == 200) {
       return FocusRoom.fromJson(jsonDecode(resp.body));
     }
-    throw Exception('Join failed (${resp.statusCode})');
+
+    // Parse error message from backend
+    try {
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Join failed (${resp.statusCode})');
+    } catch (_) {
+      throw Exception('Join failed (${resp.statusCode})');
+    }
   }
 
+  // ── HTTP: leave a room ────────────────────────────────────────────────────
   static Future<void> leaveRoomRest(int roomId) async {
     final token = await AuthService.getToken();
     try {
       await http
-          .post(Uri.parse('$_base/rooms/$roomId/leave'), headers: {'Authorization': 'Bearer $token'})
+          .post(Uri.parse('$_base/rooms/$roomId/leave'),
+              headers: {'Authorization': 'Bearer $token'})
           .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 
-  // ── HTTP: fetch messages (last 50 or incremental after a timestamp) ───────
+  // ── HTTP: fetch messages (last 50 or incremental after a timestamp) ────────
   static Future<List<RoomMessage>> fetchMessages(int roomId, String? after) async {
     final token = await AuthService.getToken();
     final uri = (after != null && after.isNotEmpty)
@@ -162,5 +137,53 @@ class FocusRoomService {
       return RoomMessage.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
     }
     throw Exception('Failed to send message (${resp.statusCode})');
+  }
+
+  // ── WebSocket: connect ────────────────────────────────────────────────────
+  static Future<StompClient> connect({
+    required int roomId,
+    required String? goal,
+    required void Function(RoomEvent event) onEvent,
+    required void Function(String error) onError,
+  }) async {
+    final token = await AuthService.getToken();
+    late StompClient client;
+    client = StompClient(
+      config: StompConfig(
+        url: _wsUrl,
+        stompConnectHeaders: {'Authorization': 'Bearer $token'},
+        webSocketConnectHeaders: {'Authorization': 'Bearer $token'},
+        onConnect: (frame) {
+          client.subscribe(
+            destination: '/topic/room/$roomId',
+            callback: (frame) {
+              if (frame.body == null) return;
+              try {
+                final json = jsonDecode(frame.body!) as Map<String, dynamic>;
+                onEvent(RoomEvent.fromJson(json));
+              } catch (e) {
+                onError('Failed to parse event: $e');
+              }
+            },
+          );
+          client.send(
+              destination: '/app/room/$roomId/join',
+              body: jsonEncode({'goal': goal ?? ''}));
+        },
+        onDisconnect: (_) {},
+        onStompError: (frame) => onError(frame.body ?? 'STOMP error'),
+        onWebSocketError: (error) => onError('WebSocket error: $error'),
+        onDebugMessage: (_) {},
+      ),
+    );
+    client.activate();
+    return client;
+  }
+
+  // ── WebSocket: send leave event ───────────────────────────────────────────
+  static void sendLeave(StompClient client, int roomId) {
+    if (client.connected) {
+      client.send(destination: '/app/room/$roomId/leave');
+    }
   }
 }

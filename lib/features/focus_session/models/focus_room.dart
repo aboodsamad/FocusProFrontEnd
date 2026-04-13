@@ -1,10 +1,12 @@
+// ── Room message ──────────────────────────────────────────────────────────────
+
 class RoomMessage {
   final int id;
   final int roomId;
   final int userId;
   final String username;
   final String content;
-  final String sentAt; // ISO-8601 string
+  final String sentAt;
 
   RoomMessage({
     required this.id,
@@ -24,6 +26,8 @@ class RoomMessage {
         sentAt: json['sentAt'] ?? '',
       );
 }
+
+// ── Room member ───────────────────────────────────────────────────────────────
 
 class RoomMember {
   final String username;
@@ -46,6 +50,8 @@ class RoomMember {
       );
 }
 
+// ── Focus room ────────────────────────────────────────────────────────────────
+
 class FocusRoom {
   final int id;
   final String name;
@@ -54,6 +60,14 @@ class FocusRoom {
   final int memberCount;
   final List<RoomMember> members;
 
+  // ── New fields ──────────────────────────────────────────────────────────
+  final String category;
+  final String? description;
+  final int maxMembers;   // 0 = unlimited
+  final bool isPrivate;
+  final String? inviteCode;
+  final bool isFull;
+
   FocusRoom({
     required this.id,
     required this.name,
@@ -61,6 +75,12 @@ class FocusRoom {
     required this.createdBy,
     required this.memberCount,
     required this.members,
+    this.category = 'Study',
+    this.description,
+    this.maxMembers = 0,
+    this.isPrivate = false,
+    this.inviteCode,
+    this.isFull = false,
   });
 
   factory FocusRoom.fromJson(Map<String, dynamic> json) => FocusRoom(
@@ -72,8 +92,22 @@ class FocusRoom {
         members: (json['members'] as List<dynamic>? ?? [])
             .map((m) => RoomMember.fromJson(m as Map<String, dynamic>))
             .toList(),
+        category: json['category'] ?? 'Study',
+        description: json['description'],
+        maxMembers: json['maxMembers'] ?? 0,
+        isPrivate: json['isPrivate'] ?? false,
+        inviteCode: json['inviteCode'],
+        isFull: json['isFull'] ?? false,
       );
+
+  /// Capacity label shown on cards: "3/8" or "3/∞"
+  String capacityLabel(int current) {
+    if (maxMembers == 0) return '$current / ∞';
+    return '$current / $maxMembers';
+  }
 }
+
+// ── Room event (WebSocket) ────────────────────────────────────────────────────
 
 class RoomEvent {
   final String eventType; // "JOIN" or "LEAVE"
