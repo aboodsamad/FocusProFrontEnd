@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -27,13 +28,12 @@ class MemoryMatrixPage extends StatefulWidget {
 }
 
 class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProviderStateMixin {
-  // ── Colors ─────────────────────────────────────────────────────────────────
-
-  static const Color _bg = Color(0xFF06090F);
-  static const Color _accent = Color(0xFF5B8FFF);
-  static const Color _gold = Color(0xFFFFD166);
-  static const Color _wrong = Color(0xFFFF5270);
-  static const Color _textMuted = Color(0xFF6B7A99);
+  // ── Colors — Deep Focus dark-green game palette ────────────────────────────
+  static const Color _bg       = AppColors.primary;           // #012D1D deep forest
+  static const Color _accent   = AppColors.secondaryContainer; // #A0F4C8 mint
+  static const Color _gold     = AppColors.primaryFixed;       // #C1ECD4 pale mint
+  static const Color _wrong    = AppColors.error;              // #BA1A1A
+  static const Color _textMuted = AppColors.onPrimaryContainer; // #86AF99
 
   // ── Grid size ──────────────────────────────────────────────────────────────
 
@@ -342,7 +342,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         if (mounted) Navigator.pop(context);
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
+        value: SystemUiOverlayStyle.light, // light icons on dark bg
         child: Scaffold(
           backgroundColor: _bg,
           body: SafeArea(
@@ -413,7 +413,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
             style: const TextStyle(color: _accent, fontSize: 96, fontWeight: FontWeight.w800, letterSpacing: -4),
           ),
           const SizedBox(height: 8),
-          const Text('Get ready...', style: TextStyle(color: _textMuted, fontSize: 16)),
+          Text('Get ready...', style: TextStyle(color: _textMuted, fontSize: 16)),
         ],
       ),
     );
@@ -508,29 +508,29 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
               height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const RadialGradient(colors: [Color(0xFFFFD166), Color(0xFFFF9A3C)]),
-                boxShadow: [BoxShadow(color: _gold.withOpacity(0.4), blurRadius: 32, spreadRadius: 4)],
+                color: AppColors.secondaryContainer,
+                boxShadow: [BoxShadow(color: _accent.withOpacity(0.4), blurRadius: 32, spreadRadius: 4)],
               ),
-              child: const Icon(Icons.star_rounded, color: Colors.white, size: 48),
+              child: const Icon(Icons.star_rounded, color: AppColors.primary, size: 48),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Level Up!',
-              style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+              style: TextStyle(color: AppColors.onPrimary, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.5),
             ),
             const SizedBox(height: 8),
-            Text('Now on level ${_game.level}', style: const TextStyle(color: _textMuted, fontSize: 16)),
+            Text('Now on level ${_game.level}', style: TextStyle(color: _textMuted, fontSize: 16)),
             if (_currentGridSize > prevGs) ...[
               const SizedBox(height: 6),
               Text(
                 'Grid grew to ${_currentGridSize}×${_currentGridSize}!',
-                style: const TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
             const SizedBox(height: 6),
             Text(
               '+${_game.roundPoints(prevGs)} pts',
-              style: const TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -552,15 +552,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
               height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _wrong.withOpacity(0.12),
-                border: Border.all(color: _wrong.withOpacity(0.3), width: 1.5),
+                color: _wrong.withOpacity(0.15),
               ),
-              child: const Icon(Icons.close_rounded, color: _wrong, size: 44),
+              child: Icon(Icons.close_rounded, color: _wrong, size: 44),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Game Over',
-              style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+              style: TextStyle(color: AppColors.onPrimary, fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.5),
             ),
             const SizedBox(height: 28),
             MemoryMatrixStatRow(label: 'Final Score', value: '${_game.score} pts', valueColor: _accent),
@@ -594,11 +593,11 @@ class _BackButton extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1420),
+        color: AppColors.primaryContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E2840)),
       ),
-      child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+      child: const Icon(Icons.arrow_back_ios_new_rounded,
+          color: AppColors.onPrimary, size: 16),
     ),
   );
 }
@@ -620,25 +619,14 @@ class _SubmitButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          gradient: ready ? const LinearGradient(colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)]) : null,
-          color: ready ? null : const Color(0xFF0F1420),
+          color: ready ? AppColors.secondaryContainer : AppColors.primaryContainer,
           borderRadius: BorderRadius.circular(16),
-          border: ready ? null : Border.all(color: const Color(0xFF1E2840)),
-          boxShadow: ready
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF5B8FFF).withOpacity(0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
         ),
         child: Center(
           child: Text(
             ready ? 'Submit Answer' : 'Select $selected / $required cells',
             style: TextStyle(
-              color: ready ? Colors.white : const Color(0xFF6B7A99),
+              color: ready ? AppColors.primary : AppColors.onPrimaryContainer,
               fontWeight: FontWeight.w700,
               fontSize: 16,
               letterSpacing: 0.2,
@@ -662,16 +650,13 @@ class _PrimaryButton extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF3D6EFF), Color(0xFF5B8FFF)]),
+        color: AppColors.secondaryContainer,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF5B8FFF).withOpacity(0.4), blurRadius: 24, offset: const Offset(0, 10)),
-        ],
       ),
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.3),
+          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 16),
         ),
       ),
     ),
@@ -690,14 +675,13 @@ class _SecondaryButton extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1420),
+        color: AppColors.primaryContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E2840)),
       ),
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(color: Color(0xFF6B7A99), fontWeight: FontWeight.w600, fontSize: 15),
+          style: const TextStyle(color: AppColors.onPrimaryContainer, fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
     ),

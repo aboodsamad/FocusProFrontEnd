@@ -1,5 +1,6 @@
 import 'dart:math';
- 
+
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -329,7 +330,7 @@ class _TOTState extends State<TrainOfThoughtPage>
         if (mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Column(
           children: [
@@ -963,9 +964,8 @@ class _Header extends StatelessWidget {
     final accuracy = total == 0 ? 0 : ((correct / total) * 100).round();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0F1E),
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryContainer,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Back + badges row
@@ -975,44 +975,42 @@ class _Header extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
+                color: AppColors.primary.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white70, size: 16),
+                  color: AppColors.onPrimary, size: 16),
             ),
           ),
           const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(0.15),
+              color: AppColors.secondaryContainer.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.35)),
             ),
             child: const Text('LOGIC FLOW',
-                style: TextStyle(color: Color(0xFFA78BFA), fontSize: 10,
+                style: TextStyle(color: AppColors.secondaryContainer, fontSize: 10,
                     fontWeight: FontWeight.w800, letterSpacing: 1.2)),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF34D399).withOpacity(0.12),
+              color: AppColors.secondaryContainer.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF34D399).withOpacity(0.3)),
             ),
             child: Text('LEVEL $level',
-                style: const TextStyle(color: Color(0xFF34D399), fontSize: 10,
+                style: const TextStyle(color: AppColors.secondaryContainer, fontSize: 10,
                     fontWeight: FontWeight.w800, letterSpacing: 1.2)),
           ),
           const Spacer(),
           // Score + accuracy pills
           _StatPill(label: 'CORRECT', value: '$correct/$total',
-              color: const Color(0xFF60A5FA)),
+              color: AppColors.secondaryContainer),
           const SizedBox(width: 8),
           _StatPill(label: 'ACCURACY', value: '$accuracy%',
-              color: const Color(0xFF34D399)),
+              color: AppColors.primaryFixed),
         ]),
       ]),
     );

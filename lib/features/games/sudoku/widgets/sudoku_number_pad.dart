@@ -1,8 +1,5 @@
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-
-const _kPrimary  = Color(0xFF6366F1);
-const _kPrimaryB = Color(0xFF8B5CF6);
-const _kCardBg   = Color(0xFF0F1624);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SudokuNumberPad
@@ -10,7 +7,7 @@ const _kCardBg   = Color(0xFF0F1624);
 
 class SudokuNumberPad extends StatelessWidget {
   final List<List<int>> board;
-  final int selectedValue; // digit currently in the selected cell (0 = none)
+  final int selectedValue;
   final void Function(int) onNumberPressed;
 
   const SudokuNumberPad({
@@ -20,14 +17,9 @@ class SudokuNumberPad extends StatelessWidget {
     required this.onNumberPressed,
   });
 
-  // Count how many times `number` appears on the board
   int _count(int number) {
     int n = 0;
-    for (final row in board) {
-      for (final cell in row) {
-        if (cell == number) n++;
-      }
-    }
+    for (final row in board) for (final cell in row) if (cell == number) n++;
     return n;
   }
 
@@ -38,7 +30,7 @@ class SudokuNumberPad extends StatelessWidget {
         final number     = i + 1;
         final count      = _count(number);
         final isComplete = count >= 9;
-        final isActive   = selectedValue == number; // this digit is in the selected cell
+        final isActive   = selectedValue == number;
 
         return Expanded(
           child: Padding(
@@ -87,22 +79,18 @@ class _NumberButtonState extends State<_NumberButton> {
   Widget build(BuildContext context) {
     final Color textColor;
     final Color bgColor;
-    final Color borderColor;
 
     if (widget.isComplete) {
-      textColor   = Colors.grey[600]!;
-      bgColor     = Colors.white.withOpacity(0.03);
-      borderColor = Colors.white.withOpacity(0.05);
+      textColor = AppColors.outlineVariant;
+      bgColor   = AppColors.surfaceContainerLow;
     } else if (widget.isActive) {
-      textColor   = Colors.white;
-      bgColor     = _kPrimary.withOpacity(_pressed ? 0.9 : 0.75);
-      borderColor = _kPrimary;
+      textColor = AppColors.onPrimary;
+      bgColor   = AppColors.primary;
     } else {
-      textColor   = _kPrimary;
-      bgColor     = _pressed
-          ? _kPrimary.withOpacity(0.18)
-          : _kCardBg;
-      borderColor = _kPrimary.withOpacity(_pressed ? 0.5 : 0.2);
+      textColor = AppColors.primary;
+      bgColor   = _pressed
+          ? AppColors.surfaceContainer
+          : AppColors.surfaceContainerLowest;
     }
 
     return GestureDetector(
@@ -116,10 +104,6 @@ class _NumberButtonState extends State<_NumberButton> {
         decoration: BoxDecoration(
           color:        bgColor,
           borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: borderColor, width: widget.isActive ? 1.5 : 1.0),
-          boxShadow: widget.isActive
-              ? [BoxShadow(color: _kPrimary.withOpacity(0.35), blurRadius: 10, spreadRadius: 1)]
-              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -132,7 +116,6 @@ class _NumberButtonState extends State<_NumberButton> {
                 color:      textColor,
               ),
             ),
-            // Remaining count dots — only show when there are some left
             if (!widget.isComplete) ...[
               const SizedBox(height: 3),
               _RemainingDots(remaining: widget.remaining, isActive: widget.isActive),
@@ -156,12 +139,12 @@ class _RemainingDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isActive
-        ? Colors.white.withOpacity(0.7)
-        : _kPrimary.withOpacity(0.4);
+        ? AppColors.onPrimary.withOpacity(0.7)
+        : AppColors.primary.withOpacity(0.3);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
-        remaining.clamp(0, 5), // max 5 dots to keep it tidy
+        remaining.clamp(0, 5),
         (_) => Container(
           width: 3, height: 3,
           margin: const EdgeInsets.symmetric(horizontal: 1),
@@ -193,14 +176,14 @@ class SudokuActionButtons extends StatelessWidget {
         Expanded(child: _ActionBtn(
           icon:    Icons.lightbulb_outline_rounded,
           label:   'Hint',
-          color:   const Color(0xFFF59E0B),
+          color:   AppColors.secondary,
           onTap:   onHint,
         )),
         const SizedBox(width: 12),
         Expanded(child: _ActionBtn(
           icon:    Icons.backspace_outlined,
           label:   'Erase',
-          color:   const Color(0xFFEF4444),
+          color:   AppColors.error,
           onTap:   onErase,
         )),
       ],
@@ -233,12 +216,8 @@ class _ActionBtnState extends State<_ActionBtn> {
         duration: const Duration(milliseconds: 100),
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          color:        widget.color.withOpacity(_pressed ? 0.2 : 0.08),
+          color:        widget.color.withOpacity(_pressed ? 0.12 : 0.06),
           borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: widget.color.withOpacity(_pressed ? 0.6 : 0.25), width: 1.2),
-          boxShadow: _pressed
-              ? [BoxShadow(color: widget.color.withOpacity(0.25), blurRadius: 10)]
-              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

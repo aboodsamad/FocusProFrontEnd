@@ -2,26 +2,27 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import '../models/number_stream_model.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 import '../../../../features/home/providers/user_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants
+// Design constants  — Deep Focus dark-canvas palette
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg        = Color(0xFF06090F);
-const _kSurface   = Color(0xFF0D1117);
-const _kCard      = Color(0xFF111827);
-const _kBorder    = Color(0xFF1E2A3A);
-const _kAccent    = Color(0xFFEC4899);   // pink — matches registry colorValue
-const _kAccentDim = Color(0x28EC4899);
-const _kCorrect   = Color(0xFF22D3EE);   // cyan
-const _kWrong     = Color(0xFFFF4D6D);   // red
-const _kGold      = Color(0xFFFFD166);
-const _kText      = Colors.white;
-const _kMuted     = Color(0xFF6B7A99);
+const _kBg        = AppColors.primary;               // #012D1D deep forest
+const _kSurface   = AppColors.primaryContainer;      // #1B4332
+const _kCard      = AppColors.primaryContainer;      // #1B4332
+const _kBorder    = AppColors.onPrimaryFixedVariant; // #274E3D subtle border
+const _kAccent    = AppColors.secondaryContainer;    // #A0F4C8 mint
+const _kAccentDim = Color(0x28A0F4C8);               // mint @16 %
+const _kCorrect   = AppColors.secondaryContainer;    // mint for correct
+const _kWrong     = AppColors.error;                 // #BA1A1A
+const _kGold      = AppColors.primaryFixed;          // #C1ECD4 pale mint
+const _kText      = AppColors.onPrimary;             // white
+const _kMuted     = AppColors.onPrimaryContainer;    // #86AF99
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Particle
@@ -84,6 +85,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
     _fallCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 5200),
@@ -279,7 +281,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _spawnParticles() {
-    const colors = [_kAccent, _kCorrect, _kGold, Colors.white, Color(0xFF818CF8)];
+    const colors = [_kAccent, _kCorrect, _kGold, AppColors.onPrimary, AppColors.primaryFixed];
     _particles.clear();
     for (int i = 0; i < 28; i++) {
       final angle = _rng.nextDouble() * 2 * pi;
@@ -498,9 +500,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                     widthFactor: progress,
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [_kAccent, Color(0xFF8B5CF6)],
-                        ),
+                        color: _kAccent,
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
@@ -587,8 +587,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
             constraints: BoxConstraints(maxWidth: maxW),
             padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
             decoration: BoxDecoration(
-              // Clearly lighter than the background so it always stands out
-              color: const Color(0xFF1E2D45),
+              color: AppColors.primaryContainer,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: borderCol, width: 2.5),
               boxShadow: [
@@ -598,9 +597,8 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                     spreadRadius: 3),
                 BoxShadow(
                     color: borderCol.withOpacity(0.18), blurRadius: 80),
-                // Inner subtle highlight for depth
                 BoxShadow(
-                    color: Colors.white.withOpacity(0.04),
+                    color: AppColors.onPrimary.withOpacity(0.04),
                     blurRadius: 0,
                     spreadRadius: -1),
               ],
@@ -611,7 +609,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                 Text(
                   eq.expression,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onPrimary,
                     fontSize: eqFontSz,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2,
@@ -758,18 +756,14 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                   width: 96, height: 96,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [_kAccent, Color(0xFF8B5CF6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppColors.secondaryContainer,
                     boxShadow: [
                       BoxShadow(
                           color: _kAccent.withOpacity(0.45), blurRadius: 36)
                     ],
                   ),
                   child: const Icon(Icons.functions_rounded,
-                      color: Colors.white, size: 44),
+                      color: AppColors.primary, size: 44),
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -806,9 +800,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 56, vertical: 18),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_kAccent, Color(0xFF8B5CF6)],
-                      ),
+                      color: AppColors.secondaryContainer,
                       borderRadius: BorderRadius.circular(50),
                       boxShadow: [
                         BoxShadow(
@@ -820,7 +812,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                     child: const Text(
                       'PLAY',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.primary,
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 3),
@@ -1011,8 +1003,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [_kAccent, Color(0xFF8B5CF6)]),
+                            color: AppColors.secondaryContainer,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -1023,7 +1014,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                           child: const Center(
                             child: Text('Play Again',
                                 style: TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.primary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700)),
                           ),
@@ -1145,7 +1136,7 @@ class _BgPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Subtle grid
     final linePaint = Paint()
-      ..color = const Color(0xFF162032).withOpacity(0.6)
+      ..color = AppColors.onPrimaryFixedVariant.withOpacity(0.4)
       ..strokeWidth = 0.6;
 
     const step = 44.0;
@@ -1166,7 +1157,7 @@ class _BgPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           colors: [
-            const Color(0xFFEC4899).withOpacity(0.045 + pulse * 0.018),
+            AppColors.secondaryContainer.withOpacity(0.045 + pulse * 0.018),
             Colors.transparent,
           ],
         ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius)),

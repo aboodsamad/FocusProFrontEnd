@@ -1,7 +1,5 @@
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-
-const _kPrimary = Color(0xFF6366F1);
-const _kCardBg  = Color(0xFF0F1624);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SudokuInfoCard  — timer / mistakes stat chip
@@ -21,16 +19,12 @@ class SudokuInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? _kPrimary;
+    final color = iconColor ?? AppColors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color:        _kCardBg,
+        color:        AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border:       Border.all(color: color.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.08), blurRadius: 10),
-        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -42,7 +36,7 @@ class SudokuInfoCard extends StatelessWidget {
             style: const TextStyle(
               fontSize:   16,
               fontWeight: FontWeight.bold,
-              color:      Colors.white,
+              color:      AppColors.onSurface,
             ),
           ),
         ],
@@ -67,9 +61,9 @@ class SudokuDifficultySelector extends StatelessWidget {
 
   Color get _diffColor {
     switch (difficulty) {
-      case 'Easy':   return const Color(0xFF10B981);
-      case 'Hard':   return const Color(0xFFEF4444);
-      default:       return _kPrimary;
+      case 'Easy':   return AppColors.secondary;
+      case 'Hard':   return AppColors.error;
+      default:       return AppColors.primary;
     }
   }
 
@@ -78,38 +72,35 @@ class SudokuDifficultySelector extends StatelessWidget {
     return PopupMenuButton<String>(
       initialValue: difficulty,
       onSelected:   onSelected,
-      color:        const Color(0xFF1A2235),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: _kPrimary.withOpacity(0.25)),
-      ),
+      color:        AppColors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color:        _diffColor.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: _diffColor.withOpacity(0.4), width: 1.2),
+          color:        AppColors.secondaryContainer,
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               difficulty,
-              style: TextStyle(
-                color:      _diffColor,
+              style: const TextStyle(
+                color:      AppColors.onSecondaryContainer,
                 fontSize:   14,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded, color: _diffColor, size: 18),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                color: AppColors.onSecondaryContainer, size: 18),
           ],
         ),
       ),
       itemBuilder: (_) => [
-        _menuItem('Easy',   const Color(0xFF10B981)),
-        _menuItem('Medium', _kPrimary),
-        _menuItem('Hard',   const Color(0xFFEF4444)),
+        _menuItem('Easy',   AppColors.secondary),
+        _menuItem('Medium', AppColors.primary),
+        _menuItem('Hard',   AppColors.error),
       ],
     );
   }
@@ -120,7 +111,7 @@ class SudokuDifficultySelector extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          color:      difficulty == label ? color : Colors.white70,
+          color:      difficulty == label ? color : AppColors.onSurfaceVariant,
           fontWeight: difficulty == label ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -153,17 +144,17 @@ class SudokuStatRow extends StatelessWidget {
           Container(
             padding:    const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color:        _kPrimary.withOpacity(0.12),
+              color:        AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: _kPrimary),
+            child: Icon(icon, size: 16, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
-          Text('$label:', style: const TextStyle(color: Colors.white60, fontSize: 14)),
+          Text('$label:', style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
           const Spacer(),
           Text(value,
               style: const TextStyle(
-                  color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                  color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
         ],
       ),
     );

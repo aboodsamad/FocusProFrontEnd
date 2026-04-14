@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,17 +11,17 @@ import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants  (same palette as other games)
+// Design constants — Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg      = Color(0xFF06090F);
-const _kCard    = Color(0xFF0F1624);
-const _kBorder  = Color(0xFF1E2840);
-const _kAccent  = Color(0xFF378ADD); // blue — matches registry colorValue
-const _kGold    = Color(0xFFFFD166);
-const _kWrong   = Color(0xFFFF5270);
-const _kCorrect = Color(0xFF10B981);
-const _kMuted   = Color(0xFF6B7A99);
+const _kBg      = AppColors.surface;
+const _kCard    = AppColors.primaryContainer;   // dark card for game area
+const _kBorder  = AppColors.outlineVariant;
+const _kAccent  = AppColors.secondaryContainer; // mint for active dots
+const _kGold    = AppColors.primaryFixed;
+const _kWrong   = AppColors.error;
+const _kCorrect = AppColors.secondaryContainer;
+const _kMuted   = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -505,7 +506,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           const SizedBox(height: 18),
           const Text('Pattern Trail',
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.onSurface,
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5)),
@@ -513,7 +514,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           Text(
             'Watch the dots light up one by one.\nTap them back in the exact same order!',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.5),
+            style: TextStyle(color: _kMuted, fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 18),
 
@@ -574,7 +575,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             alignment: Alignment.centerLeft,
             child: Text('Difficulty',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onSurface,
                     fontSize: 13,
                     fontWeight: FontWeight.w600)),
           ),
@@ -612,7 +613,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                       child: Column(children: [
                         Text(label,
                             style: TextStyle(
-                                color: active ? col : Colors.grey[500],
+                                color: active ? col : _kMuted,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13)),
                         const SizedBox(height: 2),
@@ -620,7 +621,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                             style: TextStyle(
                                 color: active
                                     ? col.withOpacity(0.65)
-                                    : Colors.grey[700],
+                                    : _kMuted,
                                 fontSize: 10)),
                       ]),
                     ),
@@ -638,12 +639,11 @@ class _PatternTrailPageState extends State<PatternTrailPage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFF1A6DB5), _kAccent]),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                      color: _kAccent.withOpacity(0.38),
+                      color: AppColors.primary.withOpacity(0.38),
                       blurRadius: 24,
                       offset: const Offset(0, 10)),
                 ],
@@ -651,7 +651,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
               child: const Center(
                 child: Text('Start',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.onPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 17,
                         letterSpacing: 0.6)),
@@ -810,8 +810,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
               width: 90, height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const RadialGradient(
-                    colors: [Color(0xFFFFD166), Color(0xFFFF9A3C)]),
+                color: AppColors.primaryFixed,
                 boxShadow: [
                   BoxShadow(
                       color: _kGold.withOpacity(0.45),
@@ -820,12 +819,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                 ],
               ),
               child: const Icon(Icons.star_rounded,
-                  color: Colors.white, size: 46),
+                  color: AppColors.primary, size: 46),
             ),
             const SizedBox(height: 20),
             const Text('Level Up!',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onSurface,
                     fontSize: 34,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5)),
@@ -874,7 +873,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             const SizedBox(height: 20),
             const Text('Game Over',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onSurface,
                     fontSize: 32,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5)),
@@ -913,7 +912,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             _StatRow(
                 label: 'Longest Sequence',
                 value: '${_game.sequenceLength} dots',
-                valueColor: const Color(0xFF818CF8)),
+                valueColor: AppColors.onTertiaryContainer),
             const SizedBox(height: 8),
             _StatRow(
                 label: 'Mistakes',
@@ -974,7 +973,7 @@ class _PreviewDotGrid extends StatelessWidget {
                 ? Center(
                     child: Text(label,
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.primary,
                             fontSize: 11,
                             fontWeight: FontWeight.w800)),
                   )
@@ -1074,7 +1073,7 @@ class _BackButton extends StatelessWidget {
             border: Border.all(color: _kBorder),
           ),
           child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 16),
+              color: AppColors.onPrimary, size: 16),
         ),
       );
 }
@@ -1110,7 +1109,7 @@ class _LevelScoreChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text('$score',
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.onPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w700)),
         ]),
@@ -1132,7 +1131,7 @@ class _LivesRow extends StatelessWidget {
               i < lives
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
-              color: i < lives ? _kWrong : Colors.grey[700],
+              color: i < lives ? _kWrong : AppColors.outlineVariant,
               size: 18,
             ),
           ),
@@ -1180,12 +1179,11 @@ class _PrimaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [Color(0xFF1A6DB5), _kAccent]),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                  color: _kAccent.withOpacity(0.38),
+                  color: AppColors.primary.withOpacity(0.38),
                   blurRadius: 22,
                   offset: const Offset(0, 9)),
             ],
@@ -1193,7 +1191,7 @@ class _PrimaryButton extends StatelessWidget {
           child: Center(
             child: Text(label,
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
                     letterSpacing: 0.3)),
