@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
-/// The full-screen gradient background shared by [LoginPage] and [SignupPage].
-/// Wraps its child in gradient → SafeArea → Center → SingleChildScrollView.
+/// Plain surface-colored background shared by [LoginPage] and [SignupPage].
+/// No gradient — just a light #F8F9FA scaffold.
 class AuthBackground extends StatelessWidget {
   final Widget child;
 
@@ -11,23 +11,14 @@ class AuthBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.authGradient,
-            stops: AppColors.authGradientStops,
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: child,
-              ),
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: child,
             ),
           ),
         ),

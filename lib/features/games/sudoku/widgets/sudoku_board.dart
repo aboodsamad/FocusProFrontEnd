@@ -1,22 +1,23 @@
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colours
+// Colours — Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kCellBase    = Color(0xFF0A0F1C);
-const _kCellCross   = Color(0xFF111D35); // same row or col
-const _kCellBox     = Color(0xFF0E1628); // same 3×3 box
-const _kCellSame    = Color(0xFF1E1B4B); // same digit
-const _kCellSelect  = Color(0xFF3730A3); // selected cell
-const _kCellError   = Color(0xFF450A0A); // conflict
-const _kBorderInner = Color(0xFF1C2540);
-const _kBorderBox   = Color(0xFF3B4668);
-const _kNumFixed    = Colors.white;
-const _kNumUser     = Color(0xFF818CF8);
-const _kNumSame     = Color(0xFFA5B4FC);
-const _kNumError    = Color(0xFFEF4444);
-const _kPrimary     = Color(0xFF6366F1);
+const _kCellBase    = AppColors.surfaceContainerLowest;  // white
+const _kCellCross   = AppColors.surfaceContainerLow;     // same row / col
+const _kCellBox     = AppColors.surfaceContainer;        // same 3×3 box
+const _kCellSame    = AppColors.primaryFixed;            // same digit highlight
+const _kCellSelect  = AppColors.primary;                 // selected cell
+const _kCellError   = AppColors.errorContainer;          // conflict
+const Color _kBorderInner = Color(0x14012D1D);           // primary @8%
+const Color _kBorderBox   = Color(0x33012D1D);           // primary @20%
+const Color _kNumFixed  = Color(0x66012D1D);             // primary @40% (pre-filled)
+const _kNumUser   = AppColors.primary;                   // user placed
+const _kNumSame   = AppColors.primaryContainer;          // same digit as selected
+const _kNumError  = AppColors.error;
+const _kPrimary   = AppColors.primary;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SudokuBoard
@@ -56,7 +57,7 @@ class SudokuBoard extends StatelessWidget {
     return false;
   }
 
-  // ── Cell background colour — priority order ──────────────────────────────
+  // ── Cell background colour ───────────────────────────────────────────────
 
   Color _cellBg(int row, int col) {
     final value      = board[row][col];
@@ -73,12 +74,11 @@ class SudokuBoard extends StatelessWidget {
     final isSameNum    = selVal != 0 && value == selVal && !isSelected;
     final hasError     = !isFixed[row][col] && value != 0 && _hasConflict(row, col);
 
-    if (isSelected)                return _kCellSelect;
-    if (hasError)                  return _kCellError;
-    if (isSameNum && isInCross)    return const Color(0xFF262057); // overlap
-    if (isSameNum)                 return _kCellSame;
-    if (isInCross)                 return _kCellCross;
-    if (isInBox)                   return _kCellBox;
+    if (isSelected)  return _kCellSelect;
+    if (hasError)    return _kCellError;
+    if (isSameNum)   return _kCellSame;
+    if (isInCross)   return _kCellCross;
+    if (isInBox)     return _kCellBox;
     return _kCellBase;
   }
 
@@ -94,7 +94,7 @@ class SudokuBoard extends StatelessWidget {
     final hasError    = !isFixed[row][col] && value != 0 && _hasConflict(row, col);
 
     if (hasError)          return _kNumError;
-    if (isSelected)        return Colors.white;
+    if (isSelected)        return AppColors.onPrimary;
     if (isSameNum)         return _kNumSame;
     if (isFixed[row][col]) return _kNumFixed;
     return _kNumUser;
@@ -106,7 +106,6 @@ class SudokuBoard extends StatelessWidget {
     final value      = board[row][col];
     final isSelected = selectedRow == row && selectedCol == col;
 
-    // Thicker lines at every 3rd box boundary
     final isBoxTop    = row % 3 == 0;
     final isBoxLeft   = col % 3 == 0;
     final isBoxRight  = col == 8 || col % 3 == 2;
@@ -133,11 +132,8 @@ class SudokuBoard extends StatelessWidget {
                   value.toString(),
                   style: TextStyle(
                     fontSize:   size * 0.47,
-                    fontWeight: isFixed[row][col] ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: isFixed[row][col] ? FontWeight.w600 : FontWeight.w700,
                     color:      _numColor(row, col),
-                    shadows: isSelected
-                        ? [Shadow(color: Colors.white.withOpacity(0.55), blurRadius: 10)]
-                        : null,
                   ),
                 ),
               ),
@@ -152,14 +148,17 @@ class SudokuBoard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: _kCellBase,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: _kPrimary.withOpacity(0.18), blurRadius: 28, spreadRadius: 2),
-          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.04),
+            blurRadius: 40,
+            spreadRadius: 2,
+          ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: LayoutBuilder(
           builder: (ctx, constraints) {
             final size = constraints.maxWidth / 9;

@@ -206,10 +206,10 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Color _scoreColor(double score) {
-    if (score >= 80) return const Color(0xFF10B981);
-    if (score >= 65) return AppColors.primaryA;
+    if (score >= 80) return AppColors.secondary;
+    if (score >= 65) return AppColors.secondary;
     if (score >= 50) return const Color(0xFFF97316);
-    return const Color(0xFFEF4444);
+    return AppColors.error;
   }
 
   String _scoreLabel(double score) {
@@ -232,10 +232,9 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
     final score = user.focusScore > 1.0 ? user.focusScore : 0.0;
-    final scoreColor = _scoreColor(score);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -244,11 +243,10 @@ class _ProfilePageState extends State<ProfilePage>
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: _buildHeader(context)),
-                SliverToBoxAdapter(child: _buildAvatar(user, scoreColor, score)),
-                SliverToBoxAdapter(child: _buildInfoSection(user)),
-                SliverToBoxAdapter(child: _buildScoreSection(score, scoreColor)),
-                SliverToBoxAdapter(child: _buildJourneySection()),
+                SliverToBoxAdapter(child: _buildAppBar(context)),
+                SliverToBoxAdapter(child: _buildProfileHero(user, score)),
+                SliverToBoxAdapter(child: _buildStatCards()),
+                SliverToBoxAdapter(child: _buildActivityLogSection()),
                 SliverToBoxAdapter(child: _buildAiHistorySection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
@@ -259,172 +257,324 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+  Widget _buildAppBar(BuildContext context) {
+    return Container(
+      color: AppColors.secondaryContainer,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          _IconBtn(
-            icon: Icons.arrow_back_ios_new_rounded,
+          GestureDetector(
             onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.primary, size: 16),
+            ),
           ),
-          const SizedBox(width: 12),
-          const Text('Profile',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Text(
+              'FocusPro',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+              ),
+              child: const Icon(Icons.settings_outlined,
+                  color: AppColors.primary, size: 20),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Avatar ──────────────────────────────────────────────────────────────────
-
-  Widget _buildAvatar(UserProvider user, Color scoreColor, double score) {
+  // ── Profile Hero ───────────────────────────────────────────────────────────
+  Widget _buildProfileHero(UserProvider user, double score) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
       child: Column(
         children: [
-          Container(
-            width: 100, height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryA, AppColors.primaryB],
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
+          // Avatar with score badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.secondaryContainer,
+                  border: Border.all(color: AppColors.secondary, width: 3),
+                  boxShadow: [BoxShadow(color: AppColors.secondary.withOpacity(0.3), blurRadius: 16, spreadRadius: 2)],
+                ),
+                child: Center(
+                  child: Text(
+                    user.displayInitial,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-              boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.45), blurRadius: 24, spreadRadius: 4)],
-            ),
-            child: Center(
-              child: Text(user.displayInitial,
-                  style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
-            ),
+              Positioned(
+                bottom: -4, right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.surfaceContainerLowest, width: 2),
+                  ),
+                  child: Text(
+                    score.toStringAsFixed(0),
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          Text(user.name,
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          if (user.username.isNotEmpty)
-            Text('@${user.username}', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
-          const SizedBox(height: 10),
-          if (user.roleName.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryA.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
-              ),
-              child: Text(user.roleName,
-                  style: const TextStyle(color: AppColors.primaryA, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            user.name,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Focus Score: ${score.toStringAsFixed(0)} / 100',
+            style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          // Chips row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _ProfileChip(
+                label: 'Flow Master',
+                bgColor: AppColors.secondaryContainer,
+                textColor: AppColors.secondary,
+              ),
+              const SizedBox(width: 8),
+              _ProfileChip(
+                label: 'Top 5% Reader',
+                bgColor: AppColors.surfaceContainerLow,
+                textColor: AppColors.onSurfaceVariant,
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  // ── Info Section ────────────────────────────────────────────────────────────
+  // ── Stat Cards ──────────────────────────────────────────────────────────────
+  Widget _buildStatCards() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+      child: Column(
+        children: [
+          _StatCard(
+            icon: Icons.timer_outlined,
+            iconColor: AppColors.secondary,
+            value: '24h',
+            label: 'FOCUS TIME',
+          ),
+          const SizedBox(height: 12),
+          _StatCard(
+            icon: Icons.extension_outlined,
+            iconColor: AppColors.onTertiaryContainer,
+            iconBg: AppColors.tertiaryContainer,
+            value: '15',
+            label: 'GAMES PLAYED',
+          ),
+          const SizedBox(height: 12),
+          _StatCard(
+            icon: Icons.menu_book_outlined,
+            iconColor: AppColors.secondary,
+            value: '8',
+            label: 'BOOKS READ',
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildInfoSection(UserProvider user) {
+  // ── Activity Log Section ───────────────────────────────────────────────────
+  Widget _buildActivityLogSection() {
+    final filtered = _filtered;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionLabel(label: 'Account Info'),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F1624),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
-            ),
-            child: Column(children: [
-              _InfoTile(icon: Icons.email_outlined,   label: 'Email',       value: user.email.isNotEmpty    ? user.email    : 'Not set',      iconColor: AppColors.primaryA,        isLast: false),
-              _InfoTile(icon: Icons.cake_outlined,    label: 'Date of Birth',value: _formatDob(user.dob),                                    iconColor: const Color(0xFFF97316),   isLast: false),
-              _InfoTile(icon: Icons.badge_outlined,   label: 'Username',    value: user.username.isNotEmpty ? user.username : 'Not set',      iconColor: const Color(0xFF10B981),   isLast: false),
-              _InfoTile(icon: Icons.tag_rounded,      label: 'User ID',     value: user.userId != null      ? '#${user.userId}' : 'Unknown',  iconColor: const Color(0xFFEC4899),   isLast: true),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Score Section ───────────────────────────────────────────────────────────
-
-  Widget _buildScoreSection(double score, Color scoreColor) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionLabel(label: 'Focus Score'),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F1624),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scoreColor.withOpacity(0.25)),
-              boxShadow: [BoxShadow(color: scoreColor.withOpacity(0.1), blurRadius: 20, spreadRadius: 2)],
-            ),
-            child: Row(children: [
-              SizedBox(
-                width: 80, height: 80,
-                child: CustomPaint(
-                  painter: _ScoreRingPainter(progress: score / 100, color: scoreColor),
-                  child: Center(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(score.toStringAsFixed(0),
-                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                      Text('pts', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-                    ]),
+          // Title row
+          Row(
+            children: [
+              const Text(
+                'Activity Log',
+                style: TextStyle(
+                  color: AppColors.onSurface,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {},
+                child: const Text(
+                  'View History',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: scoreColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(score > 0 ? _scoreLabel(score) : 'Not assessed',
-                        style: TextStyle(color: scoreColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    score > 0
-                        ? 'Based on your diagnostic and activity'
-                        : 'Complete the diagnostic to get your score',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12, height: 1.4),
-                  ),
-                  if (score > 0) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: score / 100,
-                        minHeight: 6,
-                        backgroundColor: Colors.white.withOpacity(0.07),
-                        valueColor: AlwaysStoppedAnimation(scoreColor),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Time filter chips
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: _TimeFilter.values.map((f) {
+                final active = _timeFilter == f;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _timeFilter = f),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: active ? AppColors.secondary : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: active ? AppColors.secondary : AppColors.outlineVariant,
+                        ),
+                      ),
+                      child: Text(
+                        f.label,
+                        style: TextStyle(
+                          color: active ? Colors.white : AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                        ),
                       ),
                     ),
-                  ],
-                ]),
-              ),
-            ]),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
+          const SizedBox(height: 12),
+
+          // Category tabs
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: TabBar(
+              controller: _tabCtrl,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: AppColors.secondary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.secondary.withOpacity(0.5)),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: AppColors.secondary,
+              unselectedLabelColor: AppColors.onSurfaceVariant,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              padding: const EdgeInsets.all(4),
+              tabs: _categories.map((c) => Tab(
+                height: 36,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(c.icon, size: 14),
+                    const SizedBox(width: 5),
+                    Text(c.label),
+                  ],
+                ),
+              )).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Log list
+          if (_logsLoading)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: CircularProgressIndicator(
+                  color: AppColors.secondary, strokeWidth: 2.5),
+              ),
+            )
+          else if (filtered.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.outlineVariant),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+              ),
+              child: Column(children: [
+                Icon(_categories[_tabCtrl.index].icon, color: AppColors.outlineVariant, size: 32),
+                const SizedBox(height: 10),
+                const Text('Nothing here yet',
+                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                const SizedBox(height: 4),
+                const Text('Try a different filter or time range',
+                    style: TextStyle(color: AppColors.outlineVariant, fontSize: 11)),
+              ]),
+            )
+          else
+            Column(
+              children: List.generate(filtered.length, (i) => Padding(
+                padding: EdgeInsets.only(bottom: i == filtered.length - 1 ? 0 : 8),
+                child: _ActivityCard(log: filtered[i]),
+              )),
+            ),
         ],
       ),
     );
   }
 
   // ── AI Question History Section ─────────────────────────────────────────────
-
   Widget _buildAiHistorySection() {
     final items   = _filteredAiHistory;
     final books   = _aiBookTitles;
@@ -449,13 +599,13 @@ class _ProfilePageState extends State<ProfilePage>
               const SizedBox(width: 10),
               const Text(
                 'AI Question History',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               if (!_aiHistoryLoading)
                 Text(
                   '${items.length} snippet${items.length == 1 ? '' : 's'}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
                 ),
             ],
           ),
@@ -503,21 +653,22 @@ class _ProfilePageState extends State<ProfilePage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 36),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F1624),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.outlineVariant),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
               ),
               child: Column(children: [
-                Icon(Icons.auto_awesome_outlined, color: Colors.grey[700], size: 32),
+                Icon(Icons.auto_awesome_outlined, color: AppColors.outlineVariant, size: 32),
                 const SizedBox(height: 10),
                 Text(
                   _aiHistoryToday ? 'No AI questions today' : 'No AI questions yet',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                const Text(
                   'Read a book snippet to get AI questions',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 11),
+                  style: TextStyle(color: AppColors.outlineVariant, fontSize: 11),
                 ),
               ]),
             )
@@ -538,272 +689,115 @@ class _ProfilePageState extends State<ProfilePage>
       ),
     );
   }
-
-  // ── Journey Section ─────────────────────────────────────────────────────────
-
-  Widget _buildJourneySection() {
-    final filtered = _filtered;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row
-          Row(
-            children: [
-              const Text('My Journey',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              if (!_logsLoading)
-                Text('${filtered.length} entries',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Time filter chips
-          SizedBox(
-            height: 32,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _TimeFilter.values.map((f) {
-                final active = _timeFilter == f;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _timeFilter = f),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: active ? AppColors.primaryA : const Color(0xFF0F1624),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: active ? AppColors.primaryA : Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                      child: Text(
-                        f.label,
-                        style: TextStyle(
-                          color: active ? Colors.white : Colors.grey[500],
-                          fontSize: 12,
-                          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Category tabs
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0F1E),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
-            ),
-            child: TabBar(
-              controller: _tabCtrl,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              dividerColor: Colors.transparent,
-              indicator: BoxDecoration(
-                color: AppColors.primaryA.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primaryA.withOpacity(0.4)),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelColor: AppColors.primaryA,
-              unselectedLabelColor: Colors.grey[600],
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-              padding: const EdgeInsets.all(4),
-              tabs: _categories.map((c) => Tab(
-                height: 36,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(c.icon, size: 14),
-                    const SizedBox(width: 5),
-                    Text(c.label),
-                  ],
-                ),
-              )).toList(),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Log list
-          if (_logsLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: CircularProgressIndicator(color: AppColors.primaryA),
-              ),
-            )
-          else if (filtered.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 36),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F1624),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
-              ),
-              child: Column(children: [
-                Icon(_categories[_tabCtrl.index].icon, color: Colors.grey[700], size: 32),
-                const SizedBox(height: 10),
-                Text('Nothing here yet',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                const SizedBox(height: 4),
-                Text('Try a different filter or time range',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-              ]),
-            )
-          else
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F1624),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
-              ),
-              constraints: const BoxConstraints(maxHeight: 360),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, i) => Divider(
-                    height: 1,
-                    color: Colors.white.withOpacity(0.05),
-                    indent: 66,
-                  ),
-                  itemBuilder: (_, i) => _ActivityTile(
-                    log: filtered[i],
-                    isLast: i == filtered.length - 1,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
-// ── Info Tile ──────────────────────────────────────────────────────────────────
-class _InfoTile extends StatelessWidget {
-  final IconData icon;
+// ── Profile Chip ───────────────────────────────────────────────────────────────
+class _ProfileChip extends StatelessWidget {
   final String label;
-  final String value;
-  final Color iconColor;
-  final bool isLast;
+  final Color bgColor;
+  final Color textColor;
+  const _ProfileChip({required this.label, required this.bgColor, required this.textColor});
 
-  const _InfoTile({
-    required this.icon, required this.label, required this.value,
-    required this.iconColor, required this.isLast,
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    decoration: BoxDecoration(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+    ),
+  );
+}
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color? iconBg;
+  final String value;
+  final String label;
+
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    this.iconBg,
+    required this.value,
+    required this.label,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(value,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-              ]),
-            ),
-          ]),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
         ),
-        if (!isLast) Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 66),
       ],
-    );
-  }
-}
-
-// ── Section Label ──────────────────────────────────────────────────────────────
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) => Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-      );
-}
-
-// ── Icon Button ────────────────────────────────────────────────────────────────
-class _IconBtn extends StatefulWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
-
-  @override
-  State<_IconBtn> createState() => _IconBtnState();
-}
-
-class _IconBtnState extends State<_IconBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: _hovered ? AppColors.primaryA.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: _hovered ? AppColors.primaryA.withOpacity(0.5) : Colors.white.withOpacity(0.08),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(
+            color: iconBg ?? AppColors.secondary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: iconColor, size: 24),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.onSurface,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  height: 1,
+                ),
               ),
-            ),
-            child: Icon(widget.icon,
-                color: _hovered ? AppColors.primaryA : Colors.grey[400], size: 18),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
-// ── Activity Tile ──────────────────────────────────────────────────────────────
-class _ActivityTile extends StatelessWidget {
+// ── Activity Card ──────────────────────────────────────────────────────────────
+class _ActivityCard extends StatelessWidget {
   final ActivityLog log;
-  final bool isLast;
-  const _ActivityTile({required this.log, required this.isLast});
+  const _ActivityCard({required this.log});
 
   static const _typeConfig = {
     'LOGIN':                  _ActivityMeta(icon: Icons.login_rounded,                 color: Color(0xFF10B981), label: 'Login'),
     'LOGOUT':                 _ActivityMeta(icon: Icons.logout_rounded,                color: Color(0xFF6B7A99), label: 'Logout'),
-    'REGISTER':               _ActivityMeta(icon: Icons.person_add_alt_1_rounded,      color: AppColors.primaryA, label: 'Registered'),
+    'REGISTER':               _ActivityMeta(icon: Icons.person_add_alt_1_rounded,      color: AppColors.secondary, label: 'Registered'),
     'PROFILE_COMPLETE':       _ActivityMeta(icon: Icons.manage_accounts_rounded,       color: Color(0xFF818CF8), label: 'Profile'),
     'DIAGNOSTIC_COMPLETE':    _ActivityMeta(icon: Icons.psychology_rounded,            color: Color(0xFFF97316), label: 'Diagnostic'),
     'BASELINE_TEST_COMPLETE': _ActivityMeta(icon: Icons.bar_chart_rounded,             color: Color(0xFFEC4899), label: 'Baseline Test'),
-    'GAME_PLAYED':            _ActivityMeta(icon: Icons.sports_esports_rounded,        color: Color(0xFF5B8FFF), label: 'Game'),
-    'BOOK_SNIPPET_READ':      _ActivityMeta(icon: Icons.menu_book_rounded,             color: Color(0xFF34D399), label: 'Reading'),
+    'GAME_PLAYED':            _ActivityMeta(icon: Icons.sports_esports_rounded,        color: AppColors.onTertiaryContainer, label: 'Game'),
+    'BOOK_SNIPPET_READ':      _ActivityMeta(icon: Icons.menu_book_rounded,             color: AppColors.secondary, label: 'Reading'),
     'HABIT_CREATED':          _ActivityMeta(icon: Icons.add_task_rounded,              color: Color(0xFFA78BFA), label: 'Habit Created'),
     'HABIT_UPDATED':          _ActivityMeta(icon: Icons.edit_note_rounded,             color: Color(0xFF818CF8), label: 'Habit Updated'),
     'HABIT_DELETED':          _ActivityMeta(icon: Icons.delete_outline_rounded,        color: Color(0xFFFF5270), label: 'Habit Deleted'),
@@ -814,7 +808,7 @@ class _ActivityTile extends StatelessWidget {
 
   static _ActivityMeta _meta(String type) =>
       _typeConfig[type] ??
-      const _ActivityMeta(icon: Icons.circle_outlined, color: AppColors.primaryA, label: 'Activity');
+      const _ActivityMeta(icon: Icons.circle_outlined, color: AppColors.secondary, label: 'Activity');
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -829,42 +823,52 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = _meta(log.activityType);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Row(children: [
         Container(
-          width: 36, height: 36,
+          width: 40, height: 40,
           decoration: BoxDecoration(
-            color: meta.color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(10),
+            color: meta.color.withOpacity(0.15),
+            shape: BoxShape.circle,
           ),
-          child: Icon(meta.icon, color: meta.color, size: 18),
+          child: Icon(meta.icon, color: meta.color, size: 20),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               log.activityDescription ?? meta.label,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 3),
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: meta.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(meta.label,
-                    style: TextStyle(color: meta.color, fontSize: 10, fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(width: 8),
-              Text(_timeAgo(log.activityDate),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-            ]),
+            Text(
+              meta.label,
+              style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+            ),
           ]),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          _timeAgo(log.activityDate),
+          style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
         ),
       ]),
     );
@@ -891,7 +895,7 @@ class _ScoreRingPainter extends CustomPainter {
     final r = size.width / 2 - 6;
 
     canvas.drawCircle(Offset(cx, cy), r,
-        Paint()..color = Colors.white.withOpacity(0.06)..style = PaintingStyle.stroke..strokeWidth = 6);
+        Paint()..color = AppColors.outlineVariant..style = PaintingStyle.stroke..strokeWidth = 6);
 
     if (progress > 0) {
       canvas.drawArc(
@@ -936,16 +940,16 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? activeColor.withOpacity(0.15) : const Color(0xFF0F1624),
+          color: active ? activeColor.withOpacity(0.15) : AppColors.surfaceContainerLow,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: active ? activeColor.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+            color: active ? activeColor.withOpacity(0.6) : AppColors.outlineVariant,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? activeColor : Colors.grey[500],
+            color: active ? activeColor : AppColors.onSurfaceVariant,
             fontSize: 12,
             fontWeight: active ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -974,43 +978,43 @@ class _BookFilterDropdown extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1624),
+        color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: selected != null
               ? accent.withOpacity(0.5)
-              : Colors.white.withOpacity(0.1),
+              : AppColors.outlineVariant,
         ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String?>(
           value: selected,
           isDense: true,
-          dropdownColor: const Color(0xFF111827),
+          dropdownColor: AppColors.surfaceContainerLowest,
           icon: Icon(
             Icons.expand_more_rounded,
             size: 16,
-            color: selected != null ? accent : Colors.grey[500],
+            color: selected != null ? accent : AppColors.onSurfaceVariant,
           ),
           hint: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.book_outlined, size: 13, color: Colors.grey[500]),
+              Icon(Icons.book_outlined, size: 13, color: AppColors.onSurfaceVariant),
               const SizedBox(width: 5),
-              Text('Book', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              const Text('Book', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
             ],
           ),
-          style: const TextStyle(color: Colors.white, fontSize: 12),
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 12),
           items: [
             DropdownMenuItem<String?>(
               value: null,
-              child: Text('All Books', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              child: const Text('All Books', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
             ),
             ...books.map((b) => DropdownMenuItem<String?>(
               value: b,
               child: Text(
                 b.length > 22 ? '${b.substring(0, 20)}…' : b,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: AppColors.onSurface, fontSize: 12),
               ),
             )),
           ],
@@ -1035,10 +1039,10 @@ class _SnippetHistoryCard extends StatelessWidget {
     final attempted = passed || failed;
 
     final badgeColor = passed
-        ? const Color(0xFF10B981)
+        ? AppColors.secondary
         : failed
-            ? const Color(0xFFEF4444)
-            : const Color(0xFF6B7A99);
+            ? AppColors.error
+            : AppColors.onSurfaceVariant;
 
     final badgeLabel = passed ? 'Passed' : failed ? 'Failed' : 'Pending';
     final badgeIcon  = passed
@@ -1078,15 +1082,16 @@ class _SnippetHistoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1624),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: passed
-              ? const Color(0xFF10B981).withOpacity(0.2)
+              ? AppColors.secondary.withOpacity(0.2)
               : failed
-                  ? const Color(0xFFEF4444).withOpacity(0.15)
-                  : Colors.white.withOpacity(0.06),
+                  ? AppColors.error.withOpacity(0.15)
+                  : AppColors.outlineVariant,
         ),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1112,7 +1117,7 @@ class _SnippetHistoryCard extends StatelessWidget {
                   children: [
                     Text(
                       item.bookTitle,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                      style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1120,7 +1125,7 @@ class _SnippetHistoryCard extends StatelessWidget {
                     Text(
                       item.snippetTitle,
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                          color: AppColors.onSurface, fontSize: 13, fontWeight: FontWeight.w600),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1148,7 +1153,7 @@ class _SnippetHistoryCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       if (dateLabel != null)
                         Text(dateLabel,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+                            style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 10)),
                     ]),
                   ],
                 ),
@@ -1187,7 +1192,7 @@ class _SnippetHistoryCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: scorePct,
                       minHeight: 5,
-                      backgroundColor: Colors.white.withOpacity(0.06),
+                      backgroundColor: AppColors.surfaceContainerHigh,
                       valueColor: AlwaysStoppedAnimation(badgeColor),
                     ),
                   ),

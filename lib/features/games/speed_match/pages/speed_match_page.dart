@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -9,17 +10,17 @@ import '../../../../features/home/providers/user_provider.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants  (same palette as other games)
+// Design constants — Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg      = Color(0xFF06090F);
-const _kCard    = Color(0xFF0F1624);
-const _kBorder  = Color(0xFF1E2840);
-const _kAccent  = Color(0xFFF59E0B); // amber — matches registry colorValue
-const _kGold    = Color(0xFFFFD166);
-const _kWrong   = Color(0xFFFF5270);
-const _kCorrect = Color(0xFF10B981);
-const _kMuted   = Color(0xFF6B7A99);
+const _kBg      = AppColors.surface;
+const _kCard    = AppColors.surfaceContainerLowest;
+const _kBorder  = AppColors.outlineVariant;
+const _kAccent  = AppColors.secondary;
+const _kGold    = AppColors.primaryFixed;
+const _kWrong   = AppColors.error;
+const _kCorrect = AppColors.secondary;
+const _kMuted   = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -476,7 +477,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             child: LinearProgressIndicator(
               value: fraction,
               minHeight: 6,
-              backgroundColor: Colors.white.withOpacity(0.07),
+              backgroundColor: AppColors.surfaceContainerLow,
               valueColor: AlwaysStoppedAnimation(barColor),
             ),
           );
@@ -521,13 +522,13 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
           ),
           const SizedBox(height: 18),
           const Text('Speed Match',
-              style: TextStyle(color: Colors.white, fontSize: 28,
+              style: TextStyle(color: AppColors.onSurface, fontSize: 28,
                   fontWeight: FontWeight.w800, letterSpacing: -0.5)),
           const SizedBox(height: 10),
           Text(
             'Does this card match the previous one?\nTap YES or NO before time runs out!',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.5),
+            style: TextStyle(color: _kMuted, fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 18),
 
@@ -596,7 +597,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
           const Align(
             alignment: Alignment.centerLeft,
             child: Text('Difficulty',
-                style: TextStyle(color: Colors.white, fontSize: 13,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 13,
                     fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 10),
@@ -631,14 +632,14 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                       child: Column(children: [
                         Text(label,
                             style: TextStyle(
-                                color: active ? col : Colors.grey[500],
+                                color: active ? col : _kMuted,
                                 fontWeight: FontWeight.w700, fontSize: 13)),
                         const SizedBox(height: 2),
                         Text('Match: $hint',
                             style: TextStyle(
                                 color: active
                                     ? col.withOpacity(0.65)
-                                    : Colors.grey[700],
+                                    : _kMuted,
                                 fontSize: 10)),
                       ]),
                     ),
@@ -656,19 +657,18 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFD97706), _kAccent]),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                      color: _kAccent.withOpacity(0.38),
+                      color: AppColors.primary.withOpacity(0.38),
                       blurRadius: 24,
                       offset: const Offset(0, 10)),
                 ],
               ),
               child: const Center(
                 child: Text('Start',
-                    style: TextStyle(color: Colors.white,
+                    style: TextStyle(color: AppColors.onPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 17, letterSpacing: 0.6)),
               ),
@@ -840,7 +840,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             ),
             const SizedBox(height: 20),
             const Text('Game Over',
-                style: TextStyle(color: Colors.white, fontSize: 32,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 32,
                     fontWeight: FontWeight.w700, letterSpacing: -0.5)),
             if (isNewBest) ...[
               const SizedBox(height: 8),
@@ -868,7 +868,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                 valueColor: _kGold),
             const SizedBox(height: 8),
             _StatRow(label: 'Accuracy',      value: '${_game.accuracy}%',
-                valueColor: const Color(0xFF818CF8)),
+                valueColor: AppColors.onTertiaryContainer),
             const SizedBox(height: 8),
             _StatRow(label: 'Mistakes',      value: '${_game.mistakes}',
                 valueColor: _kWrong),
@@ -1126,7 +1126,7 @@ class _BackButton extends StatelessWidget {
             border: Border.all(color: _kBorder),
           ),
           child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 16),
+              color: AppColors.onSurface, size: 16),
         ),
       );
 }
@@ -1148,7 +1148,7 @@ class _ScoreChip extends StatelessWidget {
           const Icon(Icons.star_rounded, color: _kGold, size: 14),
           const SizedBox(width: 5),
           Text('$score',
-              style: const TextStyle(color: Colors.white, fontSize: 13,
+              style: const TextStyle(color: AppColors.onSurface, fontSize: 13,
                   fontWeight: FontWeight.w700)),
           if (streak > 1) ...[
             const SizedBox(width: 8),
@@ -1182,7 +1182,7 @@ class _LivesRow extends StatelessWidget {
               i < lives
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
-              color: i < lives ? _kWrong : Colors.grey[700],
+              color: i < lives ? _kWrong : AppColors.outlineVariant,
               size: 18,
             ),
           ),
@@ -1223,19 +1223,18 @@ class _PrimaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [Color(0xFFD97706), _kAccent]),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                  color: _kAccent.withOpacity(0.38),
+                  color: AppColors.primary.withOpacity(0.38),
                   blurRadius: 22,
                   offset: const Offset(0, 9)),
             ],
           ),
           child: Center(
             child: Text(label,
-                style: const TextStyle(color: Colors.white,
+                style: const TextStyle(color: AppColors.onPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 16, letterSpacing: 0.3)),
           ),

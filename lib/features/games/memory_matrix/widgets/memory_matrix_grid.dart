@@ -7,13 +7,14 @@ import '../models/memory_matrix_model.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _C {
-  static const cellIdle   = Color(0xFF151C2E);
-  static const cellBorder = Color(0xFF1E2840);
-  static const highlight  = Color(0xFF7B6FFF);
-  static const selected   = Color(0xFF48C9FF);
-  static const success    = Color(0xFF3DD68C);
-  static const missed     = Color(0xFFFFAB40);
-  static const wrong      = Color(0xFFFF5270);
+  // Deep Focus dark-green palette (game stays dark, bg = AppColors.primary #012D1D)
+  static const cellIdle   = Color(0xFF1B4332); // AppColors.primaryContainer
+  static const cellBorder = Color(0xFF274E3D); // subtle edge
+  static const highlight  = Color(0xFFA0F4C8); // AppColors.secondaryContainer — mint glow
+  static const selected   = Color(0xFF85D7AD); // AppColors.secondaryFixedDim
+  static const success    = Color(0xFF0E6C4A); // AppColors.secondary
+  static const missed     = Color(0xFFFFAB40); // keep amber for missed cells
+  static const wrong      = Color(0xFFBA1A1A); // AppColors.error
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

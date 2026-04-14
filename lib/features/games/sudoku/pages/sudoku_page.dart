@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,12 +12,12 @@ import '../widgets/sudoku_header.dart';
 import '../widgets/sudoku_number_pad.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colours — matches the app's dark theme
+// Colours — Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg      = Color(0xFF080D1A);
-const _kCardBg  = Color(0xFF0F1624);
-const _kPrimary = Color(0xFF6366F1);
+const _kBg      = AppColors.surface;
+const _kCardBg  = AppColors.surfaceContainerLowest;
+const _kPrimary = AppColors.primary;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SudokuHomePage
@@ -239,41 +240,33 @@ class _SudokuHomePageState extends State<SudokuHomePage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (_) => Dialog(
-        backgroundColor: _kCardBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: _kPrimary.withOpacity(0.3)),
-        ),
+        backgroundColor: AppColors.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Trophy icon with glow
               Container(
                 width: 72, height: 72,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFFF59E0B), Color(0xFFF97316)]),
-                  boxShadow: [BoxShadow(
-                      color: const Color(0xFFF59E0B).withOpacity(0.4),
-                      blurRadius: 20, spreadRadius: 2)],
+                  color: AppColors.secondaryContainer,
                 ),
                 child: const Icon(Icons.emoji_events_rounded,
-                    color: Colors.white, size: 36),
+                    color: AppColors.primary, size: 36),
               ),
               const SizedBox(height: 18),
               const Text('Puzzle Solved!',
-                  style: TextStyle(color: Colors.white, fontSize: 22,
+                  style: TextStyle(color: AppColors.onSurface, fontSize: 22,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Great job keeping focused',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              const Text('Great job keeping focused',
+                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 20),
-              const Divider(color: Colors.white10),
+              const Divider(color: AppColors.outlineVariant),
               const SizedBox(height: 16),
               SudokuStatRow(icon: Icons.timer_outlined,
                   label: 'Time',     value: _formatTime(seconds)),
@@ -283,32 +276,24 @@ class _SudokuHomePageState extends State<SudokuHomePage>
                   label: 'Hints',    value: hintsUsed.toString()),
               const SizedBox(height: 24),
               SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                        colors: [_kPrimary, Color(0xFF8B5CF6)]),
-                    borderRadius: BorderRadius.circular(12),
+                width: double.infinity, height: 48,
+                child: ElevatedButton(
+                  onPressed: () { Navigator.pop(context); _startNewGame(); },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999)),
                   ),
-                  child: ElevatedButton(
-                    onPressed: () { Navigator.pop(context); _startNewGame(); },
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor:     Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    child: const Text('New Game',
-                        style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.bold, fontSize: 15)),
-                  ),
+                  child: const Text('New Game',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Close',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                child: const Text('Close',
+                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
               ),
             ],
           ),
@@ -347,39 +332,35 @@ class _SudokuHomePageState extends State<SudokuHomePage>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(children: [
-                // Back button
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color:        _kCardBg,
+                      color:        AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
-                      border:       Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
                     child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white70, size: 16),
+                        color: AppColors.onSurface, size: 16),
                   ),
                 ),
                 const SizedBox(width: 14),
                 const Text('Sudoku',
-                    style: TextStyle(color: Colors.white, fontSize: 20,
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 20,
                         fontWeight: FontWeight.bold)),
                 const Spacer(),
-                // New game button
                 GestureDetector(
                   onTap: _startNewGame,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color:        _kPrimary.withOpacity(0.12),
+                      color:        AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(10),
-                      border:       Border.all(color: _kPrimary.withOpacity(0.3)),
                     ),
                     child: const Row(children: [
-                      Icon(Icons.refresh_rounded, color: _kPrimary, size: 16),
+                      Icon(Icons.refresh_rounded, color: AppColors.primary, size: 16),
                       SizedBox(width: 5),
-                      Text('New', style: TextStyle(color: _kPrimary,
+                      Text('New', style: TextStyle(color: AppColors.primary,
                           fontSize: 13, fontWeight: FontWeight.bold)),
                     ]),
                   ),
@@ -406,8 +387,8 @@ class _SudokuHomePageState extends State<SudokuHomePage>
                       icon:      Icons.close_rounded,
                       text:      mistakes.toString(),
                       iconColor: mistakes > 0
-                          ? const Color(0xFFEF4444)
-                          : Colors.grey[600]),
+                          ? AppColors.error
+                          : AppColors.onSurfaceVariant),
                 ],
               ),
             ),
@@ -438,9 +419,8 @@ class _SudokuHomePageState extends State<SudokuHomePage>
             // ── Number pad ─────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              decoration: BoxDecoration(
-                color: _kCardBg,
-                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

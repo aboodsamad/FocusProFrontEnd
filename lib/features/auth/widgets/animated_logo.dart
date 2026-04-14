@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 
-/// Spinning gradient circle with an icon.
-/// Shared between [LoginPage] and [SignupPage].
+/// Clean icon badge used in auth screens.
+/// Shows a rounded-square container with a primary-colored icon — no rotation,
+/// no purple gradient. The [scaleAnimation] and [rotationAnimation] parameters
+/// are kept for API compatibility but only scale is applied; rotation is ignored.
 class AnimatedLogo extends StatelessWidget {
   final Animation<double> scaleAnimation;
+  // Kept for API compatibility — not used for rotation any more.
   final Animation<double> rotationAnimation;
   final IconData icon;
 
@@ -18,31 +22,21 @@ class AnimatedLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScaleTransition(
       scale: scaleAnimation,
-      child: AnimatedBuilder(
-        animation: rotationAnimation,
-        builder: (context, child) {
-          return Transform.rotate(
-            angle: rotationAnimation.value * 2 * 3.14159,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 40),
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          color: AppColors.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-          );
-        },
+          ],
+        ),
+        child: Icon(icon, color: AppColors.onPrimary, size: 36),
       ),
     );
   }

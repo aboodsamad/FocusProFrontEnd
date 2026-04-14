@@ -1,23 +1,20 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 
 /// Animated pulsing circle that displays the user's focus score.
-/// Extracted from `_buildFocusCircle` in [HomeScreen].
-/// 
-/// 
-/// this file is not usedddddddd inthis project
+/// Updated to use the Deep Focus design system colors.
 class FocusCircle extends StatelessWidget {
   final double score;
   final AnimationController pulseController;
-  final Color primaryA;
-  final Color primaryB;
 
   const FocusCircle({
     super.key,
     required this.score,
     required this.pulseController,
-    required this.primaryA,
-    required this.primaryB,
+    // Legacy parameters kept for backward compatibility
+    Color primaryA = AppColors.primary,
+    Color primaryB = AppColors.primaryContainer,
   });
 
   @override
@@ -26,7 +23,7 @@ class FocusCircle extends StatelessWidget {
       animation: pulseController,
       builder: (context, child) {
         return Transform.scale(
-          scale: 1 + pulseController.value,
+          scale: 1 + pulseController.value * 0.03,
           child: child,
         );
       },
@@ -34,10 +31,10 @@ class FocusCircle extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 140,
-            height: 140,
+            width: 200,
+            height: 200,
             child: CustomPaint(
-              painter: RingPainter(score / 100, primaryA, primaryB),
+              painter: RingPainter(score / 100),
             ),
           ),
           Column(
@@ -46,14 +43,20 @@ class FocusCircle extends StatelessWidget {
               Text(
                 score.toStringAsFixed(0),
                 style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 72,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                  height: 1.0,
                 ),
               ),
               const Text(
-                'Focus',
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+                'FOCUS SCORE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurfaceVariant,
+                  letterSpacing: 1.5,
+                ),
               ),
             ],
           ),
@@ -63,47 +66,41 @@ class FocusCircle extends StatelessWidget {
   }
 }
 
-/// Draws the arc-ring progress indicator behind [FocusCircle].
-/// Extracted from `_RingPainter` in [HomeScreen].
+/// Draws the arc-ring progress indicator for the Deep Focus design.
 class RingPainter extends CustomPainter {
   final double pct;
-  final Color a;
-  final Color b;
 
-  RingPainter(this.pct, this.a, this.b);
+  RingPainter(this.pct);
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 14.0;
+    const stroke = 8.0;
     final center = (Offset.zero & size).center;
     final radius = (math.min(size.width, size.height) - stroke) / 2;
 
+    // Track
     canvas.drawCircle(
       center,
       radius,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..color = Colors.grey.shade200,
+        ..color = AppColors.surfaceContainerHigh,
     );
 
-    final paint = Paint()
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + 2 * math.pi * pct,
-        colors: [a, b],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = stroke;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * pct,
-      false,
-      paint,
-    );
+    if (pct > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * pct,
+        false,
+        Paint()
+          ..color = AppColors.primaryContainer
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = stroke,
+      );
+    }
   }
 
   @override

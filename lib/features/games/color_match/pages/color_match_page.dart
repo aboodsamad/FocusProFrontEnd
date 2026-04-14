@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,16 +11,16 @@ import '../../services/game_service.dart';
 import '../models/color_match_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants  (same palette as Memory Matrix / Sudoku)
+// Design constants — Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg     = Color(0xFF06090F);
-const _kCard   = Color(0xFF0F1624);
-const _kBorder = Color(0xFF1E2840);
-const _kAccent = Color(0xFF10B981); // green — matches registry colorValue
-const _kGold   = Color(0xFFFFD166);
-const _kWrong  = Color(0xFFFF5270);
-const _kMuted  = Color(0xFF6B7A99);
+const _kBg     = AppColors.surface;
+const _kCard   = AppColors.surfaceContainerLowest;
+const _kBorder = AppColors.outlineVariant;
+const _kAccent = AppColors.secondary;
+const _kGold   = AppColors.primaryFixed;
+const _kWrong  = AppColors.error;
+const _kMuted  = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -228,7 +229,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
         if (mounted) Navigator.pop(context);
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
+        value: SystemUiOverlayStyle.dark,
         child: Scaffold(
           backgroundColor: _kBg,
           body: SafeArea(
@@ -342,13 +343,13 @@ class _ColorMatchPageState extends State<ColorMatchPage>
           ),
           const SizedBox(height: 18),
           const Text('Color Match',
-              style: TextStyle(color: Colors.white, fontSize: 28,
+              style: TextStyle(color: AppColors.onSurface, fontSize: 28,
                   fontWeight: FontWeight.w800, letterSpacing: -0.5)),
           const SizedBox(height: 10),
           Text(
             'Tap the button matching the INK color,\nnot what the word says.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.5),
+            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 18),
 
@@ -373,7 +374,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('→ tap', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                    Text('→ tap', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -420,7 +421,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
           const Align(
             alignment: Alignment.centerLeft,
             child: Text('Difficulty',
-                style: TextStyle(color: Colors.white, fontSize: 13,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 13,
                     fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 10),
@@ -447,19 +448,17 @@ class _ColorMatchPageState extends State<ColorMatchPage>
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: active ? col.withOpacity(0.16) : _kCard,
+                        color: active ? col.withOpacity(0.1) : AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: active ? col.withOpacity(0.55) : _kBorder),
                       ),
                       child: Column(children: [
                         Text(label, style: TextStyle(
-                            color: active ? col : Colors.grey[500],
+                            color: active ? col : AppColors.onSurfaceVariant,
                             fontWeight: FontWeight.w700, fontSize: 13)),
                         const SizedBox(height: 2),
                         Text(timer, style: TextStyle(
                             color: active ? col.withOpacity(0.65)
-                                         : Colors.grey[700],
+                                         : AppColors.onSurfaceVariant.withOpacity(0.5),
                             fontSize: 10)),
                       ]),
                     ),
@@ -477,17 +476,12 @@ class _ColorMatchPageState extends State<ColorMatchPage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFF0D9265), _kAccent]),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(
-                    color: _kAccent.withOpacity(0.38),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10))],
               ),
               child: const Center(
                 child: Text('Start',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700,
+                    style: TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.w700,
                         fontSize: 17, letterSpacing: 0.6)),
               ),
             ),
@@ -597,9 +591,9 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     final isCorrectEntry = entry.name == round.inkColor.name;
 
     // Buttons are always neutral — no color hint. Only feedback reveals state.
-    Color bgColor       = _kCard;
-    Color borderColor   = _kBorder;
-    Color labelColor    = Colors.white;
+    Color bgColor       = AppColors.surfaceContainerLow;
+    Color borderColor   = AppColors.outlineVariant;
+    Color labelColor    = AppColors.onSurface;
     double borderWidth  = 1.5;
 
     if (_feedbackShowing) {
@@ -670,7 +664,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
             ),
             const SizedBox(height: 20),
             const Text('Game Over',
-                style: TextStyle(color: Colors.white, fontSize: 32,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 32,
                     fontWeight: FontWeight.w700, letterSpacing: -0.5)),
             if (isNewBest) ...[
               const SizedBox(height: 8),
@@ -727,7 +721,7 @@ class _BackButton extends StatelessWidget {
             border: Border.all(color: _kBorder),
           ),
           child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 16),
+              color: AppColors.onSurface, size: 16),
         ),
       );
 }
@@ -749,7 +743,7 @@ class _ScoreChip extends StatelessWidget {
           const Icon(Icons.star_rounded, color: _kGold, size: 14),
           const SizedBox(width: 5),
           Text('$score',
-              style: const TextStyle(color: Colors.white,
+              style: const TextStyle(color: AppColors.onSurface,
                   fontSize: 13, fontWeight: FontWeight.w700)),
           if (streak > 1) ...[
             const SizedBox(width: 8),
@@ -779,7 +773,7 @@ class _LivesRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 3),
               child: Icon(
                 i < lives ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: i < lives ? _kWrong : Colors.grey[700],
+                color: i < lives ? _kWrong : AppColors.outlineVariant,
                 size: 18,
               ),
             )),
@@ -817,17 +811,12 @@ class _PrimaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [Color(0xFF0D9265), _kAccent]),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(
-                color: _kAccent.withOpacity(0.38),
-                blurRadius: 22,
-                offset: const Offset(0, 9))],
           ),
           child: Center(child: Text(label,
-              style: const TextStyle(color: Colors.white,
-                  fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.3))),
+              style: const TextStyle(color: AppColors.onPrimary,
+                  fontWeight: FontWeight.w700, fontSize: 16))),
         ),
       );
 }
@@ -844,12 +833,11 @@ class _SecondaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: _kCard,
+            color: AppColors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
           ),
           child: Center(child: Text(label,
-              style: const TextStyle(color: _kMuted,
+              style: const TextStyle(color: AppColors.onSurfaceVariant,
                   fontWeight: FontWeight.w600, fontSize: 15))),
         ),
       );
