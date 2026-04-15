@@ -14,6 +14,9 @@ import '../../habits/providers/habit_provider.dart';
 import '../../habits/models/habit.dart';
 import '../../habits/pages/manage_habits_page.dart';
 import '../../profile/services/activity_log_service.dart';
+import '../../coaching/pages/coaching_page.dart';
+import '../../coaching/services/coaching_service.dart';
+import '../../coaching/models/daily_goal_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _distractingMinutes = 0; // loaded from SharedPreferences; user-editable
   int _streakDays         = 0; // calculated from activity logs
   int _todaySessions      = 0; // calculated from activity logs
+  List<DailyGoalModel> _todayGoals = []; // coaching goals
 
   late AnimationController _scoreAnimController;
   late Animation<double> _scoreAnim;
@@ -48,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _animateScore();
       _loadDistractingMinutes();
       _loadStats();
+      _loadTodayGoals();
     });
   }
 
@@ -67,6 +72,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0;
     });
+  }
+
+  Future<void> _loadTodayGoals() async {
+    final goals = await CoachingService.getTodayGoals();
+    if (!mounted) return;
+    setState(() => _todayGoals = goals);
   }
 
   /// Fetches activity logs and derives streak + today's session count.
@@ -439,6 +450,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         const SizedBox(height: 12),
         // Habits — full width
         _buildHabitsCard(),
+        const SizedBox(height: 12),
+        // AI Coach — full width
+        _buildCoachingCard(),
       ]),
     );
   }
@@ -620,6 +634,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+  Widget _buildCoachingCard() {
+    final goalCount = _todayGoals.length;
+    final doneCount = _todayGoals.where((g) => g.status == 'DONE').length;
+    final subtitle = goalCount == 0
+        ? 'Start your day'
+        : '$doneCount / $goalCount goals done today';
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (_) => const CoachingPage())),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 10,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(children: [
+          Icon(Icons.psychology_outlined,
+              color: AppColors.primary, size: 28),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('AI Daily Coach',
+                    style: TextStyle(
+                        color: AppColors.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: TextStyle(
+                        color: AppColors.onSurfaceVariant, fontSize: 12)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColors.onSurfaceVariant),
+        ]),
+      ),
     );
   }
 }
