@@ -7,6 +7,12 @@ import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/oauth_callback_page.dart';
 import 'features/home/pages/home_page.dart';
 import './features/diagnostic/pages/diagnostic_page.dart';
+import 'features/coaching/pages/coaching_page.dart';
+import 'features/games/hub/pages/games_hub_page.dart';
+import 'features/books/pages/books_page.dart';
+import 'features/habits/pages/manage_habits_page.dart';
+import 'features/focus_session/pages/focus_rooms_page.dart';
+import 'features/profile/pages/profile_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,25 +61,33 @@ class MyApp extends StatelessWidget {
             builder: (_) => OAuthCallbackPage(),
           );
         }
+        // Helper: redirect to login if not authenticated
+        MaterialPageRoute authGate(Widget Function() page) {
+          return MaterialPageRoute(
+            builder: (_) => userProvider.isLoggedIn ? page() : LoginPage(),
+          );
+        }
+
         switch (settings.name) {
           case '/':
-            return MaterialPageRoute(
-              builder: (_) => userProvider.isLoggedIn
-                  ? const HomeScreen()
-                  : LoginPage(),
-            );
           case '/home':
-            return MaterialPageRoute(
-              builder: (_) => userProvider.isLoggedIn
-                  ? const HomeScreen()
-                  : LoginPage(),
-            );
+            return authGate(() => const HomeScreen());
+          case '/coaching':
+            return authGate(() => const CoachingPage());
+          case '/games':
+            return authGate(() => const GamesHubPage());
+          case '/books':
+            return authGate(() => const BooksPage());
+          case '/habits':
+            return authGate(() => const ManageHabitsPage());
+          case '/rooms':
+            return authGate(() => const FocusRoomsPage());
+          case '/profile':
+            return authGate(() => const ProfilePage());
+          case '/diagnostic':
+            return authGate(() => const DiagnosticPage());
           default:
-            return MaterialPageRoute(
-              builder: (_) => userProvider.isLoggedIn
-                  ? const HomeScreen()
-                  : LoginPage(),
-            );
+            return authGate(() => const HomeScreen());
         }
       },
     );
