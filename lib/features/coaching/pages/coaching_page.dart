@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/auth_service.dart';
 import '../models/coaching_message.dart';
 import '../models/daily_goal_model.dart';
 import '../services/coaching_service.dart';
@@ -39,7 +40,8 @@ class _CoachingPageState extends State<CoachingPage> {
   }
 
   Future<void> _init() async {
-    final goals = await CoachingService.getTodayGoals();
+    final token = await AuthService.getToken() ?? '';
+    final goals = await CoachingService.getTodayGoals(token);
     if (!mounted) return;
     setState(() {
       _goals = goals;
@@ -80,7 +82,8 @@ class _CoachingPageState extends State<CoachingPage> {
     if (texts.isEmpty) return;
 
     setState(() => _sending = true);
-    final response = await CoachingService.setDailyGoals(texts);
+    final token = await AuthService.getToken() ?? '';
+    final response = await CoachingService.setDailyGoals(token, texts);
     if (!mounted) return;
 
     if (response != null) {
@@ -135,7 +138,8 @@ class _CoachingPageState extends State<CoachingPage> {
     });
     _scrollToBottom();
 
-    final response = await CoachingService.sendMessage(_sessionId!, text);
+    final token = await AuthService.getToken() ?? '';
+    final response = await CoachingService.sendMessage(token, _sessionId!, text);
     if (!mounted) return;
 
     if (response != null) {
@@ -155,7 +159,8 @@ class _CoachingPageState extends State<CoachingPage> {
 
   Future<void> _startEvening() async {
     setState(() => _sending = true);
-    final response = await CoachingService.startEvening();
+    final token = await AuthService.getToken() ?? '';
+    final response = await CoachingService.startEvening(token);
     if (!mounted) return;
 
     if (response != null) {
@@ -212,8 +217,9 @@ class _CoachingPageState extends State<CoachingPage> {
                               : FontWeight.normal)),
                   onTap: () async {
                     Navigator.pop(context);
+                    final token = await AuthService.getToken() ?? '';
                     final updated =
-                        await CoachingService.updateGoalStatus(goal.id, s);
+                        await CoachingService.updateGoalStatus(token, goal.id, s);
                     if (!mounted) return;
                     if (updated != null) {
                       setState(() {
