@@ -1,0 +1,676 @@
+import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
+import '../models/coaching_message.dart';
+import '../models/daily_goal_model.dart';
+import '../services/coaching_service.dart';
+
+class CoachingPage extends StatefulWidget {
+  const CoachingPage({super.key});
+
+  @override
+  State<CoachingPage> createState() => _CoachingPageState();
+}
+
+class _CoachingPageState extends State<CoachingPage> {
+  // ── State ─────────────────────────────────────────────────────────────────
+  List<DailyGoalModel> _goals = [];
+  List<CoachingMessage> _messages = [];
+  int? _sessionId;
+  bool _loading = true;
+  bool _sending = false;
+  bool _settingGoals = false; // true = showing goal-setting UI
+
+  // Goal setup state
+  final List<TextEditingController> _goalControllers = [TextEditingController()];
+
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  // Evening banner
+  bool get _showEveningBanner {
+    final hour = DateTime.now().hour;
+    return hour >= 20 && _goals.any((g) => g.status != 'DONE' && g.status != 'SKIPPED');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final goals = await CoachingService.getTodayGoals();
+    if (!mounted) return;
+    setState(() {
+      _goals = goals;
+      _loading = false;
+      _settingGoals = goals.isEmpty;
+    });
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    for (final c in _goalControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  // ── Goal setup flow ───────────────────────────────────────────────────────
+
+  Future<void> _submitGoals() async {
+    final texts = _goalControllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (texts.isEmpty) return;
+
+    setState(() => _sending = true);
+    final response = await CoachingService.setDailyGoals(texts);
+    if (!mounted) return;
+
+    if (response != null) {
+      setState(() {
+        _goals = response.updatedGoals;
+        _sessionId = response.sessionId;
+        _messages = [
+          CoachingMessage(
+            role: 'ai',
+            content: response.reply,
+            timestamp: DateTime.now(),
+          )
+        ];
+        _settingGoals = false;
+        _sending = false;
+      });
+      _scrollToBottom();
+    } else {
+      setState(() => _sending = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not connect. Please try again.')),
+        );
+      }
+    }
+  }
+
+  void _addGoalField() {
+    if (_goalControllers.length >= 3) return;
+    setState(() => _goalControllers.add(TextEditingController()));
+  }
+
+  void _removeGoalField(int index) {
+    if (_goalControllers.length <= 1) return;
+    setState(() {
+      _goalControllers[index].dispose();
+      _goalControllers.removeAt(index);
+    });
+  }
+
+  // ── Chat flow ─────────────────────────────────────────────────────────────
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _sessionId == null) return;
+
+    _messageController.clear();
+    setState(() {
+      _messages.add(CoachingMessage(
+          role: 'user', content: text, timestamp: DateTime.now()));
+      _sending = true;
+    });
+    _scrollToBottom();
+
+    final response = await CoachingService.sendMessage(_sessionId!, text);
+    if (!mounted) return;
+
+    if (response != null) {
+      setState(() {
+        _goals = response.updatedGoals;
+        _messages.add(CoachingMessage(
+            role: 'ai',
+            content: response.reply,
+            timestamp: DateTime.now()));
+        _sending = false;
+      });
+    } else {
+      setState(() => _sending = false);
+    }
+    _scrollToBottom();
+  }
+
+  Future<void> _startEvening() async {
+    setState(() => _sending = true);
+    final response = await CoachingService.startEvening();
+    if (!mounted) return;
+
+    if (response != null) {
+      setState(() {
+        _sessionId = response.sessionId;
+        _goals = response.updatedGoals;
+        _messages.add(CoachingMessage(
+            role: 'ai',
+            content: response.reply,
+            timestamp: DateTime.now()));
+        _sending = false;
+      });
+      _scrollToBottom();
+    } else {
+      setState(() => _sending = false);
+    }
+  }
+
+  // ── Goal status bottom sheet ──────────────────────────────────────────────
+
+  void _showGoalStatusSheet(DailyGoalModel goal) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                goal.goalText,
+                style: const TextStyle(
+                    color: AppColors.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ...['PENDING', 'IN_PROGRESS', 'DONE', 'SKIPPED'].map((s) {
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(_statusIcon(s), color: _statusColor(s)),
+                  title: Text(_statusLabel(s),
+                      style: TextStyle(
+                          color: goal.status == s
+                              ? _statusColor(s)
+                              : AppColors.onSurface,
+                          fontWeight: goal.status == s
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final updated =
+                        await CoachingService.updateGoalStatus(goal.id, s);
+                    if (!mounted) return;
+                    if (updated != null) {
+                      setState(() {
+                        final idx = _goals.indexWhere((g) => g.id == goal.id);
+                        if (idx != -1) _goals[idx] = updated;
+                      });
+                    }
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.primaryContainer,
+        foregroundColor: Colors.white,
+        title: const Text('Daily Coach',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : _settingGoals
+              ? _buildGoalSetupScreen()
+              : _buildChatScreen(),
+    );
+  }
+
+  // ── Goal setup screen ─────────────────────────────────────────────────────
+
+  Widget _buildGoalSetupScreen() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Text(
+            'Set your goals for today',
+            style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 26,
+                fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add 1–3 goals. Your coach will check in with you throughout the day.',
+            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+          ),
+          const SizedBox(height: 28),
+          ...List.generate(_goalControllers.length, (i) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _goalControllers[i],
+                    style: const TextStyle(color: AppColors.onSurface),
+                    decoration: InputDecoration(
+                      hintText: 'Goal ${i + 1}',
+                      hintStyle:
+                          const TextStyle(color: AppColors.onSurfaceVariant),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerHigh,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+                if (_goalControllers.length > 1) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _removeGoalField(i),
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: AppColors.error),
+                  ),
+                ],
+              ]),
+            );
+          }),
+          if (_goalControllers.length < 3)
+            TextButton.icon(
+              onPressed: _addGoalField,
+              icon: const Icon(Icons.add, color: AppColors.secondary),
+              label: const Text('Add another goal',
+                  style: TextStyle(color: AppColors.secondary)),
+            ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _sending ? null : _submitGoals,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryContainer,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: _sending
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Text('Start my day',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Chat screen ───────────────────────────────────────────────────────────
+
+  Widget _buildChatScreen() {
+    return Column(
+      children: [
+        // Evening banner
+        if (_showEveningBanner) _buildEveningBanner(),
+        // Goals row
+        _buildGoalsRow(),
+        // Chat messages
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(
+                  child: Text(
+                    'Your coach is ready. Start chatting!',
+                    style: TextStyle(color: AppColors.onSurfaceVariant),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: _messages.length + (_sending ? 1 : 0),
+                  itemBuilder: (_, i) {
+                    if (i == _messages.length) {
+                      return _buildTypingIndicator();
+                    }
+                    return _buildMessageBubble(_messages[i]);
+                  },
+                ),
+        ),
+        // Input bar
+        _buildInputBar(),
+      ],
+    );
+  }
+
+  Widget _buildEveningBanner() {
+    return Container(
+      color: AppColors.tertiaryContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(children: [
+        const Icon(Icons.nights_stay_outlined,
+            color: AppColors.onTertiaryContainer, size: 20),
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Evening check-in ready',
+            style: TextStyle(
+                color: AppColors.onTertiaryContainer,
+                fontWeight: FontWeight.w600),
+          ),
+        ),
+        TextButton(
+          onPressed: _sending ? null : _startEvening,
+          child: const Text('Reflect',
+              style: TextStyle(
+                  color: AppColors.primaryFixed, fontWeight: FontWeight.bold)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildGoalsRow() {
+    if (_goals.isEmpty) return const SizedBox.shrink();
+    return Container(
+      height: 72,
+      color: AppColors.surfaceContainerLow,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        itemCount: _goals.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => _buildGoalChip(_goals[i]),
+      ),
+    );
+  }
+
+  Widget _buildGoalChip(DailyGoalModel goal) {
+    final color = _statusColor(goal.status);
+    return GestureDetector(
+      onTap: () => _showGoalStatusSheet(goal),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(_statusIcon(goal.status), color: color, size: 14),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 120),
+            child: Text(
+              goal.goalText,
+              style: TextStyle(
+                  color: AppColors.onSurface,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(CoachingMessage msg) {
+    final isAi = msg.role == 'ai';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment:
+            isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
+        children: [
+          if (isAi) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.primaryContainer,
+              child: const Icon(Icons.smart_toy_outlined,
+                  size: 16, color: Colors.white),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isAi
+                    ? AppColors.primaryFixed.withOpacity(0.3)
+                    : AppColors.primaryContainer,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isAi ? 4 : 16),
+                  bottomRight: Radius.circular(isAi ? 16 : 4),
+                ),
+              ),
+              child: Text(
+                msg.content,
+                style: TextStyle(
+                  color: isAi ? AppColors.onSurface : Colors.white,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+          if (!isAi) const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primaryContainer,
+          child:
+              const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primaryFixed.withOpacity(0.3),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+              bottomLeft: Radius.circular(4),
+              bottomRight: Radius.circular(16),
+            ),
+          ),
+          child: const SizedBox(
+            width: 40,
+            height: 16,
+            child: _DotsIndicator(),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildInputBar() {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 8,
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, -2)),
+        ],
+      ),
+      child: Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            style: const TextStyle(color: AppColors.onSurface),
+            decoration: InputDecoration(
+              hintText: 'Message your coach…',
+              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+              filled: true,
+              fillColor: AppColors.surfaceContainerHigh,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onSubmitted: (_) => _sendMessage(),
+            textInputAction: TextInputAction.send,
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: _sending ? null : _sendMessage,
+          icon: Icon(
+            Icons.send_rounded,
+            color: _sending ? AppColors.onSurfaceVariant : AppColors.primary,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'DONE':
+        return AppColors.secondary;
+      case 'IN_PROGRESS':
+        return const Color(0xFFE6B800);
+      case 'SKIPPED':
+        return AppColors.onSurfaceVariant;
+      default:
+        return AppColors.outline;
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'DONE':
+        return Icons.check_circle_rounded;
+      case 'IN_PROGRESS':
+        return Icons.timelapse_rounded;
+      case 'SKIPPED':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'DONE':
+        return 'Done';
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'SKIPPED':
+        return 'Skipped';
+      default:
+        return 'Pending';
+    }
+  }
+}
+
+// ── Typing dots indicator ─────────────────────────────────────────────────
+class _DotsIndicator extends StatefulWidget {
+  const _DotsIndicator();
+
+  @override
+  State<_DotsIndicator> createState() => _DotsIndicatorState();
+}
+
+class _DotsIndicatorState extends State<_DotsIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (i) {
+            final phase = ((_ctrl.value * 3) - i).clamp(0.0, 1.0);
+            final opacity = (phase < 0.5 ? phase * 2 : (1 - phase) * 2).clamp(0.3, 1.0);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Opacity(
+                opacity: opacity,
+                child: const CircleAvatar(
+                    radius: 4, backgroundColor: AppColors.primary),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
