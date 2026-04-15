@@ -5,16 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../providers/user_provider.dart';
-import '../../question/pages/question_page.dart';
-import '../../games/hub/pages/games_hub_page.dart';
-import '../../books/pages/books_page.dart';
-import '../../profile/pages/profile_page.dart';
-import '../../focus_session/pages/focus_rooms_page.dart';
 import '../../habits/providers/habit_provider.dart';
-import '../../habits/models/habit.dart';
-import '../../habits/pages/manage_habits_page.dart';
 import '../../profile/services/activity_log_service.dart';
-import '../../coaching/pages/coaching_page.dart';
 import '../../coaching/services/coaching_service.dart';
 import '../../coaching/models/daily_goal_model.dart';
 
@@ -280,8 +272,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Row(children: [
         // Avatar
         GestureDetector(
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const ProfilePage())),
+          onTap: () => Navigator.pushNamed(context, '/profile'),
           child: Container(
             width: 40,
             height: 40,
@@ -460,8 +451,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildFocusRoomCard() {
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const FocusRoomsPage())),
+      onTap: () => Navigator.pushNamed(context, '/rooms'),
       child: Container(
         height: 160,
         decoration: BoxDecoration(
@@ -478,8 +468,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppColors.primaryFixed, size: 36),
               const Spacer(),
               OutlinedButton(
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const FocusRoomsPage())),
+                onPressed: () => Navigator.pushNamed(context, '/rooms'),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: AppColors.primaryFixed,
                   side: BorderSide.none,
@@ -517,8 +506,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildGameCard() {
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const GamesHubPage())),
+      onTap: () => Navigator.pushNamed(context, '/games'),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
@@ -555,8 +543,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildBookCard() {
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const BooksPage())),
+      onTap: () => Navigator.pushNamed(context, '/books'),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
@@ -596,8 +583,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context, provider, _) {
         final remaining = provider.totalCount - provider.doneCount;
         return GestureDetector(
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const ManageHabitsPage())),
+          onTap: () => Navigator.pushNamed(context, '/habits'),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.secondaryContainer,
@@ -644,8 +630,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ? 'Start your day'
         : '$doneCount / $goalCount goals done today';
     return GestureDetector(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (_) => const CoachingPage())),
+      onTap: () => Navigator.pushNamed(context, '/coaching'),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
