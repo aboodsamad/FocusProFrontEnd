@@ -46,7 +46,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FocusPro',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
       onGenerateRoute: (settings) {
         final hash   = getLocationHash();
         final search = getLocationSearch();
