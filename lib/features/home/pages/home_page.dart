@@ -75,7 +75,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadTodayGoals() async {
-    final goals = await CoachingService.getTodayGoals();
+    final token = await AuthService.getToken() ?? '';
+    final goals = await CoachingService.getTodayGoals(token);
     if (!mounted) return;
     setState(() => _todayGoals = goals);
   }

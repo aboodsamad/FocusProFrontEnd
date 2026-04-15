@@ -29,21 +29,19 @@ class CoachingResponse {
 class CoachingService {
   static String get _base => AuthService.baseUrl;
 
-  static Future<Map<String, String>> _authHeaders() async {
-    final token = await AuthService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
+  static Map<String, String> _headers(String token) => {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
 
   /// POST /coaching/goals — set morning goals
-  static Future<CoachingResponse?> setDailyGoals(List<String> goals) async {
+  static Future<CoachingResponse?> setDailyGoals(
+      String token, List<String> goals) async {
     try {
       final resp = await http
           .post(
             Uri.parse('$_base/coaching/goals'),
-            headers: await _authHeaders(),
+            headers: _headers(token),
             body: jsonEncode({'goals': goals}),
           )
           .timeout(const Duration(seconds: 30));
@@ -61,12 +59,13 @@ class CoachingService {
   }
 
   /// POST /coaching/session/{sessionId}/message
-  static Future<CoachingResponse?> sendMessage(int sessionId, String message) async {
+  static Future<CoachingResponse?> sendMessage(
+      String token, int sessionId, String message) async {
     try {
       final resp = await http
           .post(
             Uri.parse('$_base/coaching/session/$sessionId/message'),
-            headers: await _authHeaders(),
+            headers: _headers(token),
             body: jsonEncode({'message': message}),
           )
           .timeout(const Duration(seconds: 30));
@@ -84,12 +83,12 @@ class CoachingService {
   }
 
   /// POST /coaching/evening
-  static Future<CoachingResponse?> startEvening() async {
+  static Future<CoachingResponse?> startEvening(String token) async {
     try {
       final resp = await http
           .post(
             Uri.parse('$_base/coaching/evening'),
-            headers: await _authHeaders(),
+            headers: _headers(token),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -106,12 +105,12 @@ class CoachingService {
   }
 
   /// GET /coaching/goals/today
-  static Future<List<DailyGoalModel>> getTodayGoals() async {
+  static Future<List<DailyGoalModel>> getTodayGoals(String token) async {
     try {
       final resp = await http
           .get(
             Uri.parse('$_base/coaching/goals/today'),
-            headers: await _authHeaders(),
+            headers: _headers(token),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -130,12 +129,13 @@ class CoachingService {
   }
 
   /// PATCH /coaching/goals/{goalId}/status
-  static Future<DailyGoalModel?> updateGoalStatus(int goalId, String status) async {
+  static Future<DailyGoalModel?> updateGoalStatus(
+      String token, int goalId, String status) async {
     try {
       final resp = await http
           .patch(
             Uri.parse('$_base/coaching/goals/$goalId/status'),
-            headers: await _authHeaders(),
+            headers: _headers(token),
             body: jsonEncode({'status': status}),
           )
           .timeout(const Duration(seconds: 10));
