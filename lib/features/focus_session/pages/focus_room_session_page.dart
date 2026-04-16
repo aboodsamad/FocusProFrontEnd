@@ -9,9 +9,8 @@ import '../services/focus_room_service.dart';
 
 class FocusRoomSessionPage extends StatefulWidget {
   final FocusRoom room;
-  final String? inviteCode; // pre-filled for private rooms joined from rooms list
-  const FocusRoomSessionPage({Key? key, required this.room, this.inviteCode})
-      : super(key: key);
+  final String? inviteCode;
+  const FocusRoomSessionPage({Key? key, required this.room, this.inviteCode}) : super(key: key);
 
   @override
   State<FocusRoomSessionPage> createState() => _FocusRoomSessionPageState();
@@ -23,8 +22,8 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   bool _loading = true;
   String? _error;
   String? _myGoal;
-  String? _myInviteCode;   // invite code passed in from rooms list
-  String? _roomInviteCode; // invite code returned by the join response (has real value)
+  String? _myInviteCode;
+  String? _roomInviteCode;
   Timer? _pollTimer;
   Timer? _ticker;
   final Stopwatch _stopwatch = Stopwatch();
@@ -33,7 +32,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
 
   // ── chat state ────────────────────────────────────────────────────────────
   List<RoomMessage> _messages = [];
-  final Set<int> _messageIds = {}; // deduplication guard
+  final Set<int> _messageIds = {};
   Timer? _chatPollTimer;
   String? _lastMessageTimestamp;
   final TextEditingController _chatController = TextEditingController();
@@ -43,7 +42,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   int _unreadCount = 0;
 
   // ── tab state ─────────────────────────────────────────────────────────────
-  bool _showChat = true; // true = Chat tab shown by default
+  bool _showChat = true;
 
   @override
   void initState() {
@@ -53,8 +52,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       if (mounted) {
         final d = _stopwatch.elapsed;
         setState(() {
-          _elapsed =
-              '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+          _elapsed = '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
         });
       }
     });
@@ -70,9 +68,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     _chatController.dispose();
     _chatScrollController.dispose();
     _chatFocusNode.dispose();
-    if (_joined) {
-      FocusRoomService.leaveRoomRest(widget.room.id);
-    }
+    if (_joined) FocusRoomService.leaveRoomRest(widget.room.id);
     super.dispose();
   }
 
@@ -82,38 +78,33 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF0F1624),
+        backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
           Text(widget.room.emoji, style: const TextStyle(fontSize: 24)),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(widget.room.name,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              widget.room.name,
+              style: const TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+            ),
           ),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What are you working on?',
-                style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+            const Text('What are you working on?', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               controller: goalCtl,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: AppColors.onSurface),
               decoration: InputDecoration(
                 hintText: 'e.g. Finishing chapter 3 (optional)',
-                hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                hintStyle: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.06),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: AppColors.surfaceContainerHigh,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
             ),
           ],
@@ -121,60 +112,45 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, ''),
-            child: Text('Skip', style: TextStyle(color: Colors.grey[500])),
+            child: const Text('Skip', style: TextStyle(color: AppColors.onSurfaceVariant)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryA,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, goalCtl.text.trim()),
-            child: const Text('Join Room'),
+            child: const Text('Join Room', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
     if (!mounted) return;
-    if (goal == null) {
-      Navigator.pop(context);
-      return;
-    }
-
+    if (goal == null) { Navigator.pop(context); return; }
     _myGoal = goal.isEmpty ? null : goal;
-    // Use invite code passed from rooms list (or from creator seeing their own code)
     _myInviteCode = widget.inviteCode;
     _joinAndPoll();
   }
 
   Future<void> _joinAndPoll() async {
     try {
-      final room = await FocusRoomService.joinRoomRest(
-          widget.room.id, _myGoal, inviteCode: _myInviteCode);
+      final room = await FocusRoomService.joinRoomRest(widget.room.id, _myGoal, inviteCode: _myInviteCode);
       _joined = true;
       if (mounted) {
         setState(() {
           _members = room.members;
           _loading = false;
-          // Store invite code from join response so the creator can share it
           _roomInviteCode = room.inviteCode;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
       return;
     }
 
-    // Load initial messages
     try {
-      final msgs =
-          await FocusRoomService.fetchMessages(widget.room.id, null);
+      final msgs = await FocusRoomService.fetchMessages(widget.room.id, null);
       if (mounted && msgs.isNotEmpty) {
         setState(() {
           _messages = msgs;
@@ -185,32 +161,22 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       }
     } catch (_) {}
 
-    // Poll member list every 4 seconds
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 4), (_) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
       try {
         final room = await FocusRoomService.getRoom(widget.room.id);
         if (mounted) setState(() => _members = room.members);
       } catch (_) {}
     });
 
-    // Poll for new chat messages every 2.5 seconds
-    _chatPollTimer =
-        Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+    _chatPollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
       try {
-        final newMsgs = await FocusRoomService.fetchMessages(
-            widget.room.id, _lastMessageTimestamp);
-        // Deduplicate: only keep messages whose ID we haven't seen yet.
-        // This prevents a race where the poll fetches a message that
-        // _sendMessage() already appended from the POST response.
-        final unique =
-            newMsgs.where((m) => !_messageIds.contains(m.id)).toList();
+        final newMsgs = await FocusRoomService.fetchMessages(widget.room.id, _lastMessageTimestamp);
+        final unique = newMsgs.where((m) => !_messageIds.contains(m.id)).toList();
         if (unique.isNotEmpty && mounted) {
           setState(() {
             _messageIds.addAll(unique.map((m) => m.id));
             _messages.addAll(unique);
             _lastMessageTimestamp = unique.last.sentAt;
-            // Count unread only when the chat tab is not active
             if (!_showChat) _unreadCount += unique.length;
           });
           if (_showChat) _scrollToBottom();
@@ -234,26 +200,18 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   Future<void> _sendMessage() async {
     final content = _chatController.text.trim();
     if (content.isEmpty || _sendingMessage) return;
-
     setState(() => _sendingMessage = true);
     _chatController.clear();
-    // Keep keyboard / text field focused so the user can type again
-    // immediately after hitting Enter, without tapping the field again.
     _chatFocusNode.requestFocus();
-
     try {
-      final msg =
-          await FocusRoomService.sendMessage(widget.room.id, content);
-      if (mounted) {
-        // Only add if the poll timer hasn't already inserted this message.
-        if (!_messageIds.contains(msg.id)) {
-          setState(() {
-            _messageIds.add(msg.id);
-            _messages.add(msg);
-            _lastMessageTimestamp = msg.sentAt;
-          });
-          _scrollToBottom();
-        }
+      final msg = await FocusRoomService.sendMessage(widget.room.id, content);
+      if (mounted && !_messageIds.contains(msg.id)) {
+        setState(() {
+          _messageIds.add(msg.id);
+          _messages.add(msg);
+          _lastMessageTimestamp = msg.sentAt;
+        });
+        _scrollToBottom();
       }
     } catch (_) {} finally {
       if (mounted) {
@@ -267,31 +225,24 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   Widget build(BuildContext context) {
     final myUsername = context.read<UserProvider>().username ?? '';
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(),
-            if (!_loading && _error == null) ...[
-              const SizedBox(height: 12),
-              _buildTabBar(),
-            ],
+            if (!_loading && _error == null) _buildBottomNavTabs(),
             if (_loading)
-              const Expanded(
-                  child: Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primaryA)))
+              const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.primary)))
             else if (_error != null)
               Expanded(
-                  child: Center(
-                      child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Error: $_error',
-                    style: const TextStyle(color: Colors.red)),
-              )))
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Error: $_error', style: const TextStyle(color: AppColors.error)),
+                  ),
+                ),
+              )
             else
-              // IndexedStack keeps both views alive so chat polling
-              // and scroll position are preserved when switching tabs
               Expanded(
                 child: IndexedStack(
                   index: _showChat ? 1 : 0,
@@ -307,203 +258,96 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     );
   }
 
-  // ── Tab bar ───────────────────────────────────────────────────────────────
-
-  Widget _buildTabBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(children: [
-          _buildTab(
-            label: 'Members',
-            icon: Icons.people_outline_rounded,
-            active: !_showChat,
-            onTap: () => setState(() => _showChat = false),
-            badge: 0,
-          ),
-          _buildTab(
-            label: 'Chat',
-            icon: Icons.chat_bubble_outline_rounded,
-            active: _showChat,
-            onTap: () {
-              setState(() {
-                _showChat = true;
-                _unreadCount = 0;
-              });
-              // Wait one frame for IndexedStack to surface the ListView
-              // before scrolling, so hasClients is guaranteed true.
-              WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-            },
-            badge: _unreadCount,
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildTab({
-    required String label,
-    required IconData icon,
-    required bool active,
-    required VoidCallback onTap,
-    required int badge,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            gradient: active
-                ? const LinearGradient(
-                    colors: [AppColors.primaryA, AppColors.primaryB])
-                : null,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  size: 15,
-                  color: active ? Colors.white : Colors.grey[500]),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: active ? Colors.white : Colors.grey[500],
-                      fontSize: 13,
-                      fontWeight: active
-                          ? FontWeight.bold
-                          : FontWeight.normal)),
-              if (badge > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text('$badge',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Header ────────────────────────────────────────────────────────────────
-
+  // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     final myUsername = context.read<UserProvider>().username ?? '';
     final isCreator = widget.room.createdBy == myUsername;
-    // Use the code from the join response (includes real value even when
-    // navigated from list view where inviteCode is null for privacy)
     final code = _roomInviteCode ?? widget.room.inviteCode;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70, size: 16),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(widget.room.emoji, style: const TextStyle(fontSize: 22)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(widget.room.name,
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 17, fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis),
-        ),
-        // Share invite code button (creator of private rooms only)
-        if (widget.room.isPrivate && isCreator && code != null) ...[
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
           GestureDetector(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: code));
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Row(children: [
-                  const Icon(Icons.lock_rounded, color: Colors.white, size: 16),
-                  const SizedBox(width: 8),
-                  Text('Invite code copied: $code'),
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(widget.room.emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.room.name,
+              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Invite code share
+          if (widget.room.isPrivate && isCreator && code != null) ...[
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: code));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Row(children: [
+                    const Icon(Icons.lock_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Invite code copied: $code'),
+                  ]),
+                  duration: const Duration(seconds: 3),
+                ));
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.lock_rounded, color: Colors.white, size: 13),
+                  SizedBox(width: 4),
+                  Text('Share', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ]),
-                duration: const Duration(seconds: 3),
-              ));
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryA.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
               ),
-              child: const Row(children: [
-                Icon(Icons.lock_rounded, color: AppColors.primaryA, size: 13),
-                SizedBox(width: 4),
-                Text('Share Code',
-                    style: TextStyle(color: AppColors.primaryA,
-                        fontSize: 11, fontWeight: FontWeight.bold)),
-              ]),
             ),
+          ],
+          // Delete room
+          if (isCreator) ...[
+            GestureDetector(
+              onTap: () => _confirmDeleteRoom(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: Colors.white70, size: 16),
+              ),
+            ),
+          ],
+          // Live Session badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primaryContainer.withOpacity(0.6)),
+            ),
+            child: const Text('Live Session', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           ),
         ],
-        // Delete room (creator only)
-        if (isCreator) ...[
-          GestureDetector(
-            onTap: () => _confirmDeleteRoom(context),
-            child: Container(
-              width: 36, height: 36,
-              margin: const EdgeInsets.only(right: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.10),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: const Color(0xFFEF4444).withOpacity(0.25)),
-              ),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: Color(0xFFEF4444), size: 16),
-            ),
-          ),
-        ],
-        // Timer
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.primaryA.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.timer_outlined, color: AppColors.primaryA, size: 14),
-            const SizedBox(width: 4),
-            Text(_elapsed, style: const TextStyle(
-                color: AppColors.primaryA,
-                fontWeight: FontWeight.bold, fontSize: 13)),
-          ]),
-        ),
-      ]),
+      ),
     );
   }
 
@@ -511,31 +355,24 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF0F1624),
+        backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+          Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 22),
           SizedBox(width: 10),
-          Text('Delete Room',
-              style: TextStyle(color: Colors.white, fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+          Text('Delete Room', style: TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
         ]),
         content: Text(
-          'Are you sure you want to delete "${widget.room.name}"? '
-          'This will remove all messages and cannot be undone.',
-          style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+          'Are you sure you want to delete "${widget.room.name}"? This will remove all messages and cannot be undone.',
+          style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
@@ -550,307 +387,358 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'),
-                backgroundColor: const Color(0xFFEF4444)),
+            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: AppColors.error),
           );
         }
       }
     }
   }
 
-  // ── Members tab ───────────────────────────────────────────────────────────
-
-  Widget _buildMembersSection(String myUsername) {
-    final catColor = categoryColor(widget.room.category);
-    final maxM = widget.room.maxMembers;
-    final capacityText = maxM > 0
-        ? '${_members.length} / $maxM'
-        : '${_members.length} / ∞';
-
-    return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              catColor.withOpacity(0.20),
-              AppColors.primaryA.withOpacity(0.10),
-            ]),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: catColor.withOpacity(0.30)),
-          ),
-          child: Row(children: [
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF10B981),
-                boxShadow: [BoxShadow(
-                    color: const Color(0xFF10B981).withOpacity(0.5),
-                    blurRadius: 6)],
-              ),
+  // ── Bottom nav tabs (Chat / Members) ───────────────────────────────────────
+  Widget _buildBottomNavTabs() {
+    return Container(
+      color: AppColors.surfaceContainerLowest,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            _TabButton(
+              icon: Icons.chat_bubble_rounded,
+              label: 'Chat',
+              active: _showChat,
+              badge: _showChat ? 0 : _unreadCount,
+              onTap: () {
+                setState(() { _showChat = true; _unreadCount = 0; });
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+              },
             ),
-            const SizedBox(width: 10),
-            // Category badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: catColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(categoryEmoji(widget.room.category),
-                    style: const TextStyle(fontSize: 11)),
-                const SizedBox(width: 4),
-                Text(widget.room.category,
-                    style: TextStyle(color: catColor,
-                        fontSize: 11, fontWeight: FontWeight.w600)),
-              ]),
+            _TabButton(
+              icon: Icons.group_rounded,
+              label: 'Members',
+              active: !_showChat,
+              badge: 0,
+              onTap: () => setState(() => _showChat = false),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '${_members.length} ${_members.length == 1 ? 'person' : 'people'} focusing',
-                style: const TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w600, fontSize: 12),
-              ),
-            ),
-            // Capacity pill
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(capacityText,
-                  style: TextStyle(color: Colors.grey[400],
-                      fontSize: 11, fontWeight: FontWeight.w500)),
-            ),
-          ]),
+          ],
         ),
       ),
-      Expanded(
-        child: _members.isEmpty
-            ? Center(
-                child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('🧑‍💻',
-                      style: TextStyle(fontSize: 48)),
-                  const SizedBox(height: 12),
-                  const Text("You're the only one here",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Others will appear when they join',
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 12)),
-                ],
-              ))
-            : GridView.builder(
-                padding: const EdgeInsets.all(20),
-                physics: const BouncingScrollPhysics(),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.05,
+    );
+  }
+
+  // ── Members tab ───────────────────────────────────────────────────────────
+  Widget _buildMembersSection(String myUsername) {
+    return Column(
+      children: [
+        // Timer card
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'CURRENT FOCUS',
+                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 2),
                 ),
-                itemCount: _members.length,
-                itemBuilder: (_, i) => _MemberCard(
-                    member: _members[i],
-                    isMe: _members[i].username == myUsername),
+                const SizedBox(height: 8),
+                Text(
+                  _elapsed,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 52,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Manrope',
+                    letterSpacing: -2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_members.length} active minds in flow state',
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Members header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Focus Group', style: TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'Manrope')),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(color: AppColors.secondaryContainer, borderRadius: BorderRadius.circular(20)),
+                child: Text('${_members.length} Online', style: const TextStyle(color: AppColors.onSecondaryContainer, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
-      ),
-    ]);
+            ],
+          ),
+        ),
+        // Members list
+        Expanded(
+          child: _members.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🧑‍💻', style: TextStyle(fontSize: 48)),
+                      const SizedBox(height: 12),
+                      const Text("You're the only one here", style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      const Text('Others will appear when they join', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: _members.length,
+                  itemBuilder: (_, i) => _MemberRow(
+                    member: _members[i],
+                    isMe: _members[i].username == myUsername,
+                  ),
+                ),
+        ),
+      ],
+    );
   }
 
   // ── Chat tab ──────────────────────────────────────────────────────────────
-
   Widget _buildChatSection(String myUsername) {
-    return Column(children: [
-      // Message list
-      Expanded(
-        child: _messages.isEmpty
-            ? Center(
-                child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('💬',
-                      style: TextStyle(fontSize: 40)),
-                  const SizedBox(height: 12),
-                  const Text('No messages yet',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Be the first to say hi!',
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 12)),
-                ],
-              ))
-            : ListView.builder(
-                controller: _chatScrollController,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                itemCount: _messages.length,
-                itemBuilder: (_, i) => _ChatBubble(
-                    message: _messages[i],
-                    isMe: _messages[i].username == myUsername),
-              ),
-      ),
-      // Input row
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A1020),
-          border: Border(
-            top: BorderSide(
-                color: Colors.white.withOpacity(0.08)),
+    return Column(
+      children: [
+        // Session timestamp
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'Session Started',
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5),
+            ),
           ),
         ),
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _chatController,
-              focusNode: _chatFocusNode,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 14),
-              maxLines: 1,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: InputDecoration(
-                hintText: 'Message the room...',
-                hintStyle: TextStyle(
-                    color: Colors.grey[600], fontSize: 14),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.06),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+        // Messages
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('💬', style: TextStyle(fontSize: 40)),
+                      const SizedBox(height: 12),
+                      const Text('No messages yet', style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      const Text('Be the first to say hi!', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _chatScrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) => _ChatBubble(message: _messages[i], isMe: _messages[i].username == myUsername),
                 ),
-              ),
+        ),
+        // Input
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: AppColors.outlineVariant.withOpacity(0.3)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20)],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatController,
+                    focusNode: _chatFocusNode,
+                    style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
+                    maxLines: 1,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
+                    decoration: const InputDecoration(
+                      hintText: 'Message the room...',
+                      hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onTap: _sendMessage,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.primaryContainer),
+                      child: _sendingMessage
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryA,
-                    AppColors.primaryB
-                  ],
-                ),
-              ),
-              child: _sendingMessage
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 18),
-            ),
-          ),
-        ]),
-      ),
-    ]);
+        ),
+      ],
+    );
   }
 }
 
-// ── Member card ───────────────────────────────────────────────────────────────
+// ── Tab button ────────────────────────────────────────────────────────────────
 
-class _MemberCard extends StatelessWidget {
-  final RoomMember member;
-  final bool isMe;
-  const _MemberCard({required this.member, required this.isMe});
+class _TabButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final int badge;
+  final VoidCallback onTap;
+  const _TabButton({required this.icon, required this.label, required this.active, required this.badge, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final initial = (member.displayName.isNotEmpty
-            ? member.displayName[0]
-            : member.username[0])
-        .toUpperCase();
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1624),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isMe
-              ? AppColors.primaryA.withOpacity(0.45)
-              : Colors.white.withOpacity(0.07),
-          width: isMe ? 1.5 : 1.0,
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: active
+              ? const BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.all(Radius.circular(0)),
+                )
+              : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: active ? Colors.white : AppColors.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  color: active ? Colors.white : AppColors.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              if (badge > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(10)),
+                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
-      child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(children: [
+    );
+  }
+}
+
+// ── Member row ────────────────────────────────────────────────────────────────
+
+class _MemberRow extends StatelessWidget {
+  final RoomMember member;
+  final bool isMe;
+  const _MemberRow({required this.member, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = (member.displayName.isNotEmpty ? member.displayName[0] : member.username[0]).toUpperCase();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: isMe ? const Border(left: BorderSide(color: AppColors.secondary, width: 4)) : null,
+      ),
+      child: Row(
+        children: [
+          Stack(
+            children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: isMe
-                        ? [AppColors.primaryA, AppColors.primaryB]
-                        : [
-                            const Color(0xFF1E2A40),
-                            const Color(0xFF2A3A55)
-                          ],
-                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.primaryContainer,
                 ),
                 child: Center(
-                    child: Text(initial,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold))),
+                  child: Text(initial, style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
               ),
               Positioned(
-                right: 0,
-                bottom: 0,
+                right: -2,
+                bottom: -2,
                 child: Container(
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF10B981),
-                    border: Border.all(
-                        color: const Color(0xFF0F1624), width: 2),
+                    color: AppColors.secondary,
+                    border: Border.all(color: AppColors.surfaceContainerLowest, width: 2),
                   ),
                 ),
               ),
-            ]),
-            const SizedBox(height: 10),
-            Text(isMe ? 'You' : member.displayName,
-                style: TextStyle(
-                    color:
-                        isMe ? AppColors.primaryA : Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            if (member.goal != null &&
-                member.goal!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(member.goal!,
-                  style: TextStyle(
-                      color: Colors.grey[500], fontSize: 10),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center),
             ],
-          ]),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isMe ? member.displayName : member.displayName,
+                      style: const TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('You', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
+                if (member.goal != null && member.goal!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(member.goal!, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.more_vert_rounded, color: AppColors.outlineVariant, size: 18),
+        ],
+      ),
     );
   }
 }
@@ -865,87 +753,59 @@ class _ChatBubble extends StatelessWidget {
   String _formatTime(String isoTimestamp) {
     try {
       final dt = DateTime.parse(isoTimestamp).toLocal();
-      final h = dt.hour.toString().padLeft(2, '0');
-      final m = dt.minute.toString().padLeft(2, '0');
-      return '$h:$m';
-    } catch (_) {
-      return '';
-    }
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}';
+    } catch (_) { return ''; }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
-            CircleAvatar(
-              radius: 13,
-              backgroundColor: const Color(0xFF1E2A40),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 4),
               child: Text(
-                message.username.isNotEmpty
-                    ? message.username[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold),
+                message.username,
+                style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(width: 8),
           ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                if (!isMe)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 3),
-                    child: Text(message.username,
-                        style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500)),
-                  ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+          Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (isMe) const SizedBox.shrink(),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    gradient: isMe
-                        ? const LinearGradient(colors: [
-                            AppColors.primaryA,
-                            AppColors.primaryB,
-                          ])
-                        : null,
-                    color: isMe ? null : const Color(0xFF161E30),
+                    color: isMe ? AppColors.primaryContainer : const Color(0xFF2E3132),
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isMe ? 16 : 4),
-                      bottomRight: Radius.circular(isMe ? 4 : 16),
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isMe ? 18 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 18),
                     ),
                   ),
-                  child: Text(message.content,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 14)),
+                  child: Text(
+                    message.content,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.45),
+                  ),
                 ),
-                Padding(
-                  padding:
-                      const EdgeInsets.only(top: 3, left: 4, right: 4),
-                  child: Text(_formatTime(message.sentAt),
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 10)),
-                ),
-              ],
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 4, left: isMe ? 0 : 12, right: isMe ? 12 : 0),
+            child: Text(
+              _formatTime(message.sentAt),
+              style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 10),
             ),
           ),
-          if (isMe) const SizedBox(width: 8),
         ],
       ),
     );

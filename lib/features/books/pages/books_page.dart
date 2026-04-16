@@ -6,7 +6,6 @@ import '../services/book_service.dart';
 import 'book_detail_page.dart';
 
 class BooksPage extends StatefulWidget {
-  /// If true, tapping a book opens it directly in audio (TTS) mode
   final bool audioMode;
   const BooksPage({Key? key, this.audioMode = false}) : super(key: key);
 
@@ -21,24 +20,46 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   String? _error;
 
   String _search = '';
-  int _selectedLevel = 0; // 0 = All
+  int _selectedLevel = 0;
   String _selectedCategory = 'All';
 
   final TextEditingController _searchCtrl = TextEditingController();
   late AnimationController _fadeCtrl;
 
   static const List<_LevelFilter> _levels = [
-    _LevelFilter(0, 'All', Color(0xFF667eea)),
-    _LevelFilter(1, 'Beginner', Color(0xFF10B981)),
+    _LevelFilter(0, 'All', AppColors.primary),
+    _LevelFilter(1, 'Beginner', AppColors.secondary),
     _LevelFilter(2, 'Intermediate', Color(0xFFF97316)),
     _LevelFilter(3, 'Advanced', Color(0xFFEF4444)),
+  ];
+
+  // Card cover colors matching the HTML design
+  static const List<Color> _coverColors = [
+    Color(0xFF2A9D8F),
+    Color(0xFFF4A261),
+    Color(0xFF9B5DE5),
+    Color(0xFF2DC653),
+    Color(0xFFF15BB5),
+    Color(0xFFFEE440),
+    Color(0xFFE63946),
+    Color(0xFF0077B6),
+  ];
+
+  static const List<IconData> _coverIcons = [
+    Icons.menu_book_rounded,
+    Icons.psychology_rounded,
+    Icons.insights_rounded,
+    Icons.self_improvement_rounded,
+    Icons.history_edu_rounded,
+    Icons.bolt_rounded,
+    Icons.work_rounded,
+    Icons.bubble_chart_rounded,
   ];
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadBooks();
   }
 
@@ -50,7 +71,10 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadBooks() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final books = await BookService.getAllBooks();
       setState(() {
@@ -60,7 +84,10 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
       });
       _fadeCtrl.forward(from: 0);
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -70,18 +97,11 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
       result = result.where((b) => b.level == _selectedLevel).toList();
     }
     if (_selectedCategory != 'All') {
-      result = result
-          .where((b) => b.category.toLowerCase() == _selectedCategory.toLowerCase())
-          .toList();
+      result = result.where((b) => b.category.toLowerCase() == _selectedCategory.toLowerCase()).toList();
     }
     if (_search.isNotEmpty) {
       final q = _search.toLowerCase();
-      result = result
-          .where((b) =>
-              b.title.toLowerCase().contains(q) ||
-              b.author.toLowerCase().contains(q) ||
-              b.category.toLowerCase().contains(q))
-          .toList();
+      result = result.where((b) => b.title.toLowerCase().contains(q) || b.author.toLowerCase().contains(q) || b.category.toLowerCase().contains(q)).toList();
     }
     _filtered = result;
   }
@@ -94,16 +114,29 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(),
-            _buildSearchBar(),
-            _buildLevelChips(),
-            if (_categories.length > 1) _buildCategoryChips(),
-            const SizedBox(height: 8),
-            Expanded(child: _buildBody()),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeroSection(),
+                    _buildSearchBar(),
+                    const SizedBox(height: 16),
+                    _buildLevelChips(),
+                    const SizedBox(height: 8),
+                    _buildCategoryChips(),
+                    const SizedBox(height: 16),
+                    _buildBody(),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -111,61 +144,77 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 40, height: 40,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: AppColors.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white70, size: 16),
+              child: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Library', style: TextStyle(
-                    color: Colors.white, fontSize: 22,
-                    fontWeight: FontWeight.bold, letterSpacing: -0.3)),
-                SizedBox(height: 2),
-                Text('Focus-boosting reads', style: TextStyle(
-                    color: Color(0xFF667eea), fontSize: 12,
-                    fontWeight: FontWeight.w500)),
-              ],
+            child: Text(
+              'Library',
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
             ),
           ),
-          _buildBookCountBadge(),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBookCountBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)]),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: const Color(0xFF667eea).withOpacity(0.3),
-              blurRadius: 12, spreadRadius: 1)
+  Widget _buildHeroSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_filtered.isEmpty && _loading ? '' : _allBooks.length} books',
+                    style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Focus-boosting reads',
+                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
-      child: Text(
-        '${_filtered.length} books',
-        style: const TextStyle(
-            color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -174,36 +223,37 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Container(
-        height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFF0F1624),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: TextField(
           controller: _searchCtrl,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'Search by title, author or category…',
-            hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-            prefixIcon: Icon(Icons.search_rounded,
-                color: Colors.grey[600], size: 20),
+            hintText: 'Search by title, author or category...',
+            hintStyle: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant, size: 20),
             suffixIcon: _search.isNotEmpty
                 ? GestureDetector(
                     onTap: () {
                       _searchCtrl.clear();
-                      setState(() { _search = ''; _applyFilters(); });
+                      setState(() {
+                        _search = '';
+                        _applyFilters();
+                      });
                     },
-                    child: Icon(Icons.close_rounded,
-                        color: Colors.grey[600], size: 18),
+                    child: const Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant, size: 18),
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           onChanged: (v) {
-            setState(() { _search = v; _applyFilters(); });
+            setState(() {
+              _search = v;
+              _applyFilters();
+            });
           },
         ),
       ),
@@ -212,9 +262,9 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
   Widget _buildLevelChips() {
     return SizedBox(
-      height: 44,
+      height: 40,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         itemCount: _levels.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -223,32 +273,27 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
           final selected = _selectedLevel == f.level;
           return GestureDetector(
             onTap: () {
-              setState(() { _selectedLevel = f.level; _applyFilters(); });
+              setState(() {
+                _selectedLevel = f.level;
+                _applyFilters();
+              });
               _fadeCtrl.forward(from: 0);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: selected
-                    ? f.color.withOpacity(0.2)
-                    : Colors.white.withOpacity(0.04),
+                color: selected ? AppColors.primary : AppColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected
-                      ? f.color.withOpacity(0.6)
-                      : Colors.white.withOpacity(0.08),
-                  width: selected ? 1.5 : 1,
-                ),
-                boxShadow: selected
-                    ? [BoxShadow(
-                        color: f.color.withOpacity(0.3), blurRadius: 10)]
-                    : [],
               ),
-              child: Text(f.label,
-                  style: TextStyle(
-                      color: selected ? f.color : Colors.grey[500],
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+              child: Text(
+                f.label,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           );
         },
@@ -257,39 +302,44 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   }
 
   Widget _buildCategoryChips() {
+    final cats = _categories.where((c) => c != 'All').toList();
+    if (cats.isEmpty) return const SizedBox.shrink();
     return SizedBox(
-      height: 40,
+      height: 36,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemCount: cats.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final cat = _categories[i];
+          final cat = cats[i];
           final selected = _selectedCategory == cat;
           return GestureDetector(
             onTap: () {
-              setState(() { _selectedCategory = cat; _applyFilters(); });
+              setState(() {
+                _selectedCategory = selected ? 'All' : cat;
+                _applyFilters();
+              });
               _fadeCtrl.forward(from: 0);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.primaryA.withOpacity(0.15)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
+                color: selected ? AppColors.surfaceContainerLowest : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selected
-                      ? AppColors.primaryA.withOpacity(0.5)
-                      : Colors.white.withOpacity(0.06),
+                  color: selected ? AppColors.outlineVariant : AppColors.outlineVariant.withOpacity(0.4),
                 ),
               ),
-              child: Text(cat,
-                  style: TextStyle(
-                      color: selected ? AppColors.primaryA : Colors.grey[600],
-                      fontSize: 11, fontWeight: FontWeight.w500)),
+              child: Text(
+                cat,
+                style: TextStyle(
+                  color: selected ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           );
         },
@@ -299,19 +349,10 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
   Widget _buildBody() {
     if (_loading) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(
-              width: 40, height: 40,
-              child: CircularProgressIndicator(
-                  color: AppColors.primaryA, strokeWidth: 2.5),
-            ),
-            const SizedBox(height: 16),
-            Text('Loading library…',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-          ],
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48),
+          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
         ),
       );
     }
@@ -326,35 +367,22 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withOpacity(0.1),
+                  color: AppColors.errorContainer,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.wifi_off_rounded,
-                    color: Color(0xFFEF4444), size: 32),
+                child: const Icon(Icons.wifi_off_rounded, color: AppColors.error, size: 32),
               ),
               const SizedBox(height: 16),
-              const Text('Couldn\'t load books',
-                  style: TextStyle(color: Colors.white,
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Couldn\'t load books', style: TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('Check your connection and try again',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  textAlign: TextAlign.center),
+              const Text('Check your connection and try again', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13), textAlign: TextAlign.center),
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: _loadBooks,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [
-                      AppColors.primaryA, AppColors.primaryB
-                    ]),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text('Retry',
-                      style: TextStyle(color: Colors.white,
-                          fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
+                  child: const Text('Retry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -365,51 +393,54 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
     if (_filtered.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search_off_rounded, color: Colors.grey[700], size: 48),
-            const SizedBox(height: 12),
-            Text('No books found',
-                style: TextStyle(color: Colors.grey[500], fontSize: 15)),
-            const SizedBox(height: 6),
-            Text('Try a different search or filter',
-                style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off_rounded, color: AppColors.outlineVariant, size: 48),
+              const SizedBox(height: 12),
+              const Text('No books found', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 15)),
+              const SizedBox(height: 6),
+              const Text('Try a different search or filter', style: TextStyle(color: AppColors.outlineVariant, fontSize: 12)),
+            ],
+          ),
         ),
       );
     }
 
     return FadeTransition(
       opacity: _fadeCtrl,
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 180,
-          childAspectRatio: 0.62,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: _filtered.length,
-        itemBuilder: (ctx, i) => _BookCard(
-          book: _filtered[i],
-          index: i,
-          onTap: () => Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, anim, __) =>
-                  BookDetailPage(book: _filtered[i], audioMode: widget.audioMode),
-              transitionsBuilder: (_, anim, __, child) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                      begin: const Offset(0.05, 0), end: Offset.zero)
-                      .animate(CurvedAnimation(
-                          parent: anim, curve: Curves.easeOut)),
-                  child: child,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.68,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          itemCount: _filtered.length,
+          itemBuilder: (ctx, i) => _BookCard(
+            book: _filtered[i],
+            index: i,
+            coverColors: _coverColors,
+            coverIcons: _coverIcons,
+            onTap: () => Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, anim, __) => BookDetailPage(book: _filtered[i], audioMode: widget.audioMode),
+                transitionsBuilder: (_, anim, __, child) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+                    child: child,
+                  ),
                 ),
+                transitionDuration: const Duration(milliseconds: 300),
               ),
-              transitionDuration: const Duration(milliseconds: 300),
             ),
           ),
         ),
@@ -418,67 +449,49 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   }
 }
 
-// ── Book Card ───────────────────────────────────────────────────────────────
+// ── Book Card ────────────────────────────────────────────────────────────────
 
 class _BookCard extends StatefulWidget {
   final BookModel book;
   final int index;
+  final List<Color> coverColors;
+  final List<IconData> coverIcons;
   final VoidCallback onTap;
-  const _BookCard({
-    required this.book,
-    required this.index,
-    required this.onTap,
-  });
+  const _BookCard({required this.book, required this.index, required this.coverColors, required this.coverIcons, required this.onTap});
 
   @override
   State<_BookCard> createState() => _BookCardState();
 }
 
-class _BookCardState extends State<_BookCard>
-    with SingleTickerProviderStateMixin {
+class _BookCardState extends State<_BookCard> {
   bool _pressed = false;
-  late AnimationController _shimCtrl;
 
-  // Deterministic "cover" palette per card
-  static const List<List<Color>> _palettes = [
-    [Color(0xFF667eea), Color(0xFF764ba2)],
-    [Color(0xFF10B981), Color(0xFF065F46)],
-    [Color(0xFFF97316), Color(0xFF9A3412)],
-    [Color(0xFFEC4899), Color(0xFF831843)],
-    [Color(0xFF06B6D4), Color(0xFF164E63)],
-    [Color(0xFF8B5CF6), Color(0xFF3B0764)],
-    [Color(0xFFEAB308), Color(0xFF713F12)],
-    [Color(0xFF14B8A6), Color(0xFF134E4A)],
-  ];
+  Color get _coverColor => widget.coverColors[widget.index % widget.coverColors.length];
+  IconData get _coverIcon => widget.coverIcons[widget.index % widget.coverIcons.length];
 
-  List<Color> get _palette =>
-      _palettes[widget.index % _palettes.length];
-
-  @override
-  void initState() {
-    super.initState();
-    _shimCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat();
-  }
-
-  @override
-  void dispose() {
-    _shimCtrl.dispose();
-    super.dispose();
-  }
-
+  String get _levelLabel => widget.book.levelLabel;
   Color get _levelColor {
     switch (widget.book.level) {
-      case 1: return const Color(0xFF10B981);
+      case 1: return AppColors.secondary;
       case 2: return const Color(0xFFF97316);
       case 3: return const Color(0xFFEF4444);
-      default: return AppColors.primaryA;
+      default: return AppColors.primary;
     }
+  }
+
+  bool get _isLightCover {
+    final r = _coverColor.red;
+    final g = _coverColor.green;
+    final b = _coverColor.blue;
+    final luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6;
   }
 
   @override
   Widget build(BuildContext context) {
+    final textOnCover = _isLightCover ? AppColors.onSurface : Colors.white;
+    final iconOnCover = _isLightCover ? AppColors.onSurface.withOpacity(0.3) : Colors.white.withOpacity(0.4);
+
     return GestureDetector(
       onTap: widget.onTap,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -487,240 +500,98 @@ class _BookCardState extends State<_BookCard>
       child: AnimatedScale(
         scale: _pressed ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 120),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1624),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-                color: _palette[0].withOpacity(0.2), width: 1),
-            boxShadow: [
-              BoxShadow(
-                  color: _palette[0].withOpacity(0.15),
-                  blurRadius: 20, spreadRadius: 1),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Book cover
-              Expanded(
-                flex: 5,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(17)),
-                    gradient: LinearGradient(
-                      colors: _palette,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cover area
+            Expanded(
+              flex: 4,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _coverColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Icon(_coverIcon, color: iconOnCover, size: 60),
                     ),
                   ),
-                  child: Stack(
-                    children: [
-                      // Decorative pattern
-                      Positioned.fill(child: _CoverPattern(seed: widget.index)),
-                      // Shimmer line
-                      AnimatedBuilder(
-                        animation: _shimCtrl,
-                        builder: (_, __) => Positioned(
-                          top: -40,
-                          left: -60 +
-                              _shimCtrl.value *
-                                  (MediaQuery.of(context).size.width + 120),
-                          child: Transform.rotate(
-                            angle: -0.5,
-                            child: Container(
-                              width: 30,
-                              height: 200,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.white.withOpacity(0),
-                                    Colors.white.withOpacity(0.08),
-                                    Colors.white.withOpacity(0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                  // Level badge
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _isLightCover ? Colors.black.withOpacity(0.1) : Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      // Book icon
-                      Center(
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          color: Colors.white.withOpacity(0.25),
-                          size: 44,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 5, height: 5, decoration: BoxDecoration(color: textOnCover, shape: BoxShape.circle)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _levelLabel,
+                            style: TextStyle(color: textOnCover, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                      // Level badge
-                      Positioned(
-                        top: 10, right: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.15)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6, height: 6,
-                                decoration: BoxDecoration(
-                                    color: _levelColor,
-                                    shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(widget.book.levelLabel,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Audio badge
-                      if (widget.book.audioUrl != null)
-                        Positioned(
-                          bottom: 10, right: 10,
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.15)),
-                            ),
-                            child: const Icon(Icons.headphones_rounded,
-                                color: Colors.white70, size: 12),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-              // Info section
-              Expanded(
-                flex: 3,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Category tag
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _palette[0].withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          widget.book.category.toUpperCase(),
-                          style: TextStyle(
-                              color: _palette[0],
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.book.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            height: 1.3),
-                      ),
-                      const Spacer(),
-                      Text(
-                        widget.book.author,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 10),
-                      ),
-                      if (widget.book.totalPages != null) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.auto_stories_rounded,
-                                color: Colors.grey[700], size: 10),
-                            const SizedBox(width: 3),
-                            Text('${widget.book.totalPages} pages',
-                                style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: 10)),
-                          ],
+            ),
+            // Info section
+            Padding(
+              padding: const EdgeInsets.only(top: 10, left: 2, right: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.onSurface,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      height: 1.25,
+                      fontFamily: 'Manrope',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.book.author,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+                  ),
+                  if (widget.book.totalPages != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_stories_rounded, color: AppColors.secondary, size: 12),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${widget.book.totalPages} pages',
+                          style: const TextStyle(color: AppColors.onSecondaryContainer, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Decorative cover pattern ────────────────────────────────────────────────
-
-class _CoverPattern extends StatelessWidget {
-  final int seed;
-  const _CoverPattern({required this.seed});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _PatternPainter(seed),
-    );
-  }
-}
-
-class _PatternPainter extends CustomPainter {
-  final int seed;
-  _PatternPainter(this.seed);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = math.Random(seed);
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    for (int i = 0; i < 6; i++) {
-      final r = 20.0 + rng.nextDouble() * 40;
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      canvas.drawCircle(Offset(x, y), r, paint);
-    }
-
-    for (int i = 0; i < 4; i++) {
-      final x1 = rng.nextDouble() * size.width;
-      final y1 = rng.nextDouble() * size.height;
-      final x2 = rng.nextDouble() * size.width;
-      final y2 = rng.nextDouble() * size.height;
-      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_PatternPainter old) => old.seed != seed;
-}
-
-// ── Level filter data ───────────────────────────────────────────────────────
+// ── Level filter data ─────────────────────────────────────────────────────────
 
 class _LevelFilter {
   final int level;
