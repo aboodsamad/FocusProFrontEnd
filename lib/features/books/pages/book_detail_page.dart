@@ -593,7 +593,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             ...List.generate(_snippets.length, (i) {
               final s = _snippets[i];
               final done = _completedChapters.contains(i);
-              final isNext = !done && i == _snippets.indexWhere((_, ) => !_completedChapters.contains(_snippets.indexOf(_)));
               final isCurrent = i == _currentIndex;
 
               return Padding(
