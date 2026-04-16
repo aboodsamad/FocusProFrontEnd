@@ -10,8 +10,6 @@ import '../../ai_flutter/widgets/snippet_check_sheet.dart';
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
-
-  /// If true, opens directly in the TTS audio player mode
   final bool audioMode;
 
   const BookDetailPage({Key? key, required this.book, this.audioMode = false}) : super(key: key);
@@ -36,8 +34,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   bool _ttsPlaying = false;
   double _ttsProgress = 0.0;
   double _ttsSpeed = 1.0;
-  final Set<int> _completedChapters = {}; // tracks actually-read chapters
-  DateTime? _speakStartTime; // used to animate progress bar
+  final Set<int> _completedChapters = {};
+  DateTime? _speakStartTime;
 
   // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _enterCtrl;
@@ -57,14 +55,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
-    _pulseAnim = Tween<double>(
-      begin: 0.92,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseAnim = Tween<double>(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _pageController = PageController();
     _initWaveBars();
-    // Use post-frame so _initTts (async) runs after first build
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _initTts();
     });
@@ -76,10 +70,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     for (int i = 0; i < _waveBarCount; i++) {
       final dur = Duration(milliseconds: 400 + rng.nextInt(600));
       final ctrl = AnimationController(vsync: this, duration: dur)..repeat(reverse: true);
-      final anim = Tween<double>(
-        begin: 0.15 + rng.nextDouble() * 0.25,
-        end: 0.55 + rng.nextDouble() * 0.45,
-      ).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
+      final anim = Tween<double>(begin: 0.15 + rng.nextDouble() * 0.25, end: 0.55 + rng.nextDouble() * 0.45).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
       _barCtrls.add(ctrl);
       _barAnims.add(anim);
     }
@@ -105,11 +96,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     _tts.setCompletionHandler(() async {
       if (!mounted) return;
-      // Mark this chapter as genuinely completed
       final completedIdx = _currentIndex;
       final snippetId = _snippets[completedIdx].id;
       final token = await AuthService.getToken() ?? '';
-      print('TOKEN BEING SENT: $token');
       final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
       if (passed) _completedChapters.add(completedIdx);
       setState(() {
@@ -117,7 +106,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         _ttsProgress = 1.0;
       });
       for (final c in _barCtrls) c.stop();
-      // Auto-advance without calling stop() — engine already finished
       if (_currentIndex < _snippets.length - 1) {
         final next = _currentIndex + 1;
         Future.delayed(const Duration(milliseconds: 600), () {
@@ -137,35 +125,24 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     });
 
     _tts.setCancelHandler(() {
-      if (mounted)
-        setState(() {
-          _ttsPlaying = false;
-        });
+      if (mounted) setState(() => _ttsPlaying = false);
       for (final c in _barCtrls) c.stop();
     });
 
     _tts.setPauseHandler(() {
-      if (mounted)
-        setState(() {
-          _ttsPlaying = false;
-        });
+      if (mounted) setState(() => _ttsPlaying = false);
       for (final c in _barCtrls) c.stop();
     });
 
     _tts.setContinueHandler(() {
-      if (mounted)
-        setState(() {
-          _ttsPlaying = true;
-        });
+      if (mounted) setState(() => _ttsPlaying = true);
       for (final c in _barCtrls) c.repeat(reverse: true);
     });
   }
 
-  // Timer-based progress: estimates position from elapsed time vs word count
   void _startProgressTimer() {
     final snippet = _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
     if (snippet == null) return;
-    // Estimate total duration: words / (speed * 2.5 words-per-second)
     final wordCount = snippet.snippetText.split(' ').length;
     final estimatedSeconds = wordCount / (_ttsSpeed * 2.5);
 
@@ -175,7 +152,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       final elapsed = DateTime.now().difference(_speakStartTime!).inMilliseconds / 1000;
       final progress = (elapsed / estimatedSeconds).clamp(0.0, 0.98);
       if (mounted) setState(() => _ttsProgress = progress);
-      return _ttsPlaying; // keep looping while playing
+      return _ttsPlaying;
     });
   }
 
@@ -189,7 +166,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     super.dispose();
   }
 
-  // ── Data loading ───────────────────────────────────────────────────────────
   Future<void> _loadSnippets() async {
     setState(() {
       _loading = true;
@@ -197,13 +173,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     });
     try {
       final snippets = await BookService.getSnippets(widget.book.id);
-
-      // No need for a second API call — isCompleted already comes with each snippet
       final completedIndices = <int>{};
       for (int i = 0; i < snippets.length; i++) {
         if (snippets[i].isCompleted) completedIndices.add(i);
       }
-
       setState(() {
         _snippets = snippets;
         _completedChapters
@@ -220,66 +193,38 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     }
   }
 
-  // ── TTS controls ───────────────────────────────────────────────────────────
   String get _currentText => _snippets.isNotEmpty ? _snippets[_currentIndex].snippetText : '';
 
-  // RULE: always stop first (fire-and-forget), wait, then speak.
-  // Never lock, never await speak() — on web it never resolves while playing.
   Future<void> _ttsPlay() async {
     if (_currentText.isEmpty || !mounted) return;
-    try {
-      _tts.stop();
-    } catch (_) {} // fire-and-forget stop
-    await Future.delayed(const Duration(milliseconds: 300)); // let browser settle
+    try { _tts.stop(); } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
-    if (mounted)
-      setState(() {
-        _ttsProgress = 0;
-      });
-    try {
-      _tts.speak(_currentText);
-    } catch (_) {} // fire-and-forget speak
+    if (mounted) setState(() => _ttsProgress = 0);
+    try { _tts.speak(_currentText); } catch (_) {}
   }
 
-  // Stop is always unconditional — never check _ttsPlaying first
   Future<void> _ttsStop() async {
-    if (mounted)
-      setState(() {
-        _ttsPlaying = false;
-        _ttsProgress = 0;
-      });
+    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; });
     for (final c in _barCtrls) c.stop();
-    try {
-      await _tts.stop();
-    } catch (_) {}
+    try { await _tts.stop(); } catch (_) {}
   }
 
   Future<void> _setSpeed(double speed) async {
     _ttsSpeed = speed;
     if (mounted) setState(() {});
-    try {
-      await _tts.setSpeechRate(speed);
-    } catch (_) {}
-    // If currently playing, restart at new speed
+    try { await _tts.setSpeechRate(speed); } catch (_) {}
     if (_ttsPlaying) await _ttsPlay();
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
   BookSnippetModel? get _current => _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
 
   Future<void> _goTo(int i, {bool autoPlay = false}) async {
     if (i < 0 || i >= _snippets.length || !mounted) return;
-    // Stop unconditionally — don't check _ttsPlaying, it may be stale
-    try {
-      _tts.stop();
-    } catch (_) {}
+    try { _tts.stop(); } catch (_) {}
     if (!mounted) return;
     _speakStartTime = null;
-    setState(() {
-      _ttsPlaying = false;
-      _ttsProgress = 0;
-      _currentIndex = i;
-    });
+    setState(() { _ttsPlaying = false; _ttsProgress = 0; _currentIndex = i; });
     for (final c in _barCtrls) c.stop();
     _pageController.animateToPage(i, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     if (autoPlay && _audioMode) {
@@ -306,13 +251,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _showCompletionSheet() {
-    try {
-      _tts.stop();
-    } catch (_) {}
-    if (mounted)
-      setState(() {
-        _ttsPlaying = false;
-      });
+    try { _tts.stop(); } catch (_) {}
+    if (mounted) setState(() => _ttsPlaying = false);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -320,39 +260,27 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     );
   }
 
-  // ── Palette helpers ────────────────────────────────────────────────────────
-  static const List<List<Color>> _palettes = [
-    [Color(0xFF667eea), Color(0xFF764ba2)],
-    [Color(0xFF10B981), Color(0xFF065F46)],
-    [Color(0xFFF97316), Color(0xFF9A3412)],
-    [Color(0xFFEC4899), Color(0xFF831843)],
-    [Color(0xFF06B6D4), Color(0xFF164E63)],
-    [Color(0xFF8B5CF6), Color(0xFF3B0764)],
-    [Color(0xFFEAB308), Color(0xFF713F12)],
-    [Color(0xFF14B8A6), Color(0xFF134E4A)],
+  // Cover colors per book
+  static const List<Color> _coverColors = [
+    Color(0xFF2A9D8F),
+    Color(0xFFF4A261),
+    Color(0xFF9B5DE5),
+    Color(0xFF2DC653),
+    Color(0xFFF15BB5),
+    Color(0xFFFEE440),
+    Color(0xFFE63946),
+    Color(0xFF0077B6),
   ];
-  List<Color> get _palette => _palettes[widget.book.id % _palettes.length];
 
-  Color get _levelColor {
-    switch (widget.book.level) {
-      case 1:
-        return const Color(0xFF10B981);
-      case 2:
-        return const Color(0xFFF97316);
-      case 3:
-        return const Color(0xFFEF4444);
-      default:
-        return AppColors.primaryA;
-    }
-  }
+  Color get _coverColor => _coverColors[widget.book.id % _coverColors.length];
 
-  // ── Root build ─────────────────────────────────────────────────────────────
+  // ── Root build ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (_audioMode && _snippets.isNotEmpty) return _buildAudioPlayer();
     if (_readingMode && _snippets.isNotEmpty) return _buildReaderMode();
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: _loading
             ? _buildLoader()
@@ -371,38 +299,33 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     );
   }
 
-  Widget _buildLoader() => const Center(child: CircularProgressIndicator(color: AppColors.primaryA, strokeWidth: 2.5));
+  Widget _buildLoader() => const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
 
   Widget _buildError() => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.error_outline_rounded, color: Colors.grey[600], size: 40),
+        Icon(Icons.error_outline_rounded, color: AppColors.outlineVariant, size: 40),
         const SizedBox(height: 12),
-        Text('Failed to load', style: TextStyle(color: Colors.grey[500])),
+        const Text('Failed to load', style: TextStyle(color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 16),
         GestureDetector(
           onTap: _loadSnippets,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text(
-              'Retry',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+            child: const Text('Retry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
     ),
   );
 
-  // ── Detail screen top bar ──────────────────────────────────────────────────
+  // ── Detail top bar ──────────────────────────────────────────────────────────
   Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
           GestureDetector(
@@ -411,303 +334,389 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: AppColors.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 16),
+              child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              widget.book.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('FocusPro', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Manrope')),
           ),
           if (_snippets.isNotEmpty) ...[
-            // 🎧 Audio
             GestureDetector(
-              onTap: () => setState(() {
-                _audioMode = true;
-                _readingMode = false;
-              }),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEC4899).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.3)),
-                ),
-                child: const Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 18),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // 📖 Read
-            GestureDetector(
-              onTap: () => setState(() {
-                _readingMode = true;
-                _audioMode = false;
-              }),
+              onTap: () => setState(() { _audioMode = true; _readingMode = false; }),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 12)],
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Read',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
+                    Icon(Icons.headphones_rounded, color: Colors.white, size: 15),
+                    SizedBox(width: 5),
+                    Text('Listen', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
             ),
           ],
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Detail content ─────────────────────────────────────────────────────────
+  // ── Detail content ──────────────────────────────────────────────────────────
   Widget _buildDetailContent() {
+    final completedCount = _completedChapters.length;
+    final totalCount = _snippets.length;
+    final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
+    final progressPercent = (progress * 100).toInt();
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCoverHero(),
-          const SizedBox(height: 24),
-          _buildMeta(),
-          const SizedBox(height: 20),
-          _buildDescription(),
+          // Hero: book cover + metadata
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Book Cover
+                Container(
+                  width: 120,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: _coverColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: _coverColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: Stack(
+                    children: [
+                      Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              widget.book.title,
+                              textAlign: TextAlign.center,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 20),
+                // Title & metadata
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.book.title,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          fontFamily: 'Manrope',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        widget.book.author,
+                        style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _MetaChip(label: widget.book.levelLabel, color: AppColors.secondary),
+                          _MetaChip(label: widget.book.category, color: AppColors.primary),
+                          if (widget.book.totalPages != null)
+                            _MetaChip(label: '${widget.book.totalPages} pages', color: const Color(0xFF0077B6)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Progress section
           if (_snippets.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildProgressSection(),
-            const SizedBox(height: 24),
-            _buildSnippetList(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCoverHero() {
-    return Center(
-      child: Container(
-        width: 140,
-        height: 200,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(colors: _palette, begin: Alignment.topLeft, end: Alignment.bottomRight),
-          boxShadow: [BoxShadow(color: _palette[0].withOpacity(0.5), blurRadius: 40, offset: const Offset(0, 16))],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(child: CustomPaint(painter: _CoverPainter(widget.book.id))),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.menu_book_rounded, color: Colors.white54, size: 48),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      widget.book.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        height: 1.3,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'CURRENT PROGRESS',
+                                style: TextStyle(
+                                  color: AppColors.onSurfaceVariant,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$progressPercent% Completed',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Manrope',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_snippets.isNotEmpty)
+                          GestureDetector(
+                            onTap: () => setState(() { _readingMode = true; _audioMode = false; }),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryFixedDim,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.quiz_rounded, color: AppColors.onPrimaryFixedVariant, size: 14),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Test Your Retention',
+                                    style: TextStyle(color: AppColors.onPrimaryFixedVariant, fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: AppColors.surfaceContainerHigh,
+                        valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMeta() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.book.title,
-          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
-        ),
-        const SizedBox(height: 6),
-        Text('by ${widget.book.author}', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _MetaChip(icon: Icons.signal_cellular_alt_rounded, label: widget.book.levelLabel, color: _levelColor),
-            _MetaChip(icon: Icons.category_rounded, label: widget.book.category, color: AppColors.primaryA),
-            if (widget.book.totalPages != null)
-              _MetaChip(
-                icon: Icons.auto_stories_rounded,
-                label: '${widget.book.totalPages} pages',
-                color: const Color(0xFF06B6D4),
-              ),
-            if (_snippets.isNotEmpty)
-              _MetaChip(
-                icon: Icons.layers_rounded,
-                label: '${_snippets.length} chapters',
-                color: const Color(0xFF10B981),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescription() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'About this book',
-          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1624),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          // About
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'About this book',
+                  style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(widget.book.description, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.6)),
+                ),
+              ],
+            ),
           ),
-          child: Text(widget.book.description, style: TextStyle(color: Colors.grey[300], fontSize: 13, height: 1.6)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [AppColors.primaryB.withOpacity(0.3), AppColors.primaryA.withOpacity(0.12)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryA.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
+          // Chapter Roadmap
+          if (_snippets.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.track_changes_rounded, color: AppColors.primaryA, size: 16),
-                  SizedBox(width: 8),
+                  const Text(
+                    'Chapter Roadmap',
+                    style: TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                  ),
                   Text(
-                    'Your progress',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    '${totalCount - completedCount} Remaining',
+                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
-              Text(
-                '${_completedChapters.length} / ${_snippets.length} chapters',
-                style: TextStyle(color: Colors.grey[500], fontSize: 11),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: _completedChapters.length / math.max(_snippets.length, 1),
-              minHeight: 6,
-              backgroundColor: Colors.white.withOpacity(0.07),
-              valueColor: const AlwaysStoppedAnimation(AppColors.primaryA),
             ),
-          ),
+            const SizedBox(height: 16),
+            ...List.generate(_snippets.length, (i) {
+              final s = _snippets[i];
+              final done = _completedChapters.contains(i);
+              final isNext = !done && i == _snippets.indexWhere((_, ) => !_completedChapters.contains(_snippets.indexOf(_)));
+              final isCurrent = i == _currentIndex;
+
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                child: GestureDetector(
+                  onTap: () => setState(() { _currentIndex = i; _readingMode = true; }),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isCurrent && !done ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border(
+                        left: BorderSide(
+                          color: done ? AppColors.secondary : isCurrent ? AppColors.onTertiaryContainer : Colors.transparent,
+                          width: 4,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: done
+                                ? AppColors.secondaryContainer
+                                : isCurrent
+                                ? AppColors.onPrimaryContainer.withOpacity(0.2)
+                                : AppColors.surfaceContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            done
+                                ? Icons.check_circle_rounded
+                                : isCurrent
+                                ? Icons.play_circle_rounded
+                                : Icons.lock_rounded,
+                            color: done
+                                ? AppColors.onSecondaryContainer
+                                : isCurrent
+                                ? Colors.white
+                                : AppColors.onSurfaceVariant,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.snippetTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isCurrent && !done ? Colors.white : done ? AppColors.primary : AppColors.onSurface.withOpacity(done ? 0.6 : 1),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Manrope',
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                done ? 'Completed' : isCurrent ? 'Next up' : 'Locked',
+                                style: TextStyle(
+                                  color: isCurrent && !done ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          isCurrent && !done ? Icons.auto_awesome_rounded : Icons.chevron_right_rounded,
+                          color: isCurrent && !done ? Colors.white : AppColors.outlineVariant.withOpacity(0.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildSnippetList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Chapters',
-          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        ...List.generate(_snippets.length, (i) {
-          final s = _snippets[i];
-          return _SnippetListTile(
-            snippet: s,
-            index: i,
-            isRead: _completedChapters.contains(i),
-            isCurrent: i == _currentIndex,
-            onTap: () => setState(() {
-              _currentIndex = i;
-              _readingMode = true;
-            }),
-            onAudioTap: () => setState(() {
-              _currentIndex = i;
-              _audioMode = true;
-              _readingMode = false;
-            }),
-          );
-        }),
-      ],
-    );
-  }
-
   // ══════════════════════════════════════════════════════════════════════════
-  //  AUDIO PLAYER SCREEN
+  //  AUDIO PLAYER SCREEN  (TTS Audio Player design)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildAudioPlayer() {
+    const bgColor = Color(0xFF171717); // neutral-900
     return Scaffold(
-      backgroundColor: const Color(0xFF060A14),
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
-            _buildAudioTopBar(),
+            _buildAudioTopBar(bgColor),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 32),
-                    _buildAudioCoverArt(),
-                    const SizedBox(height: 28),
-                    _buildAudioTitleInfo(),
-                    const SizedBox(height: 32),
-                    _buildWaveform(),
-                    const SizedBox(height: 20),
-                    _buildTtsProgressBar(),
-                    const SizedBox(height: 28),
-                    _buildSpeedSelector(),
-                    const SizedBox(height: 28),
-                    _buildAudioMainControls(),
-                    const SizedBox(height: 32),
-                    _buildAudioChapterList(),
-                    const SizedBox(height: 40),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildAudioCoverArt(),
+                      const SizedBox(height: 24),
+                      _buildAudioTitleInfo(),
+                      const SizedBox(height: 28),
+                      _buildTtsProgressBar(),
+                      const SizedBox(height: 24),
+                      _buildSpeedSelector(),
+                      const SizedBox(height: 28),
+                      _buildAudioMainControls(),
+                      const SizedBox(height: 32),
+                      _buildAudioChapterList(),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -717,65 +726,60 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     );
   }
 
-  Widget _buildAudioTopBar() {
+  Widget _buildAudioTopBar(Color bgColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Row(
         children: [
-          // Collapse
           GestureDetector(
             onTap: () async {
               await _ttsStop();
-              if (mounted)
-                setState(() {
-                  _audioMode = false;
-                });
+              if (mounted) setState(() => _audioMode = false);
             },
             child: Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white60, size: 22),
+              child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF9CA3AF), size: 20),
             ),
           ),
-          const Spacer(),
-          Column(
-            children: [
-              const Text(
-                'NOW LISTENING',
-                style: TextStyle(color: Color(0xFFEC4899), fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 11),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  'NOW LISTENING',
+                  style: TextStyle(
+                    color: AppColors.secondaryFixed.withOpacity(0.7),
+                    fontSize: 9,
+                    letterSpacing: 2.5,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Manrope',
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Chapter ${_currentIndex + 1} of ${_snippets.length}',
+                  style: const TextStyle(color: Color(0xFFD1D5DB), fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
-          // Switch to text reader
           GestureDetector(
             onTap: () async {
               await _ttsStop();
-              if (mounted)
-                setState(() {
-                  _audioMode = false;
-                  _readingMode = true;
-                });
+              if (mounted) setState(() { _audioMode = false; _readingMode = true; });
             },
             child: Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.menu_book_rounded, color: Colors.white60, size: 17),
+              child: const Icon(Icons.menu_book_rounded, color: Color(0xFF9CA3AF), size: 18),
             ),
           ),
         ],
@@ -789,25 +793,36 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       builder: (_, __) => Transform.scale(
         scale: _ttsPlaying ? _pulseAnim.value : 1.0,
         child: Container(
-          width: 210,
-          height: 210,
+          width: 240,
+          height: 240,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [_palette[0].withOpacity(0.9), _palette[1].withOpacity(0.7)]),
+            gradient: LinearGradient(
+              colors: [AppColors.secondary.withOpacity(0.4), Colors.transparent],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
             boxShadow: [
               BoxShadow(
-                color: _palette[0].withOpacity(_ttsPlaying ? 0.55 : 0.22),
-                blurRadius: _ttsPlaying ? 70 : 30,
-                spreadRadius: _ttsPlaying ? 14 : 4,
+                color: AppColors.secondaryFixed.withOpacity(_ttsPlaying ? 0.2 : 0.08),
+                blurRadius: _ttsPlaying ? 80 : 40,
+                spreadRadius: _ttsPlaying ? 10 : 2,
               ),
             ],
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(painter: _CoverPainter(widget.book.id), size: const Size(210, 210)),
-              const Icon(Icons.menu_book_rounded, color: Colors.white54, size: 68),
-            ],
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _coverColor,
+              border: Border.all(color: const Color(0xFF171717), width: 4),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.3), size: 72),
+              ],
+            ),
           ),
         ),
       ),
@@ -815,106 +830,69 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildAudioTitleInfo() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        children: [
-          Text(
-            _snippets.isNotEmpty ? _snippets[_currentIndex].snippetTitle : widget.book.title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.3),
-          ),
-          const SizedBox(height: 8),
-          Text(widget.book.author, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWaveform() {
-    return SizedBox(
-      height: 52,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(_waveBarCount, (i) {
-          return AnimatedBuilder(
-            animation: _barAnims[i],
-            builder: (_, __) {
-              final h = _ttsPlaying ? 8 + _barAnims[i].value * 44 : 6.0;
-              final center = (i - _waveBarCount ~/ 2).abs() < _waveBarCount ~/ 5;
-              return Container(
-                width: 3,
-                height: h,
-                margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  gradient: LinearGradient(
-                    colors: _ttsPlaying
-                        ? [_palette[0], _palette[1]]
-                        : [Colors.white.withOpacity(center ? 0.15 : 0.07), Colors.white.withOpacity(0.04)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              );
-            },
-          );
-        }),
-      ),
+    return Column(
+      children: [
+        Text(
+          _snippets.isNotEmpty ? _snippets[_currentIndex].snippetTitle : widget.book.title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.3, fontFamily: 'Manrope'),
+        ),
+        const SizedBox(height: 8),
+        Text(widget.book.author, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 15, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 
   Widget _buildTtsProgressBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: _ttsProgress,
-              minHeight: 3,
-              backgroundColor: Colors.white.withOpacity(0.07),
-              valueColor: AlwaysStoppedAnimation(_palette[0]),
-            ),
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: _ttsProgress,
+            minHeight: 6,
+            backgroundColor: const Color(0xFF374151),
+            valueColor: const AlwaysStoppedAnimation(AppColors.secondaryFixed),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Chapter ${_currentIndex + 1}', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-              Text('${(_ttsProgress * 100).toInt()}%', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-            ],
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('${(_ttsProgress * 12).toStringAsFixed(0)}:00', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+            Text('12:00', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildSpeedSelector() {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
       children: speeds.map((s) {
         final selected = (_ttsSpeed - s).abs() < 0.01;
         return GestureDetector(
           onTap: () => _setSpeed(s),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: selected ? _palette[0].withOpacity(0.2) : Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: selected ? _palette[0].withOpacity(0.6) : Colors.white.withOpacity(0.06)),
+              color: selected ? AppColors.secondaryFixed : const Color(0xFF1F2937),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: selected
+                  ? [BoxShadow(color: AppColors.secondaryFixed.withOpacity(0.2), blurRadius: 12)]
+                  : [],
             ),
             child: Text(
               s == s.roundToDouble() ? '${s.toInt()}x' : '${s}x',
               style: TextStyle(
-                color: selected ? _palette[0] : Colors.grey[600],
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
+                color: selected ? AppColors.primary : const Color(0xFF9CA3AF),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -924,57 +902,58 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildAudioMainControls() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Previous
-          _AudioBtn(
-            icon: Icons.skip_previous_rounded,
-            size: 28,
-            color: _currentIndex > 0 ? Colors.white70 : Colors.white24,
-            onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1, autoPlay: _ttsPlaying) : null,
-          ),
-          // Replay
-          _AudioBtn(icon: Icons.replay_rounded, size: 24, color: Colors.white60, onTap: () => _ttsPlay()),
-          // Play / Pause — big center button
-          GestureDetector(
-            onTap: _ttsPlaying ? _ttsStop : _ttsPlay,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: _palette),
-                boxShadow: [
-                  BoxShadow(
-                    color: _palette[0].withOpacity(_ttsPlaying ? 0.55 : 0.3),
-                    blurRadius: _ttsPlaying ? 30 : 16,
-                    spreadRadius: _ttsPlaying ? 4 : 1,
-                  ),
-                ],
-              ),
-              child: Icon(_ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 36),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _AudioBtn(
+          icon: Icons.skip_previous_rounded,
+          size: 28,
+          color: _currentIndex > 0 ? const Color(0xFF9CA3AF) : const Color(0xFF374151),
+          onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1, autoPlay: _ttsPlaying) : null,
+        ),
+        _AudioBtn(
+          icon: Icons.replay_10_rounded,
+          size: 26,
+          color: const Color(0xFF9CA3AF),
+          onTap: () => _ttsPlay(),
+        ),
+        GestureDetector(
+          onTap: _ttsPlaying ? _ttsStop : _ttsPlay,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.secondaryFixed,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.secondaryFixed.withOpacity(_ttsPlaying ? 0.3 : 0.15),
+                  blurRadius: _ttsPlaying ? 30 : 16,
+                  spreadRadius: _ttsPlaying ? 4 : 1,
+                ),
+              ],
+            ),
+            child: Icon(
+              _ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: AppColors.primary,
+              size: 44,
             ),
           ),
-          // Stop
-          _AudioBtn(
-            icon: Icons.stop_rounded,
-            size: 24,
-            color: _ttsPlaying ? Colors.white60 : Colors.white24,
-            onTap: _ttsPlaying ? _ttsStop : null,
-          ),
-          // Next
-          _AudioBtn(
-            icon: Icons.skip_next_rounded,
-            size: 28,
-            color: _currentIndex < _snippets.length - 1 ? Colors.white70 : Colors.white24,
-            onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1, autoPlay: _ttsPlaying) : null,
-          ),
-        ],
-      ),
+        ),
+        _AudioBtn(
+          icon: Icons.forward_10_rounded,
+          size: 26,
+          color: const Color(0xFF9CA3AF),
+          onTap: () {},
+        ),
+        _AudioBtn(
+          icon: Icons.skip_next_rounded,
+          size: 28,
+          color: _currentIndex < _snippets.length - 1 ? const Color(0xFF9CA3AF) : const Color(0xFF374151),
+          onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1, autoPlay: _ttsPlaying) : null,
+        ),
+      ],
     );
   }
 
@@ -982,20 +961,17 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              const Text(
-                'Chapters',
-                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              Text('${_snippets.length} total', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-            ],
-          ),
+        Row(
+          children: [
+            const Text('Chapters', style: TextStyle(color: Color(0xFFE5E7EB), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Manrope')),
+            const Spacer(),
+            Text(
+              '${_completedChapters.length} OF ${_snippets.length} COMPLETED',
+              style: TextStyle(color: AppColors.secondaryFixed.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         ...List.generate(_snippets.length, (i) {
           final s = _snippets[i];
           final active = i == _currentIndex;
@@ -1004,55 +980,60 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             onTap: () => _goTo(i, autoPlay: _ttsPlaying),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: active ? _palette[0].withOpacity(0.12) : Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: active ? _palette[0].withOpacity(0.4) : Colors.white.withOpacity(0.04)),
+                color: active ? AppColors.primaryContainer.withOpacity(0.3) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: active ? AppColors.secondaryFixed.withOpacity(0.15) : Colors.transparent,
+                ),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: done
-                          ? const Color(0xFF10B981).withOpacity(0.15)
+                          ? AppColors.secondaryFixed.withOpacity(0.2)
                           : active
-                          ? _palette[0].withOpacity(0.2)
-                          : Colors.white.withOpacity(0.03),
+                          ? AppColors.secondaryFixed.withOpacity(0.1)
+                          : const Color(0xFF1F2937),
                     ),
-                    child: Icon(
-                      done
-                          ? Icons.check_rounded
-                          : active
-                          ? Icons.graphic_eq_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      size: 14,
-                      color: done
-                          ? const Color(0xFF10B981)
-                          : active
-                          ? _palette[0]
-                          : Colors.grey[700],
-                    ),
+                    child: done
+                        ? const Icon(Icons.check_circle_rounded, color: AppColors.secondaryFixed, size: 18)
+                        : active
+                        ? const Icon(Icons.equalizer_rounded, color: AppColors.secondaryFixed, size: 18)
+                        : Center(child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold))),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: Text(
-                      s.snippetTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: active ? Colors.white : Colors.grey[500],
-                        fontSize: 13,
-                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.snippetTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: active ? Colors.white : const Color(0xFFD1D5DB),
+                            fontSize: 13,
+                            fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                        if (s.durationSeconds != null)
+                          Text('${s.durationLabel}', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11)),
+                      ],
                     ),
                   ),
-                  if (s.durationSeconds != null)
-                    Text(s.durationLabel, style: TextStyle(color: Colors.grey[700], fontSize: 10)),
+                  Icon(
+                    Icons.play_circle_rounded,
+                    color: active ? AppColors.secondaryFixed : const Color(0xFF374151),
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -1063,16 +1044,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  TEXT READER SCREEN
+  //  TEXT READER SCREEN  (Book Text Reader design)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildReaderMode() {
     return Scaffold(
-      backgroundColor: const Color(0xFF060A14),
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Column(
           children: [
             _buildReaderTopBar(),
-            _buildReaderProgress(),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -1089,78 +1069,53 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildReaderTopBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      color: AppColors.primary.withOpacity(0.8),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => setState(() => _readingMode = false),
             child: Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.close_rounded, color: Colors.white60, size: 18),
+              child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
             ),
           ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.book.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                const Text(
+                  'Now Reading',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
                 ),
                 Text(
                   'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 11),
+                  style: TextStyle(color: AppColors.onPrimaryContainer.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5),
                 ),
               ],
             ),
           ),
-          // Switch to audio
           GestureDetector(
-            onTap: () => setState(() {
-              _readingMode = false;
-              _audioMode = true;
-            }),
+            onTap: () => setState(() { _readingMode = false; _audioMode = true; }),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEC4899).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.3)),
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 14),
+                  Icon(Icons.headphones_rounded, color: Colors.white, size: 14),
                   SizedBox(width: 5),
-                  Text(
-                    'Listen',
-                    style: TextStyle(color: Color(0xFFEC4899), fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
+                  Text('Listen', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryA.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
-            ),
-            child: Text(
-              _current?.pageNumber != null ? 'p.${_current!.pageNumber}' : '${_currentIndex + 1}/${_snippets.length}',
-              style: const TextStyle(color: AppColors.primaryA, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -1168,79 +1123,33 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     );
   }
 
-  Widget _buildReaderProgress() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Row(
-        children: List.generate(_snippets.length, (i) {
-          final done = _completedChapters.contains(i);
-          final active = i == _currentIndex;
-          return Expanded(
-            child: Container(
-              height: 3,
-              margin: EdgeInsets.only(right: i < _snippets.length - 1 ? 2 : 0),
-              decoration: BoxDecoration(
-                color: done
-                    ? AppColors.primaryA
-                    : active
-                    ? AppColors.primaryA.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
   Widget _buildReaderControls() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Row(
+    return Container(
+      color: AppColors.primary,
+      child: Column(
         children: [
-          GestureDetector(
-            onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1) : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _currentIndex > 0 ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.02),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(_currentIndex > 0 ? 0.1 : 0.04)),
-              ),
-              child: Icon(
-                Icons.arrow_back_rounded,
-                color: _currentIndex > 0 ? Colors.white60 : Colors.white12,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+          // "Done & Next" button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             child: GestureDetector(
               onTap: _markAndNext,
               child: Container(
-                height: 52,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 16, spreadRadius: 1)],
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 30, spreadRadius: -5)],
                 ),
                 child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        _currentIndex < _snippets.length - 1 ? Icons.check_rounded : Icons.emoji_events_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
                       Text(
                         _currentIndex < _snippets.length - 1 ? 'Done & Next' : 'Complete Book',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Manrope'),
                       ),
                     ],
                   ),
@@ -1248,25 +1157,19 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1) : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _currentIndex < _snippets.length - 1
-                    ? Colors.white.withOpacity(0.06)
-                    : Colors.white.withOpacity(0.02),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(_currentIndex < _snippets.length - 1 ? 0.1 : 0.04)),
-              ),
-              child: Icon(
-                Icons.arrow_forward_rounded,
-                color: _currentIndex < _snippets.length - 1 ? Colors.white60 : Colors.white12,
-                size: 20,
-              ),
+          // Bottom nav bar
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08)))),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavBtn(icon: Icons.menu_book_rounded, label: 'Chapter', active: true, onTap: () {}),
+                _NavBtn(icon: Icons.format_size_rounded, label: 'Text Size', active: false, onTap: () {}),
+                _NavBtn(icon: Icons.bookmark_rounded, label: 'Bookmark', active: false, onTap: () {}),
+                _NavBtn(icon: Icons.settings_rounded, label: 'Settings', active: false, onTap: () {}),
+              ],
             ),
           ),
         ],
@@ -1276,25 +1179,23 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// _ReaderPage  — single snippet rendered as a book page
+// _ReaderPage — single snippet page (dark green background)
 // ═════════════════════════════════════════════════════════════════════════════
 class _ReaderPage extends StatelessWidget {
   final BookSnippetModel snippet;
   const _ReaderPage({required this.snippet});
 
-  List<String> get _paragraphs =>
-      snippet.snippetText.split(RegExp(r'\n+')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+  List<String> get _paragraphs => snippet.snippetText.split(RegExp(r'\n+')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth = MediaQuery.of(context).size.width > 680 ? 640.0 : double.infinity;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
+          constraints: const BoxConstraints(maxWidth: 640),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(32, 32, 32, 48),
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 48),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1302,74 +1203,59 @@ class _ReaderPage extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        '— ${snippet.sequenceOrder != null ? 'Chapter ${snippet.sequenceOrder}' : '§'} —',
+                        'Deep Work',
                         style: TextStyle(
-                          color: AppColors.primaryA.withOpacity(0.6),
+                          color: AppColors.tertiaryFixedDim,
                           fontSize: 11,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 3,
-                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Manrope',
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Text(
                         snippet.snippetTitle,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
-                          letterSpacing: -0.3,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          fontFamily: 'Manrope',
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(width: 40, height: 1, color: AppColors.primaryA.withOpacity(0.3)),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 10),
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryA.withOpacity(0.5),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          Container(width: 40, height: 1, color: AppColors.primaryA.withOpacity(0.3)),
-                        ],
-                      ),
+                      const SizedBox(height: 24),
+                      Container(width: 48, height: 4, decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(2))),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
                 ..._paragraphs.asMap().entries.map(
                   (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.only(bottom: 24),
                     child: Text(
-                      e.key == 0 ? e.value : '    ${e.value}',
-                      textAlign: TextAlign.justify,
+                      e.value,
+                      textAlign: TextAlign.left,
                       style: const TextStyle(
-                        color: Color(0xFFCDD5E0),
+                        color: AppColors.onPrimaryContainer,
                         fontSize: 17,
-                        height: 1.95,
-                        letterSpacing: 0.15,
-                        fontWeight: FontWeight.w400,
+                        height: 1.85,
+                        letterSpacing: 0.1,
+                        fontWeight: FontWeight.w300,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
                 Center(
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 24, height: 1, color: Colors.white.withOpacity(0.08)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Icon(Icons.auto_awesome, color: AppColors.primaryA.withOpacity(0.3), size: 12),
-                      ),
-                      Container(width: 24, height: 1, color: Colors.white.withOpacity(0.08)),
+                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.5), shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.2), shape: BoxShape.circle)),
                     ],
                   ),
                 ),
@@ -1392,127 +1278,38 @@ class _AudioBtn extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
   const _AudioBtn({required this.icon, required this.size, required this.color, required this.onTap});
+
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withOpacity(onTap != null ? 0.05 : 0.02),
-        border: Border.all(color: Colors.white.withOpacity(onTap != null ? 0.08 : 0.03)),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(onTap != null ? 0.05 : 0.02)),
       child: Icon(icon, color: color, size: size),
     ),
   );
 }
 
-class _SnippetListTile extends StatelessWidget {
-  final BookSnippetModel snippet;
-  final int index;
-  final bool isRead, isCurrent;
-  final VoidCallback onTap, onAudioTap;
-  const _SnippetListTile({
-    required this.snippet,
-    required this.index,
-    required this.isRead,
-    required this.isCurrent,
-    required this.onTap,
-    required this.onAudioTap,
-  });
+class _NavBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _NavBtn({required this.icon, required this.label, required this.active, required this.onTap});
+
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isCurrent ? AppColors.primaryA.withOpacity(0.08) : const Color(0xFF0F1624),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isCurrent
-              ? AppColors.primaryA.withOpacity(0.35)
-              : isRead
-              ? const Color(0xFF10B981).withOpacity(0.2)
-              : Colors.white.withOpacity(0.05),
-        ),
-      ),
-      child: Row(
+      padding: const EdgeInsets.all(10),
+      decoration: active
+          ? BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(12))
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isRead
-                  ? const Color(0xFF10B981).withOpacity(0.15)
-                  : isCurrent
-                  ? AppColors.primaryA.withOpacity(0.15)
-                  : Colors.white.withOpacity(0.04),
-              border: Border.all(
-                color: isRead
-                    ? const Color(0xFF10B981).withOpacity(0.4)
-                    : isCurrent
-                    ? AppColors.primaryA.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.08),
-              ),
-            ),
-            child: Icon(
-              isRead
-                  ? Icons.check_rounded
-                  : isCurrent
-                  ? Icons.play_arrow_rounded
-                  : Icons.circle_outlined,
-              color: isRead
-                  ? const Color(0xFF10B981)
-                  : isCurrent
-                  ? AppColors.primaryA
-                  : Colors.grey[700],
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  snippet.snippetTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isRead
-                        ? Colors.grey[600]
-                        : isCurrent
-                        ? Colors.white
-                        : Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (snippet.durationSeconds != null) ...[
-                  const SizedBox(height: 2),
-                  Text('${snippet.durationLabel} read', style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-                ],
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onAudioTap,
-            child: Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEC4899).withOpacity(0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.25)),
-              ),
-              child: const Icon(Icons.headphones_rounded, color: Color(0xFFEC4899), size: 14),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey[700], size: 18),
+          Icon(icon, color: active ? Colors.white : AppColors.onPrimaryContainer, size: 22),
         ],
       ),
     ),
@@ -1520,10 +1317,10 @@ class _SnippetListTile extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  final IconData icon;
   final String label;
   final Color color;
-  const _MetaChip({required this.icon, required this.label, required this.color});
+  const _MetaChip({required this.label, required this.color});
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1532,101 +1329,51 @@ class _MetaChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: color.withOpacity(0.25)),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 12),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
   );
 }
 
 class _CompletionSheet extends StatelessWidget {
   final BookModel book;
   const _CompletionSheet({required this.book});
+
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
-      color: const Color(0xFF0F1624),
+      color: AppColors.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: AppColors.primaryA.withOpacity(0.3)),
-      boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.2), blurRadius: 40, spreadRadius: 4)],
+      border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 40, spreadRadius: 4)],
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: AppColors.primaryA.withOpacity(0.4), blurRadius: 20)],
-          ),
+          decoration: const BoxDecoration(color: AppColors.primaryContainer, shape: BoxShape.circle),
           child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 32),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Book Completed! 🎉',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        const Text('Book Completed!', style: TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Manrope')),
         const SizedBox(height: 8),
         Text(
           'You finished "${book.title}". Great job keeping your focus!',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+          style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5),
         ),
         const SizedBox(height: 20),
         GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.pop(context);
-          },
+          onTap: () { Navigator.pop(context); Navigator.pop(context); },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Center(
-              child: Text(
-                'Back to Library',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
+            child: const Center(child: Text('Back to Library', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15))),
           ),
         ),
       ],
     ),
   );
-}
-
-class _CoverPainter extends CustomPainter {
-  final int seed;
-  _CoverPainter(this.seed);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = math.Random(seed);
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.07)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    for (int i = 0; i < 5; i++) {
-      canvas.drawCircle(
-        Offset(rng.nextDouble() * size.width, rng.nextDouble() * size.height),
-        20 + rng.nextDouble() * 50,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_CoverPainter old) => old.seed != seed;
 }
