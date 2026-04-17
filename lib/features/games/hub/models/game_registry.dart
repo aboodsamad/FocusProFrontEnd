@@ -36,7 +36,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFF7B6FFF,
       icon:       Icons.grid_on_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/FloorGoban.JPG/500px-FloorGoban.JPG',
+      imageUrl:   'assets/images/games/memory_matrix.png',
     ),
     GameItem(
       id:         'sudoku',
@@ -48,7 +48,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFF6366F1,
       icon:       Icons.apps_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Sudoku_Puzzle_by_L2G-20050714_standardized_layout.svg/500px-Sudoku_Puzzle_by_L2G-20050714_standardized_layout.svg.png',
+      imageUrl:   'assets/images/games/sudoku.png',
     ),
     GameItem(
       id:         'speed_match',
@@ -60,7 +60,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFFF59E0B,
       icon:       Icons.bolt_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/AcetoFive.JPG/500px-AcetoFive.JPG',
+      imageUrl:   'assets/images/games/speed_match.png',
     ),
     GameItem(
       id:         'color_match',
@@ -72,7 +72,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFF10B981,
       icon:       Icons.palette_outlined,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Stroop_stimuli_example.png/500px-Stroop_stimuli_example.png',
+      imageUrl:   'assets/images/games/color_match.png',
     ),
     GameItem(
       id:         'number_stream',
@@ -84,7 +84,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFFEC4899,
       icon:       Icons.functions_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Arithmetic_operations.svg/500px-Arithmetic_operations.svg.png',
+      imageUrl:   'assets/images/games/number_stream.png',
     ),
     GameItem(
       id:         'pattern_trail',
@@ -96,7 +96,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFF378ADD,
       icon:       Icons.timeline_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Corsiblock.png/500px-Corsiblock.png',
+      imageUrl:   'assets/images/games/pattern_trail.png',
     ),
     GameItem(
       id:         'train_of_thought',
@@ -108,7 +108,7 @@ class GameRegistry {
       status:     GameStatus.available,
       colorValue: 0xFF5B8FFF,
       icon:       Icons.train_rounded,
-      imageUrl:   'https://upload.wikimedia.org/wikipedia/commons/d/da/Railway_turnout_-_Oulu_Finland.jpg',
+      imageUrl:   'assets/images/games/train_of_thought.png',
     ),
   ];
 
