@@ -409,26 +409,44 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [BoxShadow(color: _coverColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
-                  child: Stack(
-                    children: [
-                      Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                  child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            widget.book.bookPagesUrl!,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 180,
+                            errorBuilder: (_, __, ___) => Stack(
+                              children: [
+                                Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
+                                Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(widget.book.title, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Stack(
                           children: [
-                            Text(
-                              widget.book.title,
-                              textAlign: TextAlign.center,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3),
+                            Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(widget.book.title, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(width: 20),
                 // Title & metadata

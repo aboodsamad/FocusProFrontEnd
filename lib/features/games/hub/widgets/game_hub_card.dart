@@ -396,21 +396,27 @@ class _GameHubCardState extends State<GameHubCard> {
   Widget _buildBanner(GameItem game, bool available) {
     return Stack(
       children: [
-        // Banner background using game color
-        Container(
+        // Banner background using game color or real image
+        SizedBox(
           height: 120,
-          color:  available
-              ? _gameColor.withOpacity(0.15)
-              : AppColors.surfaceContainerLow,
-          child: Center(
-            child: Icon(
-              game.icon,
-              size:  52,
-              color: available
-                  ? _gameColor.withOpacity(0.45)
-                  : AppColors.outlineVariant,
-            ),
-          ),
+          width: double.infinity,
+          child: game.imageUrl != null && game.imageUrl!.isNotEmpty && available
+              ? Image.network(
+                  game.imageUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 120,
+                  color: _gameColor.withOpacity(0.25),
+                  colorBlendMode: BlendMode.srcATop,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: _gameColor.withOpacity(0.15),
+                    child: Center(child: Icon(game.icon, size: 52, color: _gameColor.withOpacity(0.45))),
+                  ),
+                )
+              : Container(
+                  color: available ? _gameColor.withOpacity(0.15) : AppColors.surfaceContainerLow,
+                  child: Center(child: Icon(game.icon, size: 52, color: available ? _gameColor.withOpacity(0.45) : AppColors.outlineVariant)),
+                ),
         ),
         // Category badge (top-right overlay)
         Positioned(
