@@ -1,177 +1,93 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import 'browser_notification.dart';
 
-/// Handles Firebase Cloud Messaging registration, permission, and foreground display.
-/// Background messages are handled by the top-level [firebaseBackgroundHandler].
+/// Smart notification service for FocusPro.
+///
+/// Strategy:
+/// - Web: polls GET /notifications/pending every 60 s and shows browser notifications.
+/// - Mobile (future): Firebase FCM handles delivery when Firebase is configured.
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
-
+  static Timer? _pollTimer;
   static bool _initialized = false;
 
-  /// Call once after Firebase.initializeApp() in main().
+  /// Call once after the user logs in (or on app start if already logged in).
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
 
-    // ── Local notifications setup (needed for foreground display on Android) ──
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwinSettings = DarwinInitializationSettings();
-    await _localNotifications.initialize(
-      const InitializationSettings(
-        android: androidSettings,
-        iOS: darwinSettings,
-      ),
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
+    // Ask the browser for notification permission
+    await BrowserNotification.requestPermission();
 
-    // ── Create notification channel (Android 8+) ─────────────────────────────
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(const AndroidNotificationChannel(
-          'focuspro_goals',
-          'Goal Reminders',
-          description: 'Smart notifications for your daily goals',
-          importance: Importance.high,
-        ));
-
-    // ── Request permission ────────────────────────────────────────────────────
-    final messaging = FirebaseMessaging.instance;
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    debugPrint('Notification permission: ${settings.authorizationStatus}');
-
-    // ── Foreground message handler ────────────────────────────────────────────
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final notification = message.notification;
-      if (notification == null) return;
-      _showLocalNotification(
-        title: notification.title ?? 'FocusPro',
-        body: notification.body ?? '',
-        data: message.data,
-      );
-    });
-
-    // ── Notification tap when app was in background ───────────────────────────
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleNotificationNavigation(message.data);
-    });
-
-    // ── Check if app was opened from a terminated-state notification ──────────
-    final initialMessage = await messaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleNotificationNavigation(initialMessage.data);
-    }
+    // Start polling the backend every 60 seconds
+    _startPolling();
   }
 
-  /// Register FCM token with the backend. Call after user logs in.
-  static Future<void> registerTokenWithBackend(String authToken) async {
+  static void _startPolling() {
+    _pollTimer?.cancel();
+    // Run once immediately, then every 60 seconds
+    _checkForNotifications();
+    _pollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      _checkForNotifications();
+    });
+  }
+
+  static Future<void> _checkForNotifications() async {
+    if (!BrowserNotification.isSupported) return;
+
+    final token = await AuthService.getToken();
+    if (token == null) return;
+
     try {
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken == null || fcmToken.isEmpty) return;
+      final resp = await http
+          .get(
+            Uri.parse('${AuthService.baseUrl}/notifications/pending'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
-      debugPrint('FCM token: $fcmToken');
+      if (resp.statusCode != 200) return;
 
-      final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/notifications/fcm-token'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode({'token': fcmToken}),
-      );
+      final List<dynamic> notifications = jsonDecode(resp.body);
+      for (final n in notifications) {
+        final id = n['id'] as int?;
+        final title = n['title'] as String? ?? 'FocusPro';
+        final message = n['message'] as String? ?? '';
 
-      if (response.statusCode == 200) {
-        debugPrint('FCM token registered with backend.');
-      } else {
-        debugPrint('FCM token registration failed: ${response.statusCode}');
+        // Show in browser
+        BrowserNotification.show(title, message);
+
+        // Tell backend it was shown so it won't repeat
+        if (id != null) {
+          _acknowledge(id, token);
+        }
       }
-
-      // Re-register if the token refreshes (device reinstall, etc.)
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-        _sendTokenToBackend(newToken, authToken);
-      });
     } catch (e) {
-      debugPrint('registerTokenWithBackend error: $e');
+      debugPrint('NotificationService poll error: $e');
     }
   }
 
-  static Future<void> _sendTokenToBackend(String fcmToken, String authToken) async {
+  static Future<void> _acknowledge(int id, String token) async {
     try {
-      await http.post(
-        Uri.parse('${AuthService.baseUrl}/notifications/fcm-token'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode({'token': fcmToken}),
-      );
+      await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/notifications/$id/acknowledge'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 
-  static void _showLocalNotification({
-    required String title,
-    required String body,
-    required Map<String, dynamic> data,
-  }) {
-    const androidDetails = AndroidNotificationDetails(
-      'focuspro_goals',
-      'Goal Reminders',
-      channelDescription: 'Smart notifications for your daily goals',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      const NotificationDetails(android: androidDetails, iOS: darwinDetails),
-      payload: jsonEncode(data),
-    );
+  /// Stop polling (call on logout).
+  static void stop() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _initialized = false;
   }
-
-  static void _onNotificationTapped(NotificationResponse response) {
-    if (response.payload == null) return;
-    try {
-      final data = jsonDecode(response.payload!) as Map<String, dynamic>;
-      _handleNotificationNavigation(data);
-    } catch (_) {}
-  }
-
-  static void _handleNotificationNavigation(Map<String, dynamic> data) {
-    // Navigate to coaching screen when user taps a goal notification
-    final screen = data['screen'] as String?;
-    if (screen != null && _navigatorKey != null) {
-      _navigatorKey!.currentState?.pushNamed(screen);
-    }
-  }
-
-  // Navigator key set from main.dart so we can navigate on notification tap
-  static GlobalKey<NavigatorState>? _navigatorKey;
-  static void setNavigatorKey(GlobalKey<NavigatorState> key) {
-    _navigatorKey = key;
-  }
-}
-
-/// Top-level function required by Firebase for background message handling.
-/// Must be a top-level function (not a class method).
-@pragma('vm:entry-point')
-Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  // Background messages are auto-displayed by Firebase on Android.
-  // No additional handling needed here unless you want custom logic.
-  debugPrint('Background notification received: ${message.messageId}');
 }
