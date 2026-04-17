@@ -1,6 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'core/services/auth_service.dart';
+import 'core/services/notification_service.dart';
 import 'features/home/providers/user_provider.dart';
 import 'features/habits/providers/habit_provider.dart';
 import 'features/auth/pages/login_page.dart';
@@ -14,8 +18,22 @@ import 'features/habits/pages/manage_habits_page.dart';
 import 'features/focus_session/pages/focus_rooms_page.dart';
 import 'features/profile/pages/profile_page.dart';
 
+final _navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase (requires google-services.json on Android, etc.)
+  // See README_NOTIFICATIONS.md for setup steps.
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+    await NotificationService.init();
+    NotificationService.setNavigatorKey(_navigatorKey);
+  } catch (e) {
+    // Firebase not configured yet — notifications won't work but app still runs
+    debugPrint('Firebase init skipped: $e');
+  }
 
   final userProvider = UserProvider();
   await userProvider.init();
@@ -23,6 +41,11 @@ void main() async {
   final habitProvider = HabitProvider();
   if (userProvider.isLoggedIn) {
     await habitProvider.load();
+    // Register FCM token if already logged in
+    final token = await AuthService.getToken();
+    if (token != null) {
+      NotificationService.registerTokenWithBackend(token);
+    }
   }
 
   runApp(
@@ -46,6 +69,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FocusPro',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorKey,
       onGenerateRoute: (settings) {
         final hash   = getLocationHash();
         final search = getLocationSearch();
