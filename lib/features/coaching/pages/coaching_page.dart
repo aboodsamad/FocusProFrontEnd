@@ -50,16 +50,36 @@ class _CoachingPageState extends State<CoachingPage> {
   Future<void> _init() async {
     final token = await AuthService.getToken() ?? '';
 
-    // Load today's persisted state before any API call so re-entry is instant
     final prefs = await SharedPreferences.getInstance();
-    final savedSession = prefs.getInt('coaching_session_$_todayKey');
-    final savedMessages = _loadSavedMessages(prefs);
     _pruneStaleDays(prefs);
 
-    // If a session exists for today, jump straight into chat immediately
-    if (savedSession != null) {
-      final goals = await CoachingService.getTodayGoals(token);
+    final goals = await CoachingService.getTodayGoals(token);
+    if (!mounted) return;
+
+    if (goals.isNotEmpty) {
+      // Always restore session from the backend — this survives logout/login
+      // because the session is tied to the user account, not the local token.
+      final session = await CoachingService.getTodaySession(token);
       if (!mounted) return;
+
+      if (session != null && session.sessionId > 0) {
+        final messages = session.messages ?? [];
+        setState(() {
+          _goals = goals;
+          _sessionId = session.sessionId;
+          _messages = messages;
+          _settingGoals = false;
+          _loading = false;
+        });
+        // Keep SharedPreferences in sync so re-entry is instant next time
+        _persistMessages();
+        if (messages.isNotEmpty) _scrollToBottom();
+        return;
+      }
+
+      // Backend unreachable — fall back to SharedPreferences cache
+      final savedSession = prefs.getInt('coaching_session_$_todayKey');
+      final savedMessages = _loadSavedMessages(prefs);
       setState(() {
         _goals = goals;
         _sessionId = savedSession;
@@ -71,16 +91,12 @@ class _CoachingPageState extends State<CoachingPage> {
       return;
     }
 
-    // No session yet — fetch goals to decide whether to show goal-setup or chat
-    final goals = await CoachingService.getTodayGoals(token);
-    if (!mounted) return;
+    // No goals yet — show goal-setup screen
     setState(() {
       _goals = goals;
-      _messages = savedMessages;
-      _settingGoals = goals.isEmpty;
+      _settingGoals = true;
       _loading = false;
     });
-    if (savedMessages.isNotEmpty) _scrollToBottom();
   }
 
   void _pruneStaleDays(SharedPreferences prefs) {
