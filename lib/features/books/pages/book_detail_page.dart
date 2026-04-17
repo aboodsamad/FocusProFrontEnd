@@ -409,44 +409,19 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [BoxShadow(color: _coverColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
-                  child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
+                        ? Image.asset(
                             widget.book.bookPagesUrl!,
                             fit: BoxFit.cover,
                             width: 120,
                             height: 180,
-                            errorBuilder: (_, __, ___) => Stack(
-                              children: [
-                                Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text(widget.book.title, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : Stack(
-                          children: [
-                            Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.4), size: 48)),
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(widget.book.title, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                            errorBuilder: (_, __, ___) => _BookCoverFallback(
+                              color: _coverColor, title: widget.book.title),
+                          )
+                        : _BookCoverFallback(color: _coverColor, title: widget.book.title),
+                  ),
                 ),
                 const SizedBox(width: 20),
                 // Title & metadata
@@ -1393,4 +1368,34 @@ class _CompletionSheet extends StatelessWidget {
       ],
     ),
   );
+}
+
+
+class _BookCoverFallback extends StatelessWidget {
+  final Color color;
+  final String title;
+  const _BookCoverFallback({required this.color, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: color,
+      child: Stack(
+        children: [
+          Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.35), size: 48)),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(title, textAlign: TextAlign.center, maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

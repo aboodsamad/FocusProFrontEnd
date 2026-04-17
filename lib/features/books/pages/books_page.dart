@@ -495,41 +495,69 @@ class _BookCardState extends State<_BookCard> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: _coverColor,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _coverColor.withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                    child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              widget.book.bookPagesUrl!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              errorBuilder: (_, __, ___) =>
-                                  Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.asset(
+                                  widget.book.bookPagesUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: _coverColor,
+                                    child: Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
+                                  ),
+                                ),
+                                // subtle bottom gradient for level badge legibility
+                                Positioned(
+                                  bottom: 0, left: 0, right: 0,
+                                  child: Container(
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.45)],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Container(
+                              color: _coverColor,
+                              child: Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
                             ),
-                          )
-                        : Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
+                    ),
                   ),
                   // Level badge
                   Positioned(
-                    top: 10,
-                    left: 10,
+                    top: 8,
+                    left: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _isLightCover ? Colors.black.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(width: 5, height: 5, decoration: BoxDecoration(color: textOnCover, shape: BoxShape.circle)),
+                          Container(width: 5, height: 5, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
                           const SizedBox(width: 4),
                           Text(
                             _levelLabel,
-                            style: TextStyle(color: textOnCover, fontSize: 9, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),

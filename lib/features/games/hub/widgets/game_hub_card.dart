@@ -398,24 +398,49 @@ class _GameHubCardState extends State<GameHubCard> {
       children: [
         // Banner background using game color or real image
         SizedBox(
-          height: 120,
+          height: 140,
           width: double.infinity,
           child: game.imageUrl != null && game.imageUrl!.isNotEmpty && available
-              ? Image.network(
-                  game.imageUrl!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: 120,
-                  color: _gameColor.withOpacity(0.25),
-                  colorBlendMode: BlendMode.srcATop,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: _gameColor.withOpacity(0.15),
-                    child: Center(child: Icon(game.icon, size: 52, color: _gameColor.withOpacity(0.45))),
-                  ),
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      game.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: _gameColor.withValues(alpha: 0.15),
+                        child: Center(child: Icon(game.icon, size: 52, color: _gameColor.withValues(alpha: 0.45))),
+                      ),
+                    ),
+                    // gradient overlay for readability
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            _gameColor.withValues(alpha: 0.15),
+                            _gameColor.withValues(alpha: 0.55),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // centered icon on top for brand identity
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(game.icon, size: 36, color: Colors.white),
+                      ),
+                    ),
+                  ],
                 )
               : Container(
-                  color: available ? _gameColor.withOpacity(0.15) : AppColors.surfaceContainerLow,
-                  child: Center(child: Icon(game.icon, size: 52, color: available ? _gameColor.withOpacity(0.45) : AppColors.outlineVariant)),
+                  color: available ? _gameColor.withValues(alpha: 0.15) : AppColors.surfaceContainerLow,
+                  child: Center(child: Icon(game.icon, size: 52, color: available ? _gameColor.withValues(alpha: 0.45) : AppColors.outlineVariant)),
                 ),
         ),
         // Category badge (top-right overlay)
