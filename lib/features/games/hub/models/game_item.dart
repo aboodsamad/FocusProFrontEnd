@@ -29,8 +29,11 @@ class GameItem {
   /// Hex color value — used in widgets for tinting.
   final int colorValue;
 
-  /// Icon shown on the game card.
+  /// Icon shown on the game card (fallback when imageUrl is unavailable).
   final IconData icon;
+
+  /// Optional cover image URL — shown on game cards instead of the icon.
+  final String? imageUrl;
 
   const GameItem({
     required this.id,
@@ -42,6 +45,7 @@ class GameItem {
     required this.status,
     required this.colorValue,
     required this.icon,
+    this.imageUrl,
   });
 
   // ── Derived string labels ──────────────────────────────────────────────────

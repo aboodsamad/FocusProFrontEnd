@@ -498,9 +498,19 @@ class _BookCardState extends State<_BookCard> {
                       color: _coverColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Center(
-                      child: Icon(_coverIcon, color: iconOnCover, size: 60),
-                    ),
+                    child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              widget.book.bookPagesUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (_, __, ___) =>
+                                  Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
+                            ),
+                          )
+                        : Center(child: Icon(_coverIcon, color: iconOnCover, size: 60)),
                   ),
                   // Level badge
                   Positioned(
