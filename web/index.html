@@ -24,6 +24,21 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
+    <!-- Register push notification service worker (separate scope from Flutter SW) -->
+    <script>
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker
+          .register('/notification_sw.js', { scope: '/push-notifications/' })
+          .then(function (reg) {
+            window._focusproNotifSW = reg;
+            console.log('FocusPro push SW registered, scope:', reg.scope);
+          })
+          .catch(function (err) {
+            console.warn('Push SW registration failed:', err);
+          });
+      }
+    </script>
+
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>
