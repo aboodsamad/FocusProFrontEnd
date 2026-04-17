@@ -49,16 +49,56 @@ class _CoachingPageState extends State<CoachingPage> {
 
   Future<void> _init() async {
     final token = await AuthService.getToken() ?? '';
-    final goals = await CoachingService.getTodayGoals(token);
-    if (!mounted) return;
 
+    // Load today's persisted state before any API call so re-entry is instant
     final prefs = await SharedPreferences.getInstance();
     final savedSession = prefs.getInt('coaching_session_$_todayKey');
-    final savedRaw = prefs.getString('coaching_messages_$_todayKey');
-    List<CoachingMessage> savedMessages = [];
-    if (savedRaw != null) {
-      final list = jsonDecode(savedRaw) as List<dynamic>;
-      savedMessages = list.map((e) {
+    final savedMessages = _loadSavedMessages(prefs);
+    _pruneStaleDays(prefs);
+
+    // If a session exists for today, jump straight into chat immediately
+    if (savedSession != null) {
+      final goals = await CoachingService.getTodayGoals(token);
+      if (!mounted) return;
+      setState(() {
+        _goals = goals;
+        _sessionId = savedSession;
+        _messages = savedMessages;
+        _settingGoals = false;
+        _loading = false;
+      });
+      if (savedMessages.isNotEmpty) _scrollToBottom();
+      return;
+    }
+
+    // No session yet — fetch goals to decide whether to show goal-setup or chat
+    final goals = await CoachingService.getTodayGoals(token);
+    if (!mounted) return;
+    setState(() {
+      _goals = goals;
+      _messages = savedMessages;
+      _settingGoals = goals.isEmpty;
+      _loading = false;
+    });
+    if (savedMessages.isNotEmpty) _scrollToBottom();
+  }
+
+  void _pruneStaleDays(SharedPreferences prefs) {
+    final today = DateTime.now();
+    for (int i = 1; i <= 7; i++) {
+      final past = today.subtract(Duration(days: i));
+      final key = '${past.year}-${past.month}-${past.day}';
+      prefs.remove('coaching_messages_$key');
+      prefs.remove('coaching_session_$key');
+    }
+  }
+
+  List<CoachingMessage> _loadSavedMessages(SharedPreferences prefs) {
+    final raw = prefs.getString('coaching_messages_$_todayKey');
+    if (raw == null) return [];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list.map((e) {
         final m = e as Map<String, dynamic>;
         return CoachingMessage(
           role: m['role'] as String,
@@ -66,18 +106,8 @@ class _CoachingPageState extends State<CoachingPage> {
           timestamp: DateTime.parse(m['timestamp'] as String),
         );
       }).toList();
-    }
-
-    setState(() {
-      _goals = goals;
-      _loading = false;
-      _messages = savedMessages;
-      if (savedSession != null) _sessionId = savedSession;
-      _settingGoals = goals.isEmpty;
-    });
-
-    if (savedMessages.isNotEmpty) {
-      _scrollToBottom();
+    } catch (_) {
+      return [];
     }
   }
 
@@ -200,7 +230,21 @@ class _CoachingPageState extends State<CoachingPage> {
       });
       _persistMessages();
     } else {
-      setState(() => _sending = false);
+      // Remove the optimistically-added user message and show error
+      setState(() {
+        _messages.removeLast();
+        _sending = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Message failed to send. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Restore the text so the user doesn't lose what they typed
+        _messageController.text = text;
+      }
     }
     _scrollToBottom();
   }
@@ -484,9 +528,9 @@ class _CoachingPageState extends State<CoachingPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(_statusIcon(goal.status), color: color, size: 14),
@@ -531,7 +575,7 @@ class _CoachingPageState extends State<CoachingPage> {
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isAi
-                    ? AppColors.primaryFixed.withOpacity(0.3)
+                    ? AppColors.primaryFixed.withValues(alpha: 0.3)
                     : AppColors.primaryContainer,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
@@ -570,7 +614,7 @@ class _CoachingPageState extends State<CoachingPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.primaryFixed.withOpacity(0.3),
+            color: AppColors.primaryFixed.withValues(alpha: 0.3),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -600,7 +644,7 @@ class _CoachingPageState extends State<CoachingPage> {
         color: AppColors.surfaceContainerLowest,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, -2)),
         ],
