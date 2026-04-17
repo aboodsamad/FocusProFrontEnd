@@ -59,11 +59,14 @@ class CoachingService {
   static Future<CoachingResponse?> setDailyGoals(
       String token, List<String> goals) async {
     try {
+      // Send the user's UTC offset so the backend schedules notifications
+      // in the correct local time (e.g. Lebanon = +180 minutes).
+      final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
       final resp = await http
           .post(
             Uri.parse('$_base/coaching/goals'),
             headers: _headers(token),
-            body: jsonEncode({'goals': goals}),
+            body: jsonEncode({'goals': goals, 'utcOffsetMinutes': utcOffsetMinutes}),
           )
           .timeout(const Duration(seconds: 30));
 
