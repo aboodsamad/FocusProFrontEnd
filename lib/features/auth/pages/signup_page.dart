@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/utils/url_helper.dart';
 import './login_page.dart';
 import '../../diagnostic/pages/diagnostic_page.dart';
@@ -156,6 +157,8 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       final token = result['token']?.toString() ?? '';
       if (token.isNotEmpty) {
         await AuthService.saveToken(token);
+        // Start notification polling + ask browser for permission
+        NotificationService.init();
         // Load the user's profile into UserProvider so the home page
         // shows the real name/username instead of the 'User' fallback.
         if (mounted) {
