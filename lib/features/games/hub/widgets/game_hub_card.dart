@@ -508,8 +508,9 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
         scale:    _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height:   170,
+          duration:     const Duration(milliseconds: 180),
+          height:       170,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color:        AppColors.primaryContainer,
             borderRadius: BorderRadius.circular(20),
@@ -523,27 +524,25 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
           ),
           child: Stack(
             children: [
-              // Decorative circles
-              Positioned(
-                right: -24, top: -24,
-                child: Container(
-                  width: 130, height: 130,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.06),
+              // Background image (right half)
+              if (game.imageUrl != null && game.imageUrl!.isNotEmpty)
+                Positioned(
+                  right: 0, top: 0, bottom: 0,
+                  width: 200,
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [Colors.black, Colors.transparent],
+                    ).createShader(bounds),
+                    blendMode: BlendMode.dstOut,
+                    child: Image.asset(
+                      game.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                right: 36, bottom: -36,
-                child: Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.04),
-                  ),
-                ),
-              ),
               // Content
               Padding(
                 padding: const EdgeInsets.all(22),
