@@ -4,6 +4,7 @@ import 'package:capstone_front_end/core/utils/url_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
+
 import '../../home/pages/home_page.dart';
 import '../../home/providers/user_provider.dart';
 import './signup_page.dart';
@@ -48,8 +49,8 @@ class _LoginPageState extends State<LoginPage> {
       final token = result['token']?.toString() ?? '';
       if (token.isNotEmpty) {
         await AuthService.saveToken(token);
-        // Register FCM token with backend for push notifications
-        NotificationService.registerTokenWithBackend(token);
+        // Start notification polling after login
+        NotificationService.init();
         // Flush stale profile data and reload the correct user's data
         // BEFORE navigating — HomeScreen will show a spinner while it loads.
         if (mounted) {
