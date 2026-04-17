@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../models/coaching_message.dart';
@@ -26,6 +28,7 @@ class _CoachingPageState extends State<CoachingPage> {
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
 
   // Evening banner
   bool get _showEveningBanner {
@@ -39,21 +42,63 @@ class _CoachingPageState extends State<CoachingPage> {
     _init();
   }
 
+  String get _todayKey {
+    final now = DateTime.now();
+    return '${now.year}-${now.month}-${now.day}';
+  }
+
   Future<void> _init() async {
     final token = await AuthService.getToken() ?? '';
     final goals = await CoachingService.getTodayGoals(token);
     if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedSession = prefs.getInt('coaching_session_$_todayKey');
+    final savedRaw = prefs.getString('coaching_messages_$_todayKey');
+    List<CoachingMessage> savedMessages = [];
+    if (savedRaw != null) {
+      final list = jsonDecode(savedRaw) as List<dynamic>;
+      savedMessages = list.map((e) {
+        final m = e as Map<String, dynamic>;
+        return CoachingMessage(
+          role: m['role'] as String,
+          content: m['content'] as String,
+          timestamp: DateTime.parse(m['timestamp'] as String),
+        );
+      }).toList();
+    }
+
     setState(() {
       _goals = goals;
       _loading = false;
+      _messages = savedMessages;
+      if (savedSession != null) _sessionId = savedSession;
       _settingGoals = goals.isEmpty;
     });
+
+    if (savedMessages.isNotEmpty) {
+      _scrollToBottom();
+    }
+  }
+
+  Future<void> _persistMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(_messages.map((m) => {
+          'role': m.role,
+          'content': m.content,
+          'timestamp': m.timestamp.toIso8601String(),
+        }).toList());
+    await prefs.setString('coaching_messages_$_todayKey', encoded);
+    if (_sessionId != null) {
+      await prefs.setInt('coaching_session_$_todayKey', _sessionId!);
+    }
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     for (final c in _goalControllers) {
       c.dispose();
     }
@@ -100,6 +145,7 @@ class _CoachingPageState extends State<CoachingPage> {
         _settingGoals = false;
         _sending = false;
       });
+      _persistMessages();
       _scrollToBottom();
     } else {
       setState(() => _sending = false);
@@ -131,6 +177,7 @@ class _CoachingPageState extends State<CoachingPage> {
     if (text.isEmpty || _sessionId == null) return;
 
     _messageController.clear();
+    _focusNode.requestFocus();
     setState(() {
       _messages.add(CoachingMessage(
           role: 'user', content: text, timestamp: DateTime.now()));
@@ -151,6 +198,7 @@ class _CoachingPageState extends State<CoachingPage> {
             timestamp: DateTime.now()));
         _sending = false;
       });
+      _persistMessages();
     } else {
       setState(() => _sending = false);
     }
@@ -173,6 +221,7 @@ class _CoachingPageState extends State<CoachingPage> {
             timestamp: DateTime.now()));
         _sending = false;
       });
+      _persistMessages();
       _scrollToBottom();
     } else {
       setState(() => _sending = false);
@@ -560,6 +609,7 @@ class _CoachingPageState extends State<CoachingPage> {
         Expanded(
           child: TextField(
             controller: _messageController,
+            focusNode: _focusNode,
             style: const TextStyle(color: AppColors.onSurface),
             decoration: InputDecoration(
               hintText: 'Message your coach…',
