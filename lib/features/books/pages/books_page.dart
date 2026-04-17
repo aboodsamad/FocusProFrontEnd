@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/book_model.dart';
@@ -7,7 +6,7 @@ import 'book_detail_page.dart';
 
 class BooksPage extends StatefulWidget {
   final bool audioMode;
-  const BooksPage({Key? key, this.audioMode = false}) : super(key: key);
+  const BooksPage({super.key, this.audioMode = false});
 
   @override
   State<BooksPage> createState() => _BooksPageState();
@@ -124,7 +123,6 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeroSection(),
                     _buildSearchBar(),
                     const SizedBox(height: 16),
                     _buildLevelChips(),
@@ -145,8 +143,13 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
   Widget _buildHeader() {
     return Container(
-      color: AppColors.primary,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFFF0FBF5),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        bottom: 12,
+        left: 16,
+        right: 16,
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -155,64 +158,43 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.outlineVariant),
               ),
-              child: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
+              child: Icon(Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.onSurfaceVariant, size: 16),
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
               'Library',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+              style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
             ),
           ),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.secondaryContainer,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.menu_book_rounded,
+                  color: AppColors.onSecondaryContainer, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                '${_allBooks.length} books',
+                style: const TextStyle(
+                  color: AppColors.onSecondaryContainer,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${_filtered.isEmpty && _loading ? '' : _allBooks.length} books',
-                    style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Focus-boosting reads',
-                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
+            ]),
           ),
         ],
       ),
@@ -221,7 +203,7 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerHigh,
@@ -264,7 +246,7 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
     return SizedBox(
       height: 40,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: _levels.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -283,13 +265,16 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? AppColors.primary : AppColors.surfaceContainerHigh,
+                color: selected ? AppColors.primary : AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected ? AppColors.primary : AppColors.outlineVariant,
+                ),
               ),
               child: Text(
                 f.label,
                 style: TextStyle(
-                  color: selected ? Colors.white : AppColors.onSurfaceVariant,
+                  color: selected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -307,7 +292,7 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
     return SizedBox(
       height: 36,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: cats.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -326,16 +311,22 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: selected ? AppColors.surfaceContainerLowest : AppColors.surfaceContainerLow,
+                color: selected
+                    ? AppColors.secondaryContainer
+                    : AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selected ? AppColors.outlineVariant : AppColors.outlineVariant.withOpacity(0.4),
+                  color: selected
+                      ? AppColors.secondary
+                      : AppColors.outlineVariant,
                 ),
               ),
               child: Text(
                 cat,
                 style: TextStyle(
-                  color: selected ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                  color: selected
+                      ? AppColors.onSecondaryContainer
+                      : AppColors.onSurfaceVariant,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -412,7 +403,7 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
     return FadeTransition(
       opacity: _fadeCtrl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -470,19 +461,11 @@ class _BookCardState extends State<_BookCard> {
   IconData get _coverIcon => widget.coverIcons[widget.index % widget.coverIcons.length];
 
   String get _levelLabel => widget.book.levelLabel;
-  Color get _levelColor {
-    switch (widget.book.level) {
-      case 1: return AppColors.secondary;
-      case 2: return const Color(0xFFF97316);
-      case 3: return const Color(0xFFEF4444);
-      default: return AppColors.primary;
-    }
-  }
 
   bool get _isLightCover {
-    final r = _coverColor.red;
-    final g = _coverColor.green;
-    final b = _coverColor.blue;
+    final r = (_coverColor.r * 255.0).round().clamp(0, 255);
+    final g = (_coverColor.g * 255.0).round().clamp(0, 255);
+    final b = (_coverColor.b * 255.0).round().clamp(0, 255);
     final luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance > 0.6;
   }
@@ -490,7 +473,9 @@ class _BookCardState extends State<_BookCard> {
   @override
   Widget build(BuildContext context) {
     final textOnCover = _isLightCover ? AppColors.onSurface : Colors.white;
-    final iconOnCover = _isLightCover ? AppColors.onSurface.withOpacity(0.3) : Colors.white.withOpacity(0.4);
+    final iconOnCover = _isLightCover
+        ? AppColors.onSurface.withValues(alpha: 0.3)
+        : Colors.white.withValues(alpha: 0.4);
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -524,7 +509,7 @@ class _BookCardState extends State<_BookCard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _isLightCover ? Colors.black.withOpacity(0.1) : Colors.white.withOpacity(0.2),
+                        color: _isLightCover ? Colors.black.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(

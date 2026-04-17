@@ -6,13 +6,6 @@ import '../models/game_registry.dart';
 import '../widgets/game_hub_card.dart';
 import 'level_roadmap_page.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GamesHubPage
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// The game-selection lobby.
-/// Shows a featured card, category filter chips and a 2-column grid of games.
-/// Navigate here from HomeScreen instead of directly to any single game.
 class GamesHubPage extends StatefulWidget {
   const GamesHubPage({super.key});
 
@@ -23,13 +16,9 @@ class GamesHubPage extends StatefulWidget {
 class _GamesHubPageState extends State<GamesHubPage>
     with SingleTickerProviderStateMixin {
 
-  // ── State ──────────────────────────────────────────────────────────────────
-
-  GameCategory? _activeFilter; // null = All
+  GameCategory? _activeFilter;
   late AnimationController _fadeCtrl;
   late Animation<double>   _fadeAnim;
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -47,16 +36,10 @@ class _GamesHubPageState extends State<GamesHubPage>
     super.dispose();
   }
 
-  // ── Filtered list ──────────────────────────────────────────────────────────
-
   List<GameItem> get _filteredGames {
     if (_activeFilter == null) return GameRegistry.all;
-    return GameRegistry.all
-        .where((g) => g.category == _activeFilter)
-        .toList();
+    return GameRegistry.all.where((g) => g.category == _activeFilter).toList();
   }
-
-  // ── Navigation ─────────────────────────────────────────────────────────────
 
   void _openGame(GameItem game) {
     if (GameRegistry.hasRoadmap(game.id)) {
@@ -79,90 +62,92 @@ class _GamesHubPageState extends State<GamesHubPage>
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildStatsBar()),
-              SliverToBoxAdapter(child: _buildFeatured()),
-              SliverToBoxAdapter(child: _buildCategoryFilters()),
-              SliverToBoxAdapter(child: _buildSectionLabel()),
-              _buildGrid(),
-              const SliverToBoxAdapter(child: SizedBox(height: 48)),
-            ],
+      backgroundColor: AppColors.surface,
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildStatsBar()),
+                  SliverToBoxAdapter(child: _buildFeatured()),
+                  SliverToBoxAdapter(child: _buildCategoryFilters()),
+                  SliverToBoxAdapter(child: _buildSectionLabel()),
+                  _buildGrid(),
+                  const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
-
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+    return Container(
+      color: const Color(0xFFF0FBF5),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        bottom: 12,
+        left: 16,
+        right: 16,
+      ),
       child: Row(
         children: [
-          // Back button — same style as books_page
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
               width:  40,
               height: 40,
               decoration: BoxDecoration(
-                color:        Colors.white.withOpacity(0.06),
+                color:        AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
-                border:       Border.all(color: Colors.white.withOpacity(0.08)),
+                border:       Border.all(color: AppColors.outlineVariant),
               ),
               child: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.grey[400], size: 16),
+                  color: AppColors.onSurfaceVariant, size: 16),
             ),
           ),
           const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Brain Games',
                 style: TextStyle(
-                  color:      Colors.white,
+                  color:      AppColors.primary,
                   fontSize:   20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 'Train your focus & memory',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
               ),
             ],
           ),
           const Spacer(),
-          // Game count badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color:        AppColors.primaryA.withOpacity(0.12),
+              color:        AppColors.secondaryContainer,
               borderRadius: BorderRadius.circular(20),
-              border:       Border.all(
-                  color: AppColors.primaryA.withOpacity(0.28)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.videogame_asset_rounded,
-                  color: AppColors.primaryA, size: 14),
+              const Icon(Icons.videogame_asset_rounded,
+                  color: AppColors.onSecondaryContainer, size: 14),
               const SizedBox(width: 6),
               Text(
                 '${GameRegistry.available.length} playable',
-                style: TextStyle(
-                  color:      AppColors.primaryA,
+                style: const TextStyle(
+                  color:      AppColors.onSecondaryContainer,
                   fontSize:   11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -174,18 +159,16 @@ class _GamesHubPageState extends State<GamesHubPage>
     );
   }
 
-  // ── Stats bar ──────────────────────────────────────────────────────────────
-
   Widget _buildStatsBar() {
     final stats = [
-      _StatItem('Games',    '${GameRegistry.all.length}',       Icons.sports_esports_outlined, AppColors.primaryA),
-      _StatItem('Memory',   '${GameRegistry.byCategory(GameCategory.memory).length}',    Icons.psychology_outlined,       const Color(0xFF7B6FFF)),
-      _StatItem('Logic',    '${GameRegistry.byCategory(GameCategory.logic).length}',     Icons.lightbulb_outline,         const Color(0xFF6366F1)),
-      _StatItem('Speed',    '${GameRegistry.byCategory(GameCategory.speed).length}',     Icons.bolt_outlined,             const Color(0xFFF59E0B)),
+      _StatItem('Games',  '${GameRegistry.all.length}',                                    Icons.sports_esports_outlined,  AppColors.primary),
+      _StatItem('Memory', '${GameRegistry.byCategory(GameCategory.memory).length}',        Icons.psychology_outlined,       AppColors.secondary),
+      _StatItem('Logic',  '${GameRegistry.byCategory(GameCategory.logic).length}',         Icons.lightbulb_outline,         const Color(0xFF7C3AED)),
+      _StatItem('Speed',  '${GameRegistry.byCategory(GameCategory.speed).length}',         Icons.bolt_outlined,             const Color(0xFFF59E0B)),
     ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Row(
         children: stats.map((s) => Expanded(
           child: Padding(
@@ -197,22 +180,18 @@ class _GamesHubPageState extends State<GamesHubPage>
     );
   }
 
-  // ── Featured card ──────────────────────────────────────────────────────────
-
   Widget _buildFeatured() {
-    // Featured = first available game
     final featured = GameRegistry.available.isNotEmpty
         ? GameRegistry.available.first
         : null;
-
     if (featured == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionLabel(label: "Today's Pick"),
+          const _SectionLabel(label: "Today's Pick"),
           const SizedBox(height: 12),
           GameHubFeaturedCard(
             game:  featured,
@@ -222,8 +201,6 @@ class _GamesHubPageState extends State<GamesHubPage>
       ),
     );
   }
-
-  // ── Category filter chips ──────────────────────────────────────────────────
 
   Widget _buildCategoryFilters() {
     final filters = <_FilterItem>[
@@ -240,12 +217,12 @@ class _GamesHubPageState extends State<GamesHubPage>
         height: 38,
         child: ListView.separated(
           scrollDirection:  Axis.horizontal,
-          padding:          const EdgeInsets.symmetric(horizontal: 20),
+          padding:          const EdgeInsets.symmetric(horizontal: 16),
           itemCount:        filters.length,
           separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
-            final f       = filters[i];
-            final active  = _activeFilter == f.category;
+            final f      = filters[i];
+            final active = _activeFilter == f.category;
             return GestureDetector(
               onTap: () => setState(() {
                 _activeFilter = f.category;
@@ -256,27 +233,27 @@ class _GamesHubPageState extends State<GamesHubPage>
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: active
-                      ? AppColors.primaryA.withOpacity(0.18)
-                      : Colors.white.withOpacity(0.05),
+                      ? AppColors.primary
+                      : AppColors.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: active
-                        ? AppColors.primaryA.withOpacity(0.55)
-                        : Colors.white.withOpacity(0.08),
-                    width: active ? 1.5 : 1.0,
+                        ? AppColors.primary
+                        : AppColors.outlineVariant,
+                    width: 1.0,
                   ),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(
                     f.icon,
                     size:  13,
-                    color: active ? AppColors.primaryA : Colors.grey[500],
+                    color: active ? AppColors.onPrimary : AppColors.onSurfaceVariant,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     f.label,
                     style: TextStyle(
-                      color:      active ? AppColors.primaryA : Colors.grey[500],
+                      color:      active ? AppColors.onPrimary : AppColors.onSurfaceVariant,
                       fontSize:   12,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -290,32 +267,27 @@ class _GamesHubPageState extends State<GamesHubPage>
     );
   }
 
-  // ── Section label ──────────────────────────────────────────────────────────
-
   Widget _buildSectionLabel() {
     final count = _filteredGames.length;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
       child: Row(
         children: [
           const _SectionLabel(label: 'All Games'),
           const Spacer(),
           Text(
             '$count game${count == 1 ? '' : 's'}',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  // ── Game grid ──────────────────────────────────────────────────────────────
-
   SliverPadding _buildGrid() {
     final games = _filteredGames;
-
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverGrid(
         delegate: SliverChildBuilderDelegate(
           (context, i) => GameHubCard(
@@ -335,9 +307,7 @@ class _GamesHubPageState extends State<GamesHubPage>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Small private helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Private helpers ────────────────────────────────────────────────────────────
 
 class _StatItem {
   final String label, value;
@@ -355,9 +325,16 @@ class _MiniStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
       decoration: BoxDecoration(
-        color:        const Color(0xFF0F1624),
+        color:        AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border:       Border.all(color: Colors.white.withOpacity(0.06)),
+        border:       Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color:      Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset:     const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,7 +351,7 @@ class _MiniStatCard extends StatelessWidget {
           ),
           Text(
             stat.label,
-            style: TextStyle(color: Colors.grey[600], fontSize: 10),
+            style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 10),
           ),
         ],
       ),
@@ -397,7 +374,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     label,
     style: const TextStyle(
-      color:      Colors.white,
+      color:      AppColors.onSurface,
       fontSize:   16,
       fontWeight: FontWeight.bold,
     ),
