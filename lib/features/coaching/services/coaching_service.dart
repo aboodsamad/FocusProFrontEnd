@@ -109,10 +109,12 @@ class CoachingService {
   /// POST /coaching/evening
   static Future<CoachingResponse?> startEvening(String token) async {
     try {
+      final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
       final resp = await http
           .post(
             Uri.parse('$_base/coaching/evening'),
             headers: _headers(token),
+            body: jsonEncode({'utcOffsetMinutes': utcOffsetMinutes}),
           )
           .timeout(const Duration(seconds: 30));
 

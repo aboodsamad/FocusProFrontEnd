@@ -13,6 +13,7 @@ import 'browser_notification.dart';
 class NotificationService {
   static Timer? _pollTimer;
   static bool _initialized = false;
+  static bool _pushSubscribed = false;
 
   /// Call once after login / on app start when already logged in.
   static Future<void> init() async {
@@ -30,7 +31,8 @@ class NotificationService {
     // 2. Try to set up VAPID Web Push (background notifications)
     await _setupWebPush();
 
-    // 3. Start polling as fallback (handles browsers/scenarios where push SW isn't active)
+    // 3. Start polling as fallback (handles browsers/scenarios where push SW isn't active).
+    // Also handles retry of push setup if the SW wasn't ready on first attempt.
     _startPolling();
   }
 
@@ -70,6 +72,7 @@ class NotificationService {
       ).timeout(const Duration(seconds: 10));
 
       if (subResp.statusCode == 200) {
+        _pushSubscribed = true;
         debugPrint('Web push subscription registered — background notifications active.');
       }
     } catch (e) {
@@ -80,7 +83,17 @@ class NotificationService {
   static void _startPolling() {
     _pollTimer?.cancel();
     _checkForNotifications(); // run immediately
-    _pollTimer = Timer.periodic(const Duration(seconds: 60), (_) => _checkForNotifications());
+    // Poll every 30 s so notifications appear faster when the app is open.
+    // On odd ticks, also retry push setup in case the SW wasn't ready at login.
+    int tick = 0;
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      tick++;
+      if (!_pushSubscribed && tick % 4 == 0) {
+        // Retry push setup every ~2 minutes until it succeeds
+        await _setupWebPush();
+      }
+      _checkForNotifications();
+    });
   }
 
   static Future<void> _checkForNotifications() async {
@@ -126,5 +139,6 @@ class NotificationService {
     _pollTimer?.cancel();
     _pollTimer = null;
     _initialized = false;
+    _pushSubscribed = false;
   }
 }
