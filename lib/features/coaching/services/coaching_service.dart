@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:http/http.dart' as http;
 import '../../../core/services/auth_service.dart';
 import '../models/coaching_message.dart';
@@ -172,6 +173,31 @@ class CoachingService {
     } catch (e) {
       debugPrint('CoachingService.getTodayGoals error: $e');
       return [];
+    }
+  }
+
+  /// POST /notifications/reminder — schedule a manual reminder at a specific time
+  static Future<bool> addReminder(
+      String token, String title, String message, TimeOfDay time) async {
+    try {
+      final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+      final resp = await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/notifications/reminder'),
+            headers: _headers(token),
+            body: jsonEncode({
+              'title': title,
+              'message': message,
+              'scheduledHour': time.hour,
+              'scheduledMinute': time.minute,
+              'utcOffsetMinutes': utcOffsetMinutes,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (e) {
+      debugPrint('CoachingService.addReminder error: $e');
+      return false;
     }
   }
 
