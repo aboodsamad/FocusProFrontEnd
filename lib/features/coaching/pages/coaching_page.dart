@@ -526,6 +526,14 @@ class _CoachingPageState extends State<CoachingPage> {
         title: const Text('Daily Coach',
             style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
+        actions: [
+          if (!_settingGoals && !_loading)
+            IconButton(
+              onPressed: _showReminderSheet,
+              tooltip: 'Add Reminder',
+              icon: const Icon(Icons.alarm_add_rounded, color: Colors.white),
+            ),
+        ],
       ),
       body: _loading
           ? const Center(
@@ -834,13 +842,6 @@ class _CoachingPageState extends State<CoachingPage> {
         ],
       ),
       child: Row(children: [
-        // Add Reminder button
-        IconButton(
-          onPressed: _showReminderSheet,
-          tooltip: 'Add Reminder',
-          icon: const Icon(Icons.alarm_add_rounded,
-              color: AppColors.secondary),
-        ),
         Expanded(
           child: TextField(
             controller: _messageController,
