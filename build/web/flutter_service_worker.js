@@ -127,7 +127,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "c8648ea477a11188acf6f29e696e434e
 "assets/assets/images/games/train_of_thought.png": "6c336b3c73fe97f94818d1a90a9e36f0",
 "assets/FontManifest.json": "dc3d03800ccca4601324923c0b1d6d57",
 "assets/fonts/MaterialIcons-Regular.otf": "3e0ca21df0fa231f49ca671489413f61",
-"assets/NOTICES": "528489c8188013ac3f62ae8198128d2e",
+"assets/NOTICES": "3e778e39c411e9efd0bf9f20ce48bbaf",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/shaders/stretch_effect.frag": "40d68efbbf360632f614c731219e95f0",
@@ -145,16 +145,16 @@ const RESOURCES = {"assets/AssetManifest.bin": "c8648ea477a11188acf6f29e696e434e
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "100a4117fecd23e4e026c268e6bf7fe9",
+"flutter_bootstrap.js": "6dca588cf589a41522e0686250709ec2",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "c99b0878f976f60e62efa8af33a75414",
 "/": "c99b0878f976f60e62efa8af33a75414",
-"main.dart.js": "bea1c953ca1a2c823a7a66ed2053d59f",
+"main.dart.js": "7eb08613d2ea53df6586cf38b21f512a",
 "manifest.json": "7af530c02934ea65fa298ae3b9a5e098",
-"notification_sw.js": "666e827717804df4ecdbd2e0849d7ab1",
+"notification_sw.js": "59eb2882b4081f47e95c896bb7f8e907",
 "version.json": "699b58a00de95b73a3029b1126e3c4b8"};
 // The application shell files that are downloaded before a service worker can
 // start.
@@ -326,3 +326,32 @@ function onlineFirst(event) {
     })
   );
 }
+
+// ── FocusPro push notification handlers ──────────────────────────────────────
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  let data;
+  try { data = event.data.json(); }
+  catch (_) { data = { title: 'FocusPro', body: event.data.text() }; }
+  const title = data.title || 'FocusPro';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icons/Icon-192.png',
+      badge: '/icons/Icon-96.png',
+      data: { url: '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
