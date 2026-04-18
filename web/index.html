@@ -24,46 +24,93 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
-    <!-- Push subscription helper using Flutter's own service worker (already at scope /).
-         Dart calls window._focuspro_subscribePush(vapidKey) and polls
-         window._focuspro_pushResult for the JSON result or an error flag. -->
+    <!--
+      FocusPro Push Notification Setup
+      ─────────────────────────────────
+      We register notification_sw.js (our dedicated push service worker) at
+      scope '/'. This SW handles 'push' events and shows browser notifications,
+      including background delivery when the app tab is closed.
+
+      Dart calls window._focuspro_subscribePush(vapidKey) and polls
+      window._focuspro_pushResult for the JSON subscription or {error:'...'}.
+    -->
     <script>
       window._focuspro_pushResult = null;
 
-      function _focuspro_subscribePush(vapidKey) {
+      // Register FocusPro's push service worker as soon as the page loads.
+      // We store the registration so _focuspro_subscribePush can use it immediately.
+      var _focuspro_swReg = null;
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/notification_sw.js')
+          .then(function(reg) {
+            _focuspro_swReg = reg;
+            console.log('[FocusPro] Push SW registered, scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.warn('[FocusPro] Push SW registration failed:', err);
+          });
+      }
+
+      // Convert a base64url VAPID key string into a Uint8Array.
+      function _focuspro_urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var raw     = window.atob(base64);
+        var output  = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+        return output;
+      }
+
+      // Called by Dart (browser_notification_web.dart) to create a push subscription.
+      // Uses the FocusPro push SW (NOT Flutter's SW) so push events reach our handler.
+      window._focuspro_subscribePush = function(vapidKey) {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           window._focuspro_pushResult = { error: 'unsupported' };
           return;
         }
         window._focuspro_pushResult = null;
 
-        // Use Flutter's already-registered service worker — no second SW needed.
-        navigator.serviceWorker.ready
-          .then(function(reg) {
-            return reg.pushManager.getSubscription()
-              .then(function(existing) {
-                if (existing) return existing;
-                var b64 = vapidKey.replace(/-/g, '+').replace(/_/g, '/');
-                while (b64.length % 4) b64 += '=';
-                var bin = atob(b64);
-                var buf = new Uint8Array(bin.length);
-                for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-                return reg.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: buf
-                });
+        function doSubscribe(reg) {
+          // Unsubscribe any stale subscription first, then create a fresh one.
+          // This ensures old subscriptions tied to Flutter's SW are replaced.
+          reg.pushManager.getSubscription()
+            .then(function(existing) {
+              if (existing) {
+                return existing.unsubscribe().then(function() { return null; });
+              }
+              return null;
+            })
+            .then(function() {
+              return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: _focuspro_urlBase64ToUint8Array(vapidKey)
               });
-          })
-          .then(function(sub) {
-            window._focuspro_pushResult = JSON.parse(JSON.stringify(sub));
-            console.log('FocusPro: push subscription registered via Flutter SW.');
-          })
-          .catch(function(err) {
-            window._focuspro_pushResult = { error: String(err) };
-            console.warn('FocusPro: push subscription failed:', err);
-          });
-      }
-      window._focuspro_subscribePush = _focuspro_subscribePush;
+            })
+            .then(function(sub) {
+              window._focuspro_pushResult = JSON.parse(JSON.stringify(sub));
+              console.log('[FocusPro] Push subscription created via notification_sw.js');
+            })
+            .catch(function(err) {
+              window._focuspro_pushResult = { error: String(err) };
+              console.warn('[FocusPro] Push subscription failed:', err);
+            });
+        }
+
+        if (_focuspro_swReg) {
+          doSubscribe(_focuspro_swReg);
+        } else {
+          // SW registration not yet complete — register now and subscribe.
+          navigator.serviceWorker.register('/notification_sw.js')
+            .then(function(reg) {
+              _focuspro_swReg = reg;
+              doSubscribe(reg);
+            })
+            .catch(function(err) {
+              window._focuspro_pushResult = { error: String(err) };
+              console.warn('[FocusPro] SW registration failed during subscribe:', err);
+            });
+        }
+      };
     </script>
 
     <script src="flutter_bootstrap.js" async></script>

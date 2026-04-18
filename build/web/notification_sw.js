@@ -1,5 +1,6 @@
 // FocusPro push notification service worker.
-// Registered at scope '/push-notifications/' so it coexists with Flutter's SW.
+// Registered at scope '/' — handles all VAPID push events for the app.
+// Works for both in-app and background (tab closed) notifications.
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
@@ -19,7 +20,6 @@ self.addEventListener('push', function (event) {
   const options = {
     body: data.body || '',
     icon: '/icons/Icon-192.png',
-    badge: '/icons/Icon-96.png',
     requireInteraction: false,
     data: { url: '/' },
   };
