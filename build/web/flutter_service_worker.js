@@ -326,3 +326,32 @@ function onlineFirst(event) {
     })
   );
 }
+
+// ── FocusPro push notification handlers ──────────────────────────────────────
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  let data;
+  try { data = event.data.json(); }
+  catch (_) { data = { title: 'FocusPro', body: event.data.text() }; }
+  const title = data.title || 'FocusPro';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icons/Icon-192.png',
+      badge: '/icons/Icon-96.png',
+      data: { url: '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});

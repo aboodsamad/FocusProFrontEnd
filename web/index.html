@@ -24,28 +24,25 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
-    <!-- Register push notification service worker and expose push subscription helper -->
+    <!-- Push subscription helper using Flutter's own service worker (already at scope /).
+         Dart calls window._focuspro_subscribePush(vapidKey) and polls
+         window._focuspro_pushResult for the JSON result or an error flag. -->
     <script>
-      // Subscribe to VAPID push entirely in JS so Dart doesn't need promiseToFuture.
-      // Dart calls window._focuspro_subscribePush(vapidKey) and polls
-      // window._focuspro_pushResult for the JSON result or an error flag.
-      window._focuspro_pushResult = null; // null = pending, object = done
+      window._focuspro_pushResult = null;
 
       function _focuspro_subscribePush(vapidKey) {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           window._focuspro_pushResult = { error: 'unsupported' };
           return;
         }
-        window._focuspro_pushResult = null; // reset
+        window._focuspro_pushResult = null;
 
-        navigator.serviceWorker
-          .register('/notification_sw.js', { scope: '/push-notifications/' })
-          .then(function (reg) {
-            window._focusproNotifSW = reg;
+        // Use Flutter's already-registered service worker — no second SW needed.
+        navigator.serviceWorker.ready
+          .then(function(reg) {
             return reg.pushManager.getSubscription()
-              .then(function (existing) {
+              .then(function(existing) {
                 if (existing) return existing;
-                // Convert VAPID key from base64url to Uint8Array
                 var b64 = vapidKey.replace(/-/g, '+').replace(/_/g, '/');
                 while (b64.length % 4) b64 += '=';
                 var bin = atob(b64);
@@ -57,11 +54,11 @@
                 });
               });
           })
-          .then(function (sub) {
+          .then(function(sub) {
             window._focuspro_pushResult = JSON.parse(JSON.stringify(sub));
-            console.log('FocusPro: push subscription registered.');
+            console.log('FocusPro: push subscription registered via Flutter SW.');
           })
-          .catch(function (err) {
+          .catch(function(err) {
             window._focuspro_pushResult = { error: String(err) };
             console.warn('FocusPro: push subscription failed:', err);
           });
