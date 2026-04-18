@@ -145,16 +145,16 @@ const RESOURCES = {"assets/AssetManifest.bin": "c8648ea477a11188acf6f29e696e434e
 "canvaskit/skwasm_heavy.wasm": "b0be7910760d205ea4e011458df6ee01",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "abd74d9179d12926a1b53e6c78b7f9ab",
+"flutter_bootstrap.js": "90d0685f7aabc27a1d4c56b12205fbae",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
-"index.html": "f3505ca7a1a18b359296c1acedc20354",
-"/": "f3505ca7a1a18b359296c1acedc20354",
-"main.dart.js": "d9857cb8fdaefad60b176d187e687fe1",
+"index.html": "ef188302722728f934ae49439d0015f6",
+"/": "ef188302722728f934ae49439d0015f6",
+"main.dart.js": "bea1c953ca1a2c823a7a66ed2053d59f",
 "manifest.json": "7af530c02934ea65fa298ae3b9a5e098",
-"notification_sw.js": "6f08d6ed0e697d61cbe02592cf62ce78",
+"notification_sw.js": "666e827717804df4ecdbd2e0849d7ab1",
 "version.json": "699b58a00de95b73a3029b1126e3c4b8"};
 // The application shell files that are downloaded before a service worker can
 // start.
@@ -326,32 +326,3 @@ function onlineFirst(event) {
     })
   );
 }
-
-// ── FocusPro push notification handlers ──────────────────────────────────────
-self.addEventListener('push', function(event) {
-  if (!event.data) return;
-  let data;
-  try { data = event.data.json(); }
-  catch (_) { data = { title: 'FocusPro', body: event.data.text() }; }
-  const title = data.title || 'FocusPro';
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || '',
-      icon: '/icons/Icon-192.png',
-      badge: '/icons/Icon-96.png',
-      data: { url: '/' },
-    })
-  );
-});
-
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
-      for (var i = 0; i < list.length; i++) {
-        if ('focus' in list[i]) return list[i].focus();
-      }
-      return clients.openWindow('/');
-    })
-  );
-});
