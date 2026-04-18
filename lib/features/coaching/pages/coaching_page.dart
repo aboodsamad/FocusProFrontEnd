@@ -288,6 +288,174 @@ class _CoachingPageState extends State<CoachingPage> {
     }
   }
 
+  // ── Add Reminder bottom sheet ─────────────────────────────────────────────
+
+  Future<void> _showReminderSheet() async {
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: (DateTime.now().hour + 1) % 24,
+      minute: 0,
+    );
+    final titleController = TextEditingController();
+    bool saving = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setSheet) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Add Reminder',
+                  style: TextStyle(
+                      color: AppColors.onSurface,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                // Time picker row
+                const Text('Time',
+                    style: TextStyle(
+                        color: AppColors.onSurfaceVariant, fontSize: 13)),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime,
+                      builder: (c, child) => Theme(
+                        data: Theme.of(c).copyWith(
+                          colorScheme: const ColorScheme.dark(
+                            primary: AppColors.primary,
+                            onSurface: AppColors.onSurface,
+                            surface: AppColors.surfaceContainerHigh,
+                          ),
+                        ),
+                        child: child!,
+                      ),
+                    );
+                    if (picked != null) setSheet(() => selectedTime = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.access_time_rounded,
+                          color: AppColors.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        selectedTime.format(ctx),
+                        style: const TextStyle(
+                            color: AppColors.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.edit_outlined,
+                          color: AppColors.onSurfaceVariant, size: 16),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Optional title
+                const Text('Message (optional)',
+                    style: TextStyle(
+                        color: AppColors.onSurfaceVariant, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleController,
+                  style: const TextStyle(color: AppColors.onSurface),
+                  maxLength: 80,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Time to work out!',
+                    hintStyle:
+                        const TextStyle(color: AppColors.onSurfaceVariant),
+                    filled: true,
+                    fillColor: AppColors.surfaceContainerHigh,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    counterStyle:
+                        const TextStyle(color: AppColors.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            setSheet(() => saving = true);
+                            final token =
+                                await AuthService.getToken() ?? '';
+                            final msg = titleController.text.trim();
+                            final ok = await CoachingService.addReminder(
+                              token,
+                              'FocusPro Reminder',
+                              msg.isEmpty ? 'Time to check your goals!' : msg,
+                              selectedTime,
+                            );
+                            if (!mounted) return;
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(ok
+                                    ? 'Reminder set for ${selectedTime.format(context)}'
+                                    : 'Could not save reminder. Try again.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryContainer,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Text('Set Reminder',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+    titleController.dispose();
+  }
+
   // ── Goal status bottom sheet ──────────────────────────────────────────────
 
   void _showGoalStatusSheet(DailyGoalModel goal) {
@@ -666,6 +834,13 @@ class _CoachingPageState extends State<CoachingPage> {
         ],
       ),
       child: Row(children: [
+        // Add Reminder button
+        IconButton(
+          onPressed: _showReminderSheet,
+          tooltip: 'Add Reminder',
+          icon: const Icon(Icons.alarm_add_rounded,
+              color: AppColors.secondary),
+        ),
         Expanded(
           child: TextField(
             controller: _messageController,
