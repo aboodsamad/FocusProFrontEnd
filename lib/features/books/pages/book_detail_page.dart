@@ -35,6 +35,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   // ── TTS ───────────────────────────────────────────────────────────────────
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _ttsPlaying = false;
+  bool _ttsLoading = false;
   double _ttsProgress = 0.0;
   double _ttsSpeed = 1.0;
   final Set<int> _completedChapters = {};
@@ -189,7 +190,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (_currentText.isEmpty || !mounted) return;
     try { await _audioPlayer.stop(); } catch (_) {}
     if (!mounted) return;
-    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; });
+    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _ttsLoading = true; });
 
     try {
       final token = await AuthService.getToken() ?? '';
@@ -199,8 +200,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'text': _currentText, 'speed': _ttsSpeed}),
-      ).timeout(const Duration(seconds: 45));
+        body: jsonEncode({'text': _currentText}),
+      ).timeout(const Duration(seconds: 60));
 
       if (!mounted) return;
 
@@ -241,6 +242,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _ttsLoading = false);
     }
   }
 
@@ -254,7 +257,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _ttsSpeed = speed;
     if (mounted) setState(() {});
     try { await _audioPlayer.setSpeed(speed); } catch (_) {}
-    if (_ttsPlaying) await _ttsPlay();
   }
 
   BookSnippetModel? get _current => _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
@@ -987,7 +989,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           onTap: () => _ttsPlay(),
         ),
         GestureDetector(
-          onTap: _ttsPlaying ? _ttsStop : _ttsPlay,
+          onTap: _ttsLoading ? null : (_ttsPlaying ? _ttsStop : _ttsPlay),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: 80,
@@ -1003,11 +1005,19 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                 ),
               ],
             ),
-            child: Icon(
-              _ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: AppColors.primary,
-              size: 44,
-            ),
+            child: _ttsLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(22),
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : Icon(
+                    _ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: AppColors.primary,
+                    size: 44,
+                  ),
           ),
         ),
         _AudioBtn(
