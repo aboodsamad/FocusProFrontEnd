@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 import '../../../core/services/auth_service.dart';
 import '../models/focus_room.dart';
+import '../models/room_match_result.dart';
 
 class FocusRoomService {
   static String get _base => AuthService.baseUrl;
@@ -217,6 +218,35 @@ class FocusRoomService {
     );
     client.activate();
     return client;
+  }
+
+  // ── HTTP: smart match ─────────────────────────────────────────────────────
+  static Future<List<RoomMatchResult>> findMatch(String sessionGoal) async {
+    final token = await AuthService.getToken();
+    final resp = await http
+        .post(
+          Uri.parse('$_base/rooms/match'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'sessionGoal': sessionGoal}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (resp.statusCode == 200) {
+      final List<dynamic> list = jsonDecode(resp.body);
+      return list
+          .map((j) => RoomMatchResult.fromJson(j as Map<String, dynamic>))
+          .toList();
+    }
+
+    try {
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Match failed (${resp.statusCode})');
+    } catch (_) {
+      throw Exception('Match failed (${resp.statusCode})');
+    }
   }
 
   // ── WebSocket: send leave event ───────────────────────────────────────────
