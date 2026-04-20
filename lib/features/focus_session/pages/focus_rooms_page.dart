@@ -6,6 +6,7 @@ import '../../../features/home/providers/user_provider.dart';
 import '../models/focus_room.dart';
 import '../services/focus_room_service.dart';
 import 'focus_room_session_page.dart';
+import 'smart_match_page.dart';
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -727,6 +728,42 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
             ),
           ),
         ),
+        // Smart Match
+        GestureDetector(
+          onTap: () async {
+            final result = await Navigator.push<String>(
+              context,
+              MaterialPageRoute(builder: (_) => const SmartMatchPage()),
+            );
+            _loadRooms();
+            if (result == 'create' && mounted) {
+              _openCreateSheet();
+            }
+          },
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.primary),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: const [
+              Icon(Icons.auto_awesome_rounded,
+                  color: AppColors.primary, size: 15),
+              SizedBox(width: 4),
+              Text(
+                'Smart Match',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 8),
         // Join with code
         GestureDetector(
           onTap: _openJoinByCodeSheet,
