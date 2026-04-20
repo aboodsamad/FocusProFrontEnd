@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'dart:html' as html;
 import 'package:capstone_front_end/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/constants/app_colors.dart';
@@ -35,7 +34,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   bool _audioMode = false;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  html.AudioElement? _htmlAudio;
+  StreamSubscription? _timeUpdateSub;
+  StreamSubscription? _endedSub;
+  StreamSubscription? _errorSub;
+  StreamSubscription? _playSub;
+  StreamSubscription? _pauseSub;
+  StreamSubscription? _metadataSub;
   bool _ttsPlaying = false;
   bool _ttsLoading = false;
   double _ttsProgress = 0.0;
@@ -74,7 +79,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     _pageController = PageController();
     _initWaveBars();
-    _initAudioPlayer();
     _loadSnippets();
   }
 
@@ -90,112 +94,129 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     for (final c in _barCtrls) c.stop();
   }
 
-  void _initAudioPlayer() {
-    _audioPlayer.playbackEventStream.listen(
-      (_) {},
-      onError: (Object e, StackTrace st) {
-        debugPrint('just_audio playback error: $e');
-      },
-    );
-
-    // Track real position and duration for accurate progress/time display
-    _audioPlayer.positionStream.listen((position) {
-      if (!mounted) return;
-      setState(() {
-        _audioPosition = position;
-        if (_audioDuration.inMilliseconds > 0) {
-          _ttsProgress = (position.inMilliseconds / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
-        }
-      });
-    });
-
-    _audioPlayer.durationStream.listen((duration) {
-      if (!mounted) return;
-      setState(() => _audioDuration = duration ?? Duration.zero);
-    });
-
-    _audioPlayer.playerStateStream.listen((state) async {
-      if (!mounted) return;
-      if (state.processingState == ProcessingState.completed) {
-        setState(() { _ttsPlaying = false; });
-        for (final c in _barCtrls) c.stop();
-        final completedIdx = _currentIndex;
-        final snippetId = _snippets[completedIdx].id;
-        final token = await AuthService.getToken() ?? '';
-        final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
-        if (!mounted) return;
-        if (passed) {
-          _completedChapters.add(completedIdx);
-          setState(() {});
-          if (_currentIndex < _snippets.length - 1) {
-            final next = _currentIndex + 1;
-            Future.delayed(const Duration(milliseconds: 600), () {
-              if (!mounted) return;
-              setState(() { _currentIndex = next; _ttsProgress = 0; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
-              _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
-              if (_audioMode) {
-                Future.delayed(const Duration(milliseconds: 400), () {
-                  if (mounted) _ttsPlay();
-                });
-              }
-            });
-          } else {
-            _showCompletionSheet();
-          }
-        } else {
-          // Failed test — stay on current chapter
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Pass the quiz (2/3 correct) to unlock the next chapter.'),
-                duration: Duration(seconds: 3),
-              ),
-            );
-          }
-        }
-      } else if (state.playing) {
-        if (!mounted) return;
-        if (!_ttsPlaying) {
-          setState(() => _ttsPlaying = true);
-          for (final c in _barCtrls) c.repeat(reverse: true);
-        }
-      } else if (!state.playing &&
-          state.processingState != ProcessingState.loading &&
-          state.processingState != ProcessingState.buffering) {
-        if (mounted && _ttsPlaying && !_speedChanging) {
-          setState(() => _ttsPlaying = false);
-          for (final c in _barCtrls) c.stop();
-        }
-      }
-    });
+  void _disposeHtmlAudio() {
+    _timeUpdateSub?.cancel();
+    _endedSub?.cancel();
+    _errorSub?.cancel();
+    _playSub?.cancel();
+    _pauseSub?.cancel();
+    _metadataSub?.cancel();
+    _timeUpdateSub = _endedSub = _errorSub = _playSub = _pauseSub = _metadataSub = null;
+    _htmlAudio?.pause();
+    _htmlAudio = null;
   }
 
+  Future<void> _onAudioEnded() async {
+    if (!mounted) return;
+    setState(() => _ttsPlaying = false);
+    for (final c in _barCtrls) c.stop();
+    final completedIdx = _currentIndex;
+    final snippetId = _snippets[completedIdx].id;
+    final token = await AuthService.getToken() ?? '';
+    final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
+    if (!mounted) return;
+    if (passed) {
+      _completedChapters.add(completedIdx);
+      setState(() {});
+      if (_currentIndex < _snippets.length - 1) {
+        final next = _currentIndex + 1;
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted) return;
+          setState(() { _currentIndex = next; _ttsProgress = 0; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
+          _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+          if (_audioMode) {
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (mounted) _ttsPlay();
+            });
+          }
+        });
+      } else {
+        _showCompletionSheet();
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pass the quiz (2/3 correct) to unlock the next chapter.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _disposeHtmlAudio();
+    if (_blobUrl != null) html.Url.revokeObjectUrl(_blobUrl!);
     _enterCtrl.dispose();
     _pulseCtrl.dispose();
     _pageController.dispose();
     for (final c in _barCtrls) c.dispose();
-    if (_blobUrl != null) html.Url.revokeObjectUrl(_blobUrl!);
     super.dispose();
   }
 
-  /// Load bytes into the audio player via a Blob URL so the browser's
-  /// native HTML5 audio engine handles it — gives us full seek, pause,
-  /// and accurate position/duration on Flutter web.
+  /// Load bytes via a native HTML AudioElement — avoids just_audio's
+  /// broken blob-URL handling on Flutter Web.
   Future<void> _playBytes(Uint8List bytes) async {
-    // Revoke previous blob to free memory
+    _disposeHtmlAudio();
     if (_blobUrl != null) {
       html.Url.revokeObjectUrl(_blobUrl!);
       _blobUrl = null;
     }
     final blob = html.Blob([bytes], 'audio/mpeg');
     _blobUrl = html.Url.createObjectUrl(blob);
-    await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(_blobUrl!)));
-    await _audioPlayer.setSpeed(_ttsSpeed);
-    await _audioPlayer.play();
+
+    final audio = html.AudioElement();
+    audio.src = _blobUrl!;
+    audio.playbackRate = _ttsSpeed;
+    _htmlAudio = audio;
+
+    _metadataSub = audio.onLoadedMetadata.listen((_) {
+      if (!mounted) return;
+      final durMs = (audio.duration * 1000).round();
+      setState(() => _audioDuration = Duration(milliseconds: durMs));
+    });
+
+    _timeUpdateSub = audio.onTimeUpdate.listen((_) {
+      if (!mounted) return;
+      final posMs = (audio.currentTime * 1000).round();
+      final pos = Duration(milliseconds: posMs);
+      setState(() {
+        _audioPosition = pos;
+        if (_audioDuration.inMilliseconds > 0) {
+          _ttsProgress = (posMs / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
+        }
+      });
+    });
+
+    _playSub = audio.onPlay.listen((_) {
+      if (!mounted) return;
+      if (!_ttsPlaying) {
+        setState(() => _ttsPlaying = true);
+        for (final c in _barCtrls) c.repeat(reverse: true);
+      }
+    });
+
+    _pauseSub = audio.onPause.listen((_) {
+      if (!mounted || _speedChanging) return;
+      if (_ttsPlaying) {
+        setState(() => _ttsPlaying = false);
+        for (final c in _barCtrls) c.stop();
+      }
+    });
+
+    _endedSub = audio.onEnded.listen((_) async {
+      await _onAudioEnded();
+    });
+
+    _errorSub = audio.onError.listen((e) {
+      debugPrint('html.AudioElement error: $e');
+      if (mounted) setState(() { _ttsPlaying = false; _ttsLoading = false; });
+      for (final c in _barCtrls) c.stop();
+    });
+
+    await audio.play();
   }
 
   Future<void> _loadSnippets() async {
@@ -272,7 +293,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   Future<void> _ttsPlay() async {
     if (_currentText.isEmpty || !mounted) return;
-    try { await _audioPlayer.stop(); } catch (_) {}
+    _disposeHtmlAudio();
     if (!mounted) return;
     setState(() {
       _ttsPlaying = false;
@@ -364,35 +385,35 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Future<void> _ttsStop() async {
+    _disposeHtmlAudio();
     if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; });
     for (final c in _barCtrls) c.stop();
-    try { await _audioPlayer.stop(); } catch (_) {}
   }
 
   Future<void> _ttsPauseResume() async {
+    final audio = _htmlAudio;
+    if (audio == null) {
+      await _ttsPlay();
+      return;
+    }
     if (_ttsPlaying) {
-      try { await _audioPlayer.pause(); } catch (_) {}
+      audio.pause();
     } else {
-      final ps = _audioPlayer.processingState;
-      if (ps == ProcessingState.ready || ps == ProcessingState.buffering) {
-        try { await _audioPlayer.play(); } catch (_) {}
-      } else {
-        await _ttsPlay();
-      }
+      await audio.play();
     }
   }
 
   Future<void> _seekRelative(int seconds) async {
-    if (_audioDuration == Duration.zero) return;
-    final raw = _audioPosition + Duration(seconds: seconds);
-    final newPos = raw < Duration.zero ? Duration.zero : (raw > _audioDuration ? _audioDuration : raw);
-    try { await _audioPlayer.seek(newPos); } catch (_) {}
+    final audio = _htmlAudio;
+    if (audio == null || audio.duration == 0) return;
+    final newTime = (audio.currentTime + seconds).clamp(0, audio.duration);
+    audio.currentTime = newTime;
   }
 
   Future<void> _seekTo(double fraction) async {
-    if (_audioDuration == Duration.zero) return;
-    final ms = (fraction * _audioDuration.inMilliseconds).round();
-    try { await _audioPlayer.seek(Duration(milliseconds: ms)); } catch (_) {}
+    final audio = _htmlAudio;
+    if (audio == null || audio.duration == 0) return;
+    audio.currentTime = fraction * audio.duration;
   }
 
   String _formatDuration(Duration d) {
@@ -410,7 +431,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _ttsSpeed = speed;
     _speedChanging = true;
     if (mounted) setState(() {});
-    try { await _audioPlayer.setSpeed(speed); } catch (_) {}
+    _htmlAudio?.playbackRate = speed;
     _speedChanging = false;
   }
 
@@ -418,7 +439,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   Future<void> _goTo(int i, {bool autoPlay = false}) async {
     if (i < 0 || i >= _snippets.length || !mounted) return;
-    try { await _audioPlayer.stop(); } catch (_) {}
+    _disposeHtmlAudio();
     if (!mounted) return;
     setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; _audioDuration = Duration.zero; _currentIndex = i; });
     for (final c in _barCtrls) c.stop();
@@ -456,7 +477,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _showCompletionSheet() {
-    try { _audioPlayer.stop(); } catch (_) {}
+    _disposeHtmlAudio();
     if (mounted) setState(() => _ttsPlaying = false);
     showModalBottomSheet(
       context: context,
@@ -1798,21 +1819,3 @@ class _BookCoverFallback extends StatelessWidget {
   }
 }
 
-// Feeds raw MP3 bytes (from ElevenLabs) into just_audio without writing to disk.
-class _BytesAudioSource extends StreamAudioSource {
-  final Uint8List _bytes;
-  _BytesAudioSource(this._bytes);
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    start ??= 0;
-    end ??= _bytes.length;
-    return StreamAudioResponse(
-      sourceLength: _bytes.length,
-      contentLength: end - start,
-      offset: start,
-      stream: Stream.value(_bytes.sublist(start, end)),
-      contentType: 'audio/mpeg',
-    );
-  }
-}
