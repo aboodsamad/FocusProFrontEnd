@@ -79,6 +79,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _initAudioPlayer() {
+    // Catch just_audio internal errors so they don't surface as Uncaught Error in the console
+    _audioPlayer.playbackEventStream.listen(
+      (_) {},
+      onError: (Object e, StackTrace st) {
+        debugPrint('just_audio playback error: $e');
+      },
+    );
+
     _audioPlayer.playerStateStream.listen((state) async {
       if (!mounted) return;
       if (state.processingState == ProcessingState.completed) {
@@ -192,17 +200,47 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           'Content-Type': 'application/json',
         },
         body: jsonEncode({'text': _currentText, 'speed': _ttsSpeed}),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 45));
 
       if (!mounted) return;
-      if (resp.statusCode != 200) return;
+
+      if (resp.statusCode == 503) {
+        // Render free-tier backend is waking up from sleep
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server is starting up, please try again in a few seconds...'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      if (resp.statusCode != 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Audio unavailable (${resp.statusCode}), please try again.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
 
       final bytes = resp.bodyBytes;
+      if (bytes.isEmpty) return;
+
       await _audioPlayer.setAudioSource(_BytesAudioSource(bytes));
       await _audioPlayer.setSpeed(_ttsSpeed);
       await _audioPlayer.play();
     } catch (e) {
-      debugPrint('ElevenLabs TTS error: $e');
+      debugPrint('TTS error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio playback failed. Please try again.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -413,16 +451,30 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty
-                        ? Image.asset(
-                            widget.book.bookPagesUrl!,
-                            fit: BoxFit.cover,
-                            width: 120,
-                            height: 180,
-                            errorBuilder: (_, __, ___) => _BookCoverFallback(
-                              color: _coverColor, title: widget.book.title),
-                          )
-                        : _BookCoverFallback(color: _coverColor, title: widget.book.title),
+                    child: () {
+                      final url = widget.book.bookPagesUrl;
+                      if (url == null || url.isEmpty) {
+                        return _BookCoverFallback(color: _coverColor, title: widget.book.title);
+                      }
+                      final isNetwork = url.startsWith('http');
+                      return isNetwork
+                          ? Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: 120,
+                              height: 180,
+                              errorBuilder: (_, __, ___) => _BookCoverFallback(
+                                color: _coverColor, title: widget.book.title),
+                            )
+                          : Image.asset(
+                              url,
+                              fit: BoxFit.cover,
+                              width: 120,
+                              height: 180,
+                              errorBuilder: (_, __, ___) => _BookCoverFallback(
+                                color: _coverColor, title: widget.book.title),
+                            );
+                    }(),
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -782,7 +834,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildAudioCoverArt() {
-    final hasImage = widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty;
+    final bookUrl = widget.book.bookPagesUrl;
+    final hasImage = bookUrl != null && bookUrl.isNotEmpty;
+    final isNetworkUrl = hasImage && bookUrl.startsWith('http');
+
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, __) => Transform.scale(
@@ -809,17 +864,29 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           ),
           child: ClipOval(
             child: hasImage
-                ? Image.asset(
-                    widget.book.bookPagesUrl!,
-                    width: 240,
-                    height: 240,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
-                      color: _coverColor,
-                      title: widget.book.title,
-                      author: widget.book.author,
-                    ),
-                  )
+                ? (isNetworkUrl
+                    ? Image.network(
+                        bookUrl,
+                        width: 240,
+                        height: 240,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
+                          color: _coverColor,
+                          title: widget.book.title,
+                          author: widget.book.author,
+                        ),
+                      )
+                    : Image.asset(
+                        bookUrl,
+                        width: 240,
+                        height: 240,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
+                          color: _coverColor,
+                          title: widget.book.title,
+                          author: widget.book.author,
+                        ),
+                      ))
                 : _AudioCoverFallbackCircle(
                     color: _coverColor,
                     title: widget.book.title,
