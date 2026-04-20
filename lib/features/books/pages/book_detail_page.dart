@@ -38,8 +38,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   bool _ttsLoading = false;
   double _ttsProgress = 0.0;
   double _ttsSpeed = 1.0;
+  bool _speedChanging = false;
   final Set<int> _completedChapters = {};
-  DateTime? _speakStartTime;
+  Duration _audioDuration = Duration.zero;
+  Duration _audioPosition = Duration.zero;
 
   // ── Audio pre-fetch cache (index → bytes) ─────────────────────────────────
   final Map<int, Uint8List> _audioCache = {};
@@ -83,7 +85,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _initAudioPlayer() {
-    // Catch just_audio internal errors so they don't surface as Uncaught Error in the console
     _audioPlayer.playbackEventStream.listen(
       (_) {},
       onError: (Object e, StackTrace st) {
@@ -91,42 +92,71 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       },
     );
 
+    // Track real position and duration for accurate progress/time display
+    _audioPlayer.positionStream.listen((position) {
+      if (!mounted) return;
+      setState(() {
+        _audioPosition = position;
+        if (_audioDuration.inMilliseconds > 0) {
+          _ttsProgress = (position.inMilliseconds / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
+        }
+      });
+    });
+
+    _audioPlayer.durationStream.listen((duration) {
+      if (!mounted) return;
+      setState(() => _audioDuration = duration ?? Duration.zero);
+    });
+
     _audioPlayer.playerStateStream.listen((state) async {
       if (!mounted) return;
       if (state.processingState == ProcessingState.completed) {
+        setState(() { _ttsPlaying = false; });
+        for (final c in _barCtrls) c.stop();
         final completedIdx = _currentIndex;
         final snippetId = _snippets[completedIdx].id;
         final token = await AuthService.getToken() ?? '';
         final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
-        if (passed) _completedChapters.add(completedIdx);
         if (!mounted) return;
-        setState(() { _ttsPlaying = false; _ttsProgress = 1.0; });
-        for (final c in _barCtrls) c.stop();
-        if (_currentIndex < _snippets.length - 1) {
-          final next = _currentIndex + 1;
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (!mounted) return;
-            setState(() { _currentIndex = next; _ttsProgress = 0; });
-            _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
-            if (_audioMode) {
-              Future.delayed(const Duration(milliseconds: 400), () {
-                if (mounted) _ttsPlay();
-              });
-            }
-          });
+        if (passed) {
+          _completedChapters.add(completedIdx);
+          setState(() {});
+          if (_currentIndex < _snippets.length - 1) {
+            final next = _currentIndex + 1;
+            Future.delayed(const Duration(milliseconds: 600), () {
+              if (!mounted) return;
+              setState(() { _currentIndex = next; _ttsProgress = 0; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
+              _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+              if (_audioMode) {
+                Future.delayed(const Duration(milliseconds: 400), () {
+                  if (mounted) _ttsPlay();
+                });
+              }
+            });
+          } else {
+            _showCompletionSheet();
+          }
+        } else {
+          // Failed test — stay on current chapter
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Pass the quiz (2/3 correct) to unlock the next chapter.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
         }
       } else if (state.playing) {
         if (!mounted) return;
         if (!_ttsPlaying) {
-          setState(() { _ttsPlaying = true; _ttsProgress = 0; });
-          _speakStartTime = DateTime.now();
+          setState(() => _ttsPlaying = true);
           for (final c in _barCtrls) c.repeat(reverse: true);
-          _startProgressTimer();
         }
       } else if (!state.playing &&
           state.processingState != ProcessingState.loading &&
           state.processingState != ProcessingState.buffering) {
-        if (mounted && _ttsPlaying) {
+        if (mounted && _ttsPlaying && !_speedChanging) {
           setState(() => _ttsPlaying = false);
           for (final c in _barCtrls) c.stop();
         }
@@ -134,21 +164,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     });
   }
 
-  void _startProgressTimer() {
-    final snippet = _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
-    if (snippet == null) return;
-    final wordCount = snippet.snippetText.split(' ').length;
-    final estimatedSeconds = wordCount / (_ttsSpeed * 2.5);
-
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (!mounted || !_ttsPlaying || _speakStartTime == null) return false;
-      final elapsed = DateTime.now().difference(_speakStartTime!).inMilliseconds / 1000;
-      final progress = (elapsed / estimatedSeconds).clamp(0.0, 0.98);
-      if (mounted) setState(() => _ttsProgress = progress);
-      return _ttsPlaying;
-    });
-  }
 
   @override
   void dispose() {
@@ -221,7 +236,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (_currentText.isEmpty || !mounted) return;
     try { await _audioPlayer.stop(); } catch (_) {}
     if (!mounted) return;
-    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _ttsLoading = true; });
+    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _ttsLoading = true; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
 
     try {
       // ── Use local cache if available (instant play) ──
@@ -296,15 +311,54 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Future<void> _ttsStop() async {
-    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; });
+    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; });
     for (final c in _barCtrls) c.stop();
     try { await _audioPlayer.stop(); } catch (_) {}
   }
 
+  Future<void> _ttsPauseResume() async {
+    if (_ttsPlaying) {
+      try { await _audioPlayer.pause(); } catch (_) {}
+    } else {
+      final ps = _audioPlayer.processingState;
+      if (ps == ProcessingState.ready || ps == ProcessingState.buffering) {
+        try { await _audioPlayer.play(); } catch (_) {}
+      } else {
+        await _ttsPlay();
+      }
+    }
+  }
+
+  Future<void> _seekRelative(int seconds) async {
+    if (_audioDuration == Duration.zero) return;
+    final raw = _audioPosition + Duration(seconds: seconds);
+    final newPos = raw < Duration.zero ? Duration.zero : (raw > _audioDuration ? _audioDuration : raw);
+    try { await _audioPlayer.seek(newPos); } catch (_) {}
+  }
+
+  Future<void> _seekTo(double fraction) async {
+    if (_audioDuration == Duration.zero) return;
+    final ms = (fraction * _audioDuration.inMilliseconds).round();
+    try { await _audioPlayer.seek(Duration(milliseconds: ms)); } catch (_) {}
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  bool _isChapterUnlocked(int index) {
+    if (index <= 0) return true;
+    return _completedChapters.contains(index - 1);
+  }
+
   Future<void> _setSpeed(double speed) async {
     _ttsSpeed = speed;
+    _speedChanging = true;
     if (mounted) setState(() {});
     try { await _audioPlayer.setSpeed(speed); } catch (_) {}
+    _speedChanging = false;
   }
 
   BookSnippetModel? get _current => _snippets.isNotEmpty ? _snippets[_currentIndex] : null;
@@ -313,8 +367,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (i < 0 || i >= _snippets.length || !mounted) return;
     try { await _audioPlayer.stop(); } catch (_) {}
     if (!mounted) return;
-    _speakStartTime = null;
-    setState(() { _ttsPlaying = false; _ttsProgress = 0; _currentIndex = i; });
+    setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; _audioDuration = Duration.zero; _currentIndex = i; });
     for (final c in _barCtrls) c.stop();
     _pageController.animateToPage(i, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     if (autoPlay && _audioMode) {
@@ -329,14 +382,23 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     final snippetId = _current!.id;
     final token = await AuthService.getToken() ?? '';
     final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
+    if (!mounted) return;
     if (passed) {
       _completedChapters.add(completedIdx);
       setState(() {});
-    }
-    if (_currentIndex < _snippets.length - 1) {
-      _goTo(_currentIndex + 1);
+      if (_currentIndex < _snippets.length - 1) {
+        _goTo(_currentIndex + 1);
+      } else {
+        _showCompletionSheet();
+      }
     } else {
-      _showCompletionSheet();
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pass the quiz (2/3 correct) to unlock the next chapter.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -691,83 +753,96 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               final s = _snippets[i];
               final done = _completedChapters.contains(i);
               final isCurrent = i == _currentIndex;
+              final unlocked = _isChapterUnlocked(i);
 
               return Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: GestureDetector(
-                  onTap: () => setState(() { _currentIndex = i; _readingMode = true; }),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isCurrent && !done ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border(
-                        left: BorderSide(
-                          color: done ? AppColors.secondary : isCurrent ? AppColors.onTertiaryContainer : Colors.transparent,
-                          width: 4,
+                  onTap: unlocked
+                      ? () => setState(() { _currentIndex = i; _readingMode = true; })
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Complete the previous chapter first!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                  child: Opacity(
+                    opacity: unlocked ? 1.0 : 0.5,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isCurrent && !done ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border(
+                          left: BorderSide(
+                            color: done ? AppColors.secondary : isCurrent && unlocked ? AppColors.onTertiaryContainer : Colors.transparent,
+                            width: 4,
+                          ),
                         ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: done
-                                ? AppColors.secondaryContainer
-                                : isCurrent
-                                ? AppColors.onPrimaryContainer.withOpacity(0.2)
-                                : AppColors.surfaceContainer,
-                            shape: BoxShape.circle,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: done
+                                  ? AppColors.secondaryContainer
+                                  : isCurrent
+                                  ? AppColors.onPrimaryContainer.withOpacity(0.2)
+                                  : AppColors.surfaceContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              done
+                                  ? Icons.check_circle_rounded
+                                  : unlocked
+                                  ? Icons.play_circle_rounded
+                                  : Icons.lock_rounded,
+                              color: done
+                                  ? AppColors.onSecondaryContainer
+                                  : unlocked
+                                  ? (isCurrent ? Colors.white : AppColors.onSurfaceVariant)
+                                  : AppColors.onSurfaceVariant,
+                              size: 22,
+                            ),
                           ),
-                          child: Icon(
-                            done
-                                ? Icons.check_circle_rounded
-                                : isCurrent
-                                ? Icons.play_circle_rounded
-                                : Icons.lock_rounded,
-                            color: done
-                                ? AppColors.onSecondaryContainer
-                                : isCurrent
-                                ? Colors.white
-                                : AppColors.onSurfaceVariant,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                s.snippetTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isCurrent && !done ? Colors.white : done ? AppColors.primary : AppColors.onSurface.withOpacity(done ? 0.6 : 1),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Manrope',
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.snippetTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isCurrent && !done ? Colors.white : done ? AppColors.primary : AppColors.onSurface,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Manrope',
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                done ? 'Completed' : isCurrent ? 'Next up' : 'Locked',
-                                style: TextStyle(
-                                  color: isCurrent && !done ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                const SizedBox(height: 2),
+                                Text(
+                                  done ? 'Completed' : unlocked ? (isCurrent ? 'Next up' : 'Available') : 'Locked',
+                                  style: TextStyle(
+                                    color: isCurrent && !done ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        Icon(
-                          isCurrent && !done ? Icons.auto_awesome_rounded : Icons.chevron_right_rounded,
-                          color: isCurrent && !done ? Colors.white : AppColors.outlineVariant.withOpacity(0.5),
-                        ),
-                      ],
+                          Icon(
+                            isCurrent && !done ? Icons.auto_awesome_rounded : Icons.chevron_right_rounded,
+                            color: isCurrent && !done ? Colors.white : AppColors.outlineVariant.withOpacity(0.5),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -965,22 +1040,37 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   Widget _buildTtsProgressBar() {
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            value: _ttsProgress,
-            minHeight: 6,
-            backgroundColor: const Color(0xFF374151),
-            valueColor: const AlwaysStoppedAnimation(AppColors.secondaryFixed),
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+            thumbColor: AppColors.secondaryFixed,
+            activeTrackColor: AppColors.secondaryFixed,
+            inactiveTrackColor: const Color(0xFF374151),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            overlayColor: AppColors.secondaryFixed.withValues(alpha: 0.15),
+          ),
+          child: Slider(
+            value: _ttsProgress.clamp(0.0, 1.0),
+            onChanged: (v) => setState(() => _ttsProgress = v),
+            onChangeEnd: (v) => _seekTo(v),
           ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('${(_ttsProgress * 12).toStringAsFixed(0)}:00', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-            Text('12:00', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-          ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatDuration(_audioPosition),
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+              ),
+              Text(
+                _formatDuration(_audioDuration),
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1021,6 +1111,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildAudioMainControls() {
+    final canGoNext = _currentIndex < _snippets.length - 1 && _isChapterUnlocked(_currentIndex + 1);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -1034,10 +1125,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           icon: Icons.replay_10_rounded,
           size: 26,
           color: const Color(0xFF9CA3AF),
-          onTap: () => _ttsPlay(),
+          onTap: () => _seekRelative(-10),
         ),
         GestureDetector(
-          onTap: _ttsLoading ? null : (_ttsPlaying ? _ttsStop : _ttsPlay),
+          onTap: _ttsLoading ? null : _ttsPauseResume,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: 80,
@@ -1072,13 +1163,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           icon: Icons.forward_10_rounded,
           size: 26,
           color: const Color(0xFF9CA3AF),
-          onTap: () {},
+          onTap: () => _seekRelative(10),
         ),
         _AudioBtn(
           icon: Icons.skip_next_rounded,
           size: 28,
-          color: _currentIndex < _snippets.length - 1 ? const Color(0xFF9CA3AF) : const Color(0xFF374151),
-          onTap: _currentIndex < _snippets.length - 1 ? () => _goTo(_currentIndex + 1, autoPlay: _ttsPlaying) : null,
+          color: canGoNext ? const Color(0xFF9CA3AF) : const Color(0xFF374151),
+          onTap: canGoNext ? () => _goTo(_currentIndex + 1, autoPlay: _ttsPlaying) : null,
         ),
       ],
     );
@@ -1103,8 +1194,18 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           final s = _snippets[i];
           final active = i == _currentIndex;
           final done = _completedChapters.contains(i);
+          final unlocked = _isChapterUnlocked(i);
           return GestureDetector(
-            onTap: () => _goTo(i, autoPlay: _ttsPlaying),
+            onTap: unlocked
+                ? () => _goTo(i, autoPlay: _ttsPlaying)
+                : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Complete the previous chapter first!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(bottom: 8),
@@ -1116,52 +1217,57 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                   color: active ? AppColors.secondaryFixed.withOpacity(0.15) : Colors.transparent,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: done
-                          ? AppColors.secondaryFixed.withOpacity(0.2)
+              child: Opacity(
+                opacity: unlocked ? 1.0 : 0.45,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: done
+                            ? AppColors.secondaryFixed.withOpacity(0.2)
+                            : active
+                            ? AppColors.secondaryFixed.withOpacity(0.1)
+                            : const Color(0xFF1F2937),
+                      ),
+                      child: done
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.secondaryFixed, size: 18)
+                          : !unlocked
+                          ? const Icon(Icons.lock_rounded, color: Color(0xFF6B7280), size: 16)
                           : active
-                          ? AppColors.secondaryFixed.withOpacity(0.1)
-                          : const Color(0xFF1F2937),
+                          ? const Icon(Icons.equalizer_rounded, color: AppColors.secondaryFixed, size: 18)
+                          : Center(child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold))),
                     ),
-                    child: done
-                        ? const Icon(Icons.check_circle_rounded, color: AppColors.secondaryFixed, size: 18)
-                        : active
-                        ? const Icon(Icons.equalizer_rounded, color: AppColors.secondaryFixed, size: 18)
-                        : Center(child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold))),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s.snippetTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: active ? Colors.white : const Color(0xFFD1D5DB),
-                            fontSize: 13,
-                            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                            fontFamily: 'Manrope',
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.snippetTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: active ? Colors.white : const Color(0xFFD1D5DB),
+                              fontSize: 13,
+                              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                              fontFamily: 'Manrope',
+                            ),
                           ),
-                        ),
-                        if (s.durationSeconds != null)
-                          Text('${s.durationLabel}', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11)),
-                      ],
+                          if (s.durationSeconds != null)
+                            Text(s.durationLabel, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11)),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(
-                    Icons.play_circle_rounded,
-                    color: active ? AppColors.secondaryFixed : const Color(0xFF374151),
-                    size: 20,
-                  ),
-                ],
+                    Icon(
+                      unlocked ? Icons.play_circle_rounded : Icons.lock_outline_rounded,
+                      color: active ? AppColors.secondaryFixed : const Color(0xFF374151),
+                      size: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -1183,6 +1289,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: _snippets.length,
                 onPageChanged: (i) => setState(() => _currentIndex = i),
                 itemBuilder: (_, i) => _ReaderPage(snippet: _snippets[i]),
