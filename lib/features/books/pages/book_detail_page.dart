@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:html' as html;
 import 'package:capstone_front_end/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -45,6 +46,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   // ── Audio pre-fetch cache (index → bytes) ─────────────────────────────────
   final Map<int, Uint8List> _audioCache = {};
+  String? _blobUrl; // current blob URL (revoked on each new load)
 
   // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _enterCtrl;
@@ -172,7 +174,24 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _pulseCtrl.dispose();
     _pageController.dispose();
     for (final c in _barCtrls) c.dispose();
+    if (_blobUrl != null) html.Url.revokeObjectUrl(_blobUrl!);
     super.dispose();
+  }
+
+  /// Load bytes into the audio player via a Blob URL so the browser's
+  /// native HTML5 audio engine handles it — gives us full seek, pause,
+  /// and accurate position/duration on Flutter web.
+  Future<void> _playBytes(Uint8List bytes) async {
+    // Revoke previous blob to free memory
+    if (_blobUrl != null) {
+      html.Url.revokeObjectUrl(_blobUrl!);
+      _blobUrl = null;
+    }
+    final blob = html.Blob([bytes], 'audio/mpeg');
+    _blobUrl = html.Url.createObjectUrl(blob);
+    await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(_blobUrl!)));
+    await _audioPlayer.setSpeed(_ttsSpeed);
+    await _audioPlayer.play();
   }
 
   Future<void> _loadSnippets() async {
@@ -242,10 +261,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       // ── Use local cache if available (instant play) ──
       if (_audioCache.containsKey(_currentIndex)) {
         final cachedBytes = _audioCache[_currentIndex]!;
-        await _audioPlayer.setAudioSource(_BytesAudioSource(cachedBytes));
-        await _audioPlayer.setSpeed(_ttsSpeed);
         if (mounted) setState(() => _ttsLoading = false);
-        await _audioPlayer.play();
+        await _playBytes(cachedBytes);
         // Pre-fetch the next snippet while current is playing
         _prefetchAudio(_currentIndex + 1);
         return;
@@ -290,9 +307,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       // Store in cache so next play is instant
       _audioCache[_currentIndex] = bytes;
 
-      await _audioPlayer.setAudioSource(_BytesAudioSource(bytes));
-      await _audioPlayer.setSpeed(_ttsSpeed);
-      await _audioPlayer.play();
+      await _playBytes(bytes);
       // Pre-fetch next snippet while current plays
       _prefetchAudio(_currentIndex + 1);
     } catch (e) {
