@@ -788,11 +788,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       builder: (_, __) => Transform.scale(
         scale: _ttsPlaying ? _pulseAnim.value : 1.0,
         child: Container(
+          width: 240,
+          height: 240,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            shape: BoxShape.circle,
+            color: _coverColor,
             boxShadow: [
               BoxShadow(
-                color: _coverColor.withOpacity(_ttsPlaying ? 0.5 : 0.25),
+                color: _coverColor.withOpacity(_ttsPlaying ? 0.55 : 0.30),
                 blurRadius: _ttsPlaying ? 60 : 30,
                 spreadRadius: _ttsPlaying ? 8 : 2,
                 offset: const Offset(0, 12),
@@ -804,21 +807,20 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+          child: ClipOval(
             child: hasImage
                 ? Image.asset(
                     widget.book.bookPagesUrl!,
-                    width: 200,
-                    height: 280,
+                    width: 240,
+                    height: 240,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _AudioCoverFallback(
+                    errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
                       color: _coverColor,
                       title: widget.book.title,
                       author: widget.book.author,
                     ),
                   )
-                : _AudioCoverFallback(
+                : _AudioCoverFallbackCircle(
                     color: _coverColor,
                     title: widget.book.title,
                     author: widget.book.author,
@@ -1378,6 +1380,60 @@ class _CompletionSheet extends StatelessWidget {
   );
 }
 
+
+// Circular fallback used in the audio player
+class _AudioCoverFallbackCircle extends StatelessWidget {
+  final Color color;
+  final String title;
+  final String author;
+  const _AudioCoverFallbackCircle({required this.color, required this.title, required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      height: 240,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.65)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.25), size: 90),
+          Positioned(
+            bottom: 44,
+            left: 24,
+            right: 24,
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, height: 1.3, fontFamily: 'Manrope'),
+            ),
+          ),
+          Positioned(
+            bottom: 28,
+            left: 24,
+            right: 24,
+            child: Text(
+              author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _AudioCoverFallback extends StatelessWidget {
   final Color color;
