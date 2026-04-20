@@ -41,6 +41,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   final Set<int> _completedChapters = {};
   DateTime? _speakStartTime;
 
+  // ── Audio pre-fetch cache (index → bytes) ─────────────────────────────────
+  final Map<int, Uint8List> _audioCache = {};
+
   // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _enterCtrl;
   late AnimationController _pulseCtrl;
@@ -176,6 +179,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         _loading = false;
       });
       _enterCtrl.forward();
+      // Pre-fetch audio for first 2 snippets in background so play is instant
+      _prefetchAudio(0);
+      if (snippets.length > 1) _prefetchAudio(1);
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -186,6 +192,31 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   String get _currentText => _snippets.isNotEmpty ? _snippets[_currentIndex].snippetText : '';
 
+  // Pre-fetch audio in the background and store in local cache
+  Future<void> _prefetchAudio(int index) async {
+    if (index < 0 || index >= _snippets.length) return;
+    if (_audioCache.containsKey(index)) return; // already cached
+    final text = _snippets[index].snippetText;
+    if (text.isEmpty) return;
+    try {
+      final token = await AuthService.getToken() ?? '';
+      final resp = await http.post(
+        Uri.parse('${AuthService.baseUrl}/tts'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'text': text}),
+      ).timeout(const Duration(seconds: 90));
+      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+        _audioCache[index] = resp.bodyBytes;
+        debugPrint('TTS pre-fetch done for snippet $index (${resp.bodyBytes.length} bytes)');
+      }
+    } catch (e) {
+      debugPrint('TTS pre-fetch failed for snippet $index: $e');
+    }
+  }
+
   Future<void> _ttsPlay() async {
     if (_currentText.isEmpty || !mounted) return;
     try { await _audioPlayer.stop(); } catch (_) {}
@@ -193,6 +224,18 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _ttsLoading = true; });
 
     try {
+      // ── Use local cache if available (instant play) ──
+      if (_audioCache.containsKey(_currentIndex)) {
+        final cachedBytes = _audioCache[_currentIndex]!;
+        await _audioPlayer.setAudioSource(_BytesAudioSource(cachedBytes));
+        await _audioPlayer.setSpeed(_ttsSpeed);
+        if (mounted) setState(() => _ttsLoading = false);
+        await _audioPlayer.play();
+        // Pre-fetch the next snippet while current is playing
+        _prefetchAudio(_currentIndex + 1);
+        return;
+      }
+
       final token = await AuthService.getToken() ?? '';
       final resp = await http.post(
         Uri.parse('${AuthService.baseUrl}/tts'),
@@ -229,9 +272,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       final bytes = resp.bodyBytes;
       if (bytes.isEmpty) return;
 
+      // Store in cache so next play is instant
+      _audioCache[_currentIndex] = bytes;
+
       await _audioPlayer.setAudioSource(_BytesAudioSource(bytes));
       await _audioPlayer.setSpeed(_ttsSpeed);
       await _audioPlayer.play();
+      // Pre-fetch next snippet while current plays
+      _prefetchAudio(_currentIndex + 1);
     } catch (e) {
       debugPrint('TTS error: $e');
       if (mounted) {
