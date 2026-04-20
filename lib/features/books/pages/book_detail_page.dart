@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:html' as html;
@@ -46,6 +47,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   // ── Audio pre-fetch cache (index → bytes) ─────────────────────────────────
   final Map<int, Uint8List> _audioCache = {};
+  // Tracks in-flight prefetch requests so _ttsPlay() can await them instead
+  // of firing a duplicate HTTP request to the same /tts endpoint.
+  final Map<int, Completer<void>> _prefetchCompleters = {};
   String? _blobUrl; // current blob URL (revoked on each new load)
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -226,12 +230,23 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   String get _currentText => _snippets.isNotEmpty ? _snippets[_currentIndex].snippetText : '';
 
-  // Pre-fetch audio in the background and store in local cache
+  // Pre-fetch audio in the background and store in local cache.
+  // Registers a Completer so _ttsPlay() can await the same in-flight request
+  // instead of firing a duplicate one.
   Future<void> _prefetchAudio(int index) async {
     if (index < 0 || index >= _snippets.length) return;
-    if (_audioCache.containsKey(index)) return; // already cached
+    if (_audioCache.containsKey(index)) return;
+    if (_prefetchCompleters.containsKey(index)) return; // already in-flight
+
+    final completer = Completer<void>();
+    _prefetchCompleters[index] = completer;
+
     final text = _snippets[index].snippetText;
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      completer.complete();
+      _prefetchCompleters.remove(index);
+      return;
+    }
     try {
       final token = await AuthService.getToken() ?? '';
       final resp = await http.post(
@@ -241,13 +256,17 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           'Content-Type': 'application/json',
         },
         body: jsonEncode({'text': text}),
-      ).timeout(const Duration(seconds: 90));
+      ).timeout(const Duration(seconds: 120));
       if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
         _audioCache[index] = resp.bodyBytes;
         debugPrint('TTS pre-fetch done for snippet $index (${resp.bodyBytes.length} bytes)');
       }
+      completer.complete();
     } catch (e) {
       debugPrint('TTS pre-fetch failed for snippet $index: $e');
+      completer.completeError(e);
+    } finally {
+      _prefetchCompleters.remove(index);
     }
   }
 
@@ -255,19 +274,42 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (_currentText.isEmpty || !mounted) return;
     try { await _audioPlayer.stop(); } catch (_) {}
     if (!mounted) return;
-    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _ttsLoading = true; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
+    setState(() {
+      _ttsPlaying = false;
+      _ttsProgress = 0;
+      _ttsLoading = true;
+      _audioDuration = Duration.zero;
+      _audioPosition = Duration.zero;
+    });
 
     try {
-      // ── Use local cache if available (instant play) ──
+      // ── 1. Cache hit → instant play ───────────────────────────────────────
       if (_audioCache.containsKey(_currentIndex)) {
-        final cachedBytes = _audioCache[_currentIndex]!;
         if (mounted) setState(() => _ttsLoading = false);
-        await _playBytes(cachedBytes);
-        // Pre-fetch the next snippet while current is playing
+        await _playBytes(_audioCache[_currentIndex]!);
         _prefetchAudio(_currentIndex + 1);
         return;
       }
 
+      // ── 2. Prefetch already in-flight → await it, then play from cache ────
+      // This is the key fix: avoids firing a duplicate HTTP request to /tts
+      // while the background prefetch for the same snippet is still running.
+      if (_prefetchCompleters.containsKey(_currentIndex)) {
+        debugPrint('TTS: awaiting in-flight prefetch for snippet $_currentIndex');
+        try {
+          await _prefetchCompleters[_currentIndex]!.future;
+        } catch (_) {}
+        if (!mounted) return;
+        if (_audioCache.containsKey(_currentIndex)) {
+          if (mounted) setState(() => _ttsLoading = false);
+          await _playBytes(_audioCache[_currentIndex]!);
+          _prefetchAudio(_currentIndex + 1);
+          return;
+        }
+        // Prefetch failed — fall through to direct fetch below
+      }
+
+      // ── 3. No cache, no in-flight prefetch → fetch directly ───────────────
       final token = await AuthService.getToken() ?? '';
       final resp = await http.post(
         Uri.parse('${AuthService.baseUrl}/tts'),
@@ -276,15 +318,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           'Content-Type': 'application/json',
         },
         body: jsonEncode({'text': _currentText}),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 120));
 
       if (!mounted) return;
 
       if (resp.statusCode == 503) {
-        // Render free-tier backend is waking up from sleep
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Server is starting up, please try again in a few seconds...'),
+            content: Text('Server is warming up — please try again in a few seconds.'),
             duration: Duration(seconds: 4),
           ),
         );
@@ -294,7 +335,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       if (resp.statusCode != 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Audio unavailable (${resp.statusCode}), please try again.'),
+            content: Text('Audio unavailable (${resp.statusCode}). Please try again.'),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -304,11 +345,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       final bytes = resp.bodyBytes;
       if (bytes.isEmpty) return;
 
-      // Store in cache so next play is instant
       _audioCache[_currentIndex] = bytes;
-
       await _playBytes(bytes);
-      // Pre-fetch next snippet while current plays
       _prefetchAudio(_currentIndex + 1);
     } catch (e) {
       debugPrint('TTS error: $e');
