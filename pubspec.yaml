@@ -41,7 +41,6 @@ dependencies:
   # flutter_appauth: ^2.0.5
   webview_flutter: ^4.13.0
   google_sign_in: ^5.4.0
-  flutter_tts: ^4.2.5
   just_audio: ^0.9.40
   stomp_dart_client: ^3.0.1
 

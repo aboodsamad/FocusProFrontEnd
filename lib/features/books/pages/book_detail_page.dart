@@ -696,15 +696,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Column(
                     children: [
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       _buildAudioCoverArt(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
                       _buildAudioTitleInfo(),
-                      const SizedBox(height: 28),
-                      _buildTtsProgressBar(),
                       const SizedBox(height: 24),
+                      _buildTtsProgressBar(),
+                      const SizedBox(height: 20),
                       _buildSpeedSelector(),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
                       _buildAudioMainControls(),
                       const SizedBox(height: 32),
                       _buildAudioChapterList(),
@@ -782,41 +782,47 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Widget _buildAudioCoverArt() {
+    final hasImage = widget.book.bookPagesUrl != null && widget.book.bookPagesUrl!.isNotEmpty;
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, __) => Transform.scale(
         scale: _ttsPlaying ? _pulseAnim.value : 1.0,
         child: Container(
-          width: 240,
-          height: 240,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [AppColors.secondary.withOpacity(0.4), Colors.transparent],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppColors.secondaryFixed.withOpacity(_ttsPlaying ? 0.2 : 0.08),
+                color: _coverColor.withOpacity(_ttsPlaying ? 0.5 : 0.25),
+                blurRadius: _ttsPlaying ? 60 : 30,
+                spreadRadius: _ttsPlaying ? 8 : 2,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: AppColors.secondaryFixed.withOpacity(_ttsPlaying ? 0.15 : 0.05),
                 blurRadius: _ttsPlaying ? 80 : 40,
-                spreadRadius: _ttsPlaying ? 10 : 2,
+                spreadRadius: _ttsPlaying ? 4 : 0,
               ),
             ],
           ),
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _coverColor,
-              border: Border.all(color: const Color(0xFF171717), width: 4),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.3), size: 72),
-              ],
-            ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: hasImage
+                ? Image.asset(
+                    widget.book.bookPagesUrl!,
+                    width: 200,
+                    height: 280,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AudioCoverFallback(
+                      color: _coverColor,
+                      title: widget.book.title,
+                      author: widget.book.author,
+                    ),
+                  )
+                : _AudioCoverFallback(
+                    color: _coverColor,
+                    title: widget.book.title,
+                    author: widget.book.author,
+                  ),
           ),
         ),
       ),
@@ -1372,6 +1378,55 @@ class _CompletionSheet extends StatelessWidget {
   );
 }
 
+
+class _AudioCoverFallback extends StatelessWidget {
+  final Color color;
+  final String title;
+  final String author;
+  const _AudioCoverFallback({required this.color, required this.title, required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 200,
+      height: 280,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(child: Icon(Icons.menu_book_rounded, color: Colors.white.withOpacity(0.2), size: 80)),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.3, fontFamily: 'Manrope'),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _BookCoverFallback extends StatelessWidget {
   final Color color;
