@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
 import 'core/services/notification_service.dart';
@@ -14,6 +15,7 @@ import 'features/books/pages/books_page.dart';
 import 'features/habits/pages/manage_habits_page.dart';
 import 'features/focus_session/pages/focus_rooms_page.dart';
 import 'features/profile/pages/profile_page.dart';
+import 'features/lockin/pages/lock_in_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +41,31 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  static const _triggerChannel = MethodChannel('focuspro/lockin_trigger');
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _triggerChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onLockInTrigger') {
+        final scheduleId = call.arguments as int?;
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => LockInPage(triggerScheduleId: scheduleId),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +80,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FocusPro',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorKey,
       initialRoute: initialRoute,
       onGenerateRoute: (settings) {
         final hash   = getLocationHash();
