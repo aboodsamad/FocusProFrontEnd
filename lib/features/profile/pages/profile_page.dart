@@ -563,11 +563,17 @@ class _ProfilePageState extends State<ProfilePage>
               ]),
             )
           else
-            Column(
-              children: List.generate(filtered.length, (i) => Padding(
-                padding: EdgeInsets.only(bottom: i == filtered.length - 1 ? 0 : 8),
-                child: _ActivityCard(log: filtered[i]),
-              )),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: filtered.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: EdgeInsets.only(bottom: i == filtered.length - 1 ? 0 : 8),
+                  child: _ActivityCard(log: filtered[i]),
+                ),
+              ),
             ),
         ],
       ),
