@@ -13,6 +13,10 @@ import '../../challenge/models/daily_challenge_model.dart';
 import '../../challenge/services/daily_challenge_service.dart';
 import '../../games/hub/models/game_registry.dart';
 import '../../books/pages/books_page.dart';
+import '../../lockin/models/lock_in_session_model.dart';
+import '../../lockin/services/lock_in_service.dart';
+import '../../lockin/pages/lock_in_page.dart';
+import '../../lockin/pages/schedules_page.dart';
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
 
@@ -28,6 +32,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _streakDays         = 0; // calculated from activity logs
   int _todaySessions      = 0; // calculated from activity logs
   List<DailyGoalModel> _todayGoals = []; // coaching goals
+
+  // ── Lock-In state ─────────────────────────────────────────────────────────
+  LockInSessionModel? _activeSession;
 
   // ── Daily challenge state ─────────────────────────────────────────────────
   DailyChallengeModel? _challenge;
@@ -57,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loadStats();
       _loadTodayGoals();
       _loadChallenge();
+      _loadActiveSession();
     });
   }
 
@@ -76,6 +84,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0;
     });
+  }
+
+  Future<void> _loadActiveSession() async {
+    final session = await LockInService.getActiveSession();
+    if (!mounted) return;
+    setState(() => _activeSession = session);
   }
 
   Future<void> _loadTodayGoals() async {
@@ -476,6 +490,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(width: 12),
           Expanded(child: _buildBookCard()),
         ]),
+        const SizedBox(height: 12),
+        // Wake-Up Mode — full width
+        _buildWakeUpCard(),
         const SizedBox(height: 12),
         // Habits — full width
         _buildHabitsCard(),
@@ -1105,6 +1122,127 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
     );
   }
+  Widget _buildWakeUpCard() {
+    final hasActive = _activeSession != null;
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LockInPage()),
+            );
+            _loadActiveSession();
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF111827),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: hasActive
+                    ? const Color(0xFF10B981).withOpacity(0.5)
+                    : AppColors.primary.withOpacity(0.2),
+              ),
+              boxShadow: hasActive
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withOpacity(0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : [],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(children: [
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Icon(Icons.alarm_rounded,
+                      color: hasActive
+                          ? const Color(0xFF10B981)
+                          : AppColors.secondary,
+                      size: 28),
+                  if (hasActive)
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasActive ? 'Session Active' : 'Wake-Up Mode',
+                      style: TextStyle(
+                          color: hasActive
+                              ? const Color(0xFF10B981)
+                              : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasActive
+                          ? 'Tap to return to your session'
+                          : 'Lock in and crush your morning',
+                      style: const TextStyle(
+                          color: Color(0xFF9CA3AF), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              if (hasActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.4)),
+                  ),
+                  child: const Text('Return',
+                      style: TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                )
+              else
+                const Icon(Icons.chevron_right_rounded,
+                    color: Color(0xFF6B7280)),
+            ]),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SchedulesPage()),
+            ),
+            style: TextButton.styleFrom(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            ),
+            child: const Text('Schedules',
+                style: TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCoachingCard() {
     final goalCount = _todayGoals.length;
     final doneCount = _todayGoals.where((g) => g.status == 'DONE').length;

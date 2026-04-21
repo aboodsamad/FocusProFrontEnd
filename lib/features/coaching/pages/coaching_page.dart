@@ -8,7 +8,8 @@ import '../models/daily_goal_model.dart';
 import '../services/coaching_service.dart';
 
 class CoachingPage extends StatefulWidget {
-  const CoachingPage({super.key});
+  final bool embedded;
+  const CoachingPage({super.key, this.embedded = false});
 
   @override
   State<CoachingPage> createState() => _CoachingPageState();
@@ -518,6 +519,18 @@ class _CoachingPageState extends State<CoachingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // When embedded inside LockInPage, skip the Scaffold/AppBar entirely.
+    if (widget.embedded) {
+      return Container(
+        color: AppColors.surface,
+        child: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary))
+            : _settingGoals
+                ? _buildGoalSetupScreen()
+                : _buildChatScreen(),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
