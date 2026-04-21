@@ -61,6 +61,24 @@ class BookService {
     }
   }
 
+  /// GET /book/by-id/{id}
+  static Future<BookModel?> getBookById(int id) async {
+    try {
+      final resp = await http
+          .get(Uri.parse('$_base/book/by-id/$id'), headers: await _authHeaders())
+          .timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        return BookModel.fromJson(jsonDecode(resp.body));
+      }
+      print('BookService.getBookById: status ${resp.statusCode}');
+      return null;
+    } catch (e) {
+      print('BookService.getBookById error: $e');
+      return null;
+    }
+  }
+
   /// GET /book/{title}
   static Future<BookModel?> getBookByTitle(String title) async {
     try {
