@@ -863,9 +863,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    "Got it — tomorrow's challenge will reflect this"),
+                                    'Challenge updated based on your input!'),
+                                duration: Duration(seconds: 2),
                               ),
                             );
+                            // Reload the card — backend already regenerated it
+                            _loadChallenge();
                           } catch (_) {
                             setSheetState(() => submitting = false);
                           }
