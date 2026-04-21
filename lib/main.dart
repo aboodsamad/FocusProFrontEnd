@@ -46,9 +46,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final userProvider = context.read<UserProvider>();
 
+    // On web, read the hash so a reload stays on the same page (#/profile → /profile).
+    final hash = getLocationHash();
+    final String initialRoute = (hash.startsWith('#/') && !hash.contains('oauth-callback') && !hash.contains('token='))
+        ? hash.substring(1)
+        : '/';
+
     return MaterialApp(
       title: 'FocusPro',
       debugShowCheckedModeBanner: false,
+      initialRoute: initialRoute,
       onGenerateRoute: (settings) {
         final hash   = getLocationHash();
         final search = getLocationSearch();
