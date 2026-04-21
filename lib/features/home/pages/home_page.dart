@@ -13,6 +13,8 @@ import '../../challenge/models/daily_challenge_model.dart';
 import '../../challenge/services/daily_challenge_service.dart';
 import '../../games/hub/models/game_registry.dart';
 import '../../books/pages/books_page.dart';
+import '../../books/pages/book_detail_page.dart';
+import '../../books/services/book_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -728,10 +730,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         break;
 
       case 'BOOK':
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const BooksPage()),
-        );
+        if (challenge.targetBookId != null) {
+          // Navigate directly to the AI-recommended book
+          final book = await BookService.getBookById(challenge.targetBookId!);
+          if (!mounted) return;
+          if (book != null) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => BookDetailPage(book: book)),
+            );
+          } else {
+            // Book not found — fall back to library
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BooksPage()),
+            );
+          }
+        } else {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BooksPage()),
+          );
+        }
         break;
 
       default: // CUSTOM → Mark Done
