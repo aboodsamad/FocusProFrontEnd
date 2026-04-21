@@ -9,6 +9,10 @@ import '../../habits/providers/habit_provider.dart';
 import '../../profile/services/activity_log_service.dart';
 import '../../coaching/services/coaching_service.dart';
 import '../../coaching/models/daily_goal_model.dart';
+import '../../challenge/models/daily_challenge_model.dart';
+import '../../challenge/services/daily_challenge_service.dart';
+import '../../games/hub/models/game_registry.dart';
+import '../../books/pages/books_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -22,6 +26,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _streakDays         = 0; // calculated from activity logs
   int _todaySessions      = 0; // calculated from activity logs
   List<DailyGoalModel> _todayGoals = []; // coaching goals
+
+  // ── Daily challenge state ─────────────────────────────────────────────────
+  DailyChallengeModel? _challenge;
+  bool _challengeLoading = true;
+  String? _challengeError;
 
   late AnimationController _scoreAnimController;
   late Animation<double> _scoreAnim;
@@ -45,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loadDistractingMinutes();
       _loadStats();
       _loadTodayGoals();
+      _loadChallenge();
     });
   }
 
@@ -71,6 +81,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final goals = await CoachingService.getTodayGoals(token);
     if (!mounted) return;
     setState(() => _todayGoals = goals);
+  }
+
+  Future<void> _loadChallenge() async {
+    if (!mounted) return;
+    setState(() {
+      _challengeLoading = true;
+      _challengeError = null;
+    });
+    try {
+      final challenge = await DailyChallengeService.getTodayChallenge();
+      if (!mounted) return;
+      setState(() {
+        _challenge = challenge;
+        _challengeLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _challengeError = e.toString();
+        _challengeLoading = false;
+      });
+    }
   }
 
   /// Fetches activity logs and derives streak + today's session count.
@@ -430,6 +462,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(children: [
+        // Daily Challenge — full width, shown prominently first
+        _buildDailyChallengeCard(),
+        const SizedBox(height: 12),
         // Focus Room — full width
         _buildFocusRoomCard(),
         const SizedBox(height: 12),
@@ -449,6 +484,430 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ── Daily Challenge Card ──────────────────────────────────────────────────
+
+  static const Map<String, Color> _weaknessColors = {
+    'memory':    Color(0xFF7B6FFF),
+    'attention': Color(0xFF10B981),
+    'speed':     Color(0xFFF59E0B),
+    'logic':     Color(0xFF6366F1),
+    'reading':   Color(0xFFF97316),
+  };
+
+  static const Map<String, IconData> _weaknessIcons = {
+    'memory':    Icons.grid_on_rounded,
+    'attention': Icons.palette_outlined,
+    'speed':     Icons.bolt_rounded,
+    'logic':     Icons.apps_rounded,
+    'reading':   Icons.menu_book_outlined,
+  };
+
+  Widget _buildDailyChallengeCard() {
+    // ── Loading ──────────────────────────────────────────────────────────────
+    if (_challengeLoading) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.primaryContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const SizedBox(
+          height: 80,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryFixed,
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Error ────────────────────────────────────────────────────────────────
+    if (_challengeError != null || _challenge == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Could not load today\'s challenge.',
+                style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: _loadChallenge,
+              child: Text('Retry',
+                  style: TextStyle(color: AppColors.primary,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Loaded ───────────────────────────────────────────────────────────────
+    final challenge = _challenge!;
+    final areaColor = _weaknessColors[challenge.weaknessArea]
+        ?? const Color(0xFF7B6FFF);
+    final areaIcon  = _weaknessIcons[challenge.weaknessArea]
+        ?? Icons.grid_on_rounded;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header row ───────────────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: areaColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: areaColor.withOpacity(0.5)),
+                ),
+                child: Icon(areaIcon, color: areaColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Today's Challenge",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Resets at midnight',
+                      style: TextStyle(
+                          color: AppColors.onPrimaryContainer, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              if (challenge.isCompleted)
+                _StatusPill(label: 'Done ✓', color: Colors.green.shade400)
+              else if (challenge.isExpired)
+                _StatusPill(
+                    label: 'Expired',
+                    color: AppColors.onPrimaryContainer),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // ── Title ────────────────────────────────────────────────────────
+          Text(
+            challenge.challengeTitle,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15),
+          ),
+          const SizedBox(height: 6),
+          // ── Description ──────────────────────────────────────────────────
+          Text(
+            challenge.challengeDescription,
+            style: TextStyle(
+                color: Colors.grey[300], fontSize: 13, height: 1.5),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 14),
+          // ── Action buttons ────────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: _buildChallengeActionButton(challenge, areaColor),
+              ),
+              if (!challenge.isCompleted && !challenge.isExpired) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: _buildHintButton(),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChallengeActionButton(
+      DailyChallengeModel challenge, Color areaColor) {
+    final bool disabled = challenge.isCompleted || challenge.isExpired;
+    final String label = disabled
+        ? (challenge.isCompleted ? 'Completed' : 'Expired')
+        : _challengeActionLabel(challenge);
+
+    return GestureDetector(
+      onTap: disabled ? null : () => _onChallengeAction(challenge),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          gradient: disabled
+              ? null
+              : LinearGradient(
+                  colors: [areaColor, AppColors.primary],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+          color: disabled ? Colors.white.withOpacity(0.07) : null,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: disabled
+                  ? AppColors.onPrimaryContainer
+                  : Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _challengeActionLabel(DailyChallengeModel challenge) {
+    switch (challenge.challengeType) {
+      case 'GAME':
+        final game = challenge.targetGameType != null
+            ? GameRegistry.findById(challenge.targetGameType!)
+            : null;
+        return 'Play ${game?.title ?? 'Game'}';
+      case 'BOOK':
+        return 'Open Reader';
+      default:
+        return 'Mark Done';
+    }
+  }
+
+  Future<void> _onChallengeAction(DailyChallengeModel challenge) async {
+    switch (challenge.challengeType) {
+      case 'GAME':
+        final gameType = challenge.targetGameType;
+        if (gameType == null) return;
+        final page = GameRegistry.pageFor(gameType);
+        if (page == null) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => page),
+        );
+        // After returning from the game, mark challenge complete
+        try {
+          await DailyChallengeService.completeChallenge(challenge.id);
+        } catch (_) {}
+        await _loadChallenge();
+        break;
+
+      case 'BOOK':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BooksPage()),
+        );
+        break;
+
+      default: // CUSTOM → Mark Done
+        try {
+          await DailyChallengeService.completeChallenge(challenge.id);
+        } catch (_) {}
+        await _loadChallenge();
+    }
+  }
+
+  Widget _buildHintButton() {
+    return GestureDetector(
+      onTap: _showWeaknessHintSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.onPrimaryContainer),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.edit_outlined,
+                color: AppColors.onPrimaryContainer, size: 14),
+            const SizedBox(width: 4),
+            Text(
+              'I feel weak at...',
+              style: TextStyle(
+                  color: AppColors.onPrimaryContainer,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWeaknessHintSheet() {
+    final controller = TextEditingController();
+    bool submitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.onPrimaryContainer,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Tell the AI what to focus on',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Tomorrow's challenge will be tailored based on what you share",
+                  style: TextStyle(
+                      color: AppColors.onPrimaryContainer, fontSize: 13),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText:
+                        'e.g. I struggle with memory games, I haven\'t read in weeks, my focus drops after lunch...',
+                    hintStyle: TextStyle(
+                        color: AppColors.onPrimaryContainer.withOpacity(0.6),
+                        fontSize: 13),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: AppColors.onPrimaryContainer.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: AppColors.primaryFixed, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: AppColors.onPrimaryContainer.withOpacity(0.3)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: submitting
+                      ? null
+                      : () async {
+                          final text = controller.text.trim();
+                          if (text.isEmpty) return;
+                          setSheetState(() => submitting = true);
+                          try {
+                            await DailyChallengeService.submitHint(text);
+                            if (!mounted) return;
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    "Got it — tomorrow's challenge will reflect this"),
+                              ),
+                            );
+                          } catch (_) {
+                            setSheetState(() => submitting = false);
+                          }
+                        },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.secondary, AppColors.primary],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: submitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Update',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Focus Room Card ───────────────────────────────────────────────────────
   Widget _buildFocusRoomCard() {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/rooms'),
@@ -666,6 +1125,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const Icon(Icons.chevron_right_rounded,
               color: AppColors.onSurfaceVariant),
         ]),
+      ),
+    );
+  }
+}
+
+// ── Status pill (Done / Expired) ──────────────────────────────────────────
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }
