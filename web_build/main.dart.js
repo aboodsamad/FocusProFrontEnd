@@ -8584,7 +8584,7 @@ m=t.P.a(B.I.bO(0,A.c3(A.c2(j.e)).b1(0,j.w),null))
 j=A.bH(J.au(m,"tag_name"))
 l=B.f.cE(B.f.HK(j==null?"":j,"v",""))
 k=A.bo9(m)
-if(!A.boa(l,"1.2")){s=1
+if(!A.boa(l,"1.3")){s=1
 break}if(k==null||k.length===0){s=1
 break}if(a.e!=null)A.bob(a,l,k)
 p=2
