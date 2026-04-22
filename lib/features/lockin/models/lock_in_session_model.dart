@@ -26,12 +26,35 @@ class LockInSessionModel {
   });
 
   factory LockInSessionModel.fromJson(Map<String, dynamic> j) {
+    // Ensure timestamps are treated as UTC so comparisons with DateTime.now()
+    // (local time) are correct. If the server sends UTC without a 'Z' suffix,
+    // DateTime.parse treats it as local time, making timers expire immediately
+    // for users in timezones ahead of UTC.
     DateTime parseTs(dynamic v) {
-      try { return DateTime.parse(v as String); } catch (_) { return DateTime.now(); }
+      try {
+        final s = v as String;
+        // If there is no timezone info, assume UTC and append 'Z'.
+        final normalized =
+            (s.contains('Z') || s.contains('+') || s.contains('-', 11))
+                ? s
+                : '${s}Z';
+        return DateTime.parse(normalized).toLocal();
+      } catch (_) {
+        return DateTime.now();
+      }
     }
     DateTime? parseTsOpt(dynamic v) {
       if (v == null) return null;
-      try { return DateTime.parse(v as String); } catch (_) { return null; }
+      try {
+        final s = v as String;
+        final normalized =
+            (s.contains('Z') || s.contains('+') || s.contains('-', 11))
+                ? s
+                : '${s}Z';
+        return DateTime.parse(normalized).toLocal();
+      } catch (_) {
+        return null;
+      }
     }
     return LockInSessionModel(
       id: (j['id'] as num).toInt(),
