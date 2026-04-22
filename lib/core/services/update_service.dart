@@ -7,7 +7,7 @@ class UpdateService {
   // ── KEEP THIS IN SYNC with your GitHub release tag (without the "v") ───────
   // Rule: before building an APK, bump this + pubspec version + GitHub tag
   // Example: release "v1.2" on GitHub → set this to '1.2'
-  static const String _currentVersion = '1.3';
+  static const String _currentVersion = '1.4';
 
   static const String _owner = 'aboodsamad';
   static const String _repo  = 'FocusProFrontEnd';
