@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
@@ -28,11 +29,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  // ── Stats state (all loaded from real data, never hardcoded) ──────────────
-  int _distractingMinutes = 0; // loaded from SharedPreferences; user-editable
-  int _streakDays         = 0; // calculated from activity logs
-  int _todaySessions      = 0; // calculated from activity logs
-  List<DailyGoalModel> _todayGoals = []; // coaching goals
+  // ── Stats state ───────────────────────────────────────────────────────────
+  int _distractingMinutes = 0;
+  int _streakDays         = 0;
+  int _todaySessions      = 0;
+  List<DailyGoalModel> _todayGoals = [];
 
   // ── Lock-In state ─────────────────────────────────────────────────────────
   LockInSessionModel? _activeSession;
@@ -71,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _animateScore() {
-    // Use the real focus score — no fallback fakes.
     final score = context.read<UserProvider>().focusScore;
     _scoreAnim = Tween<double>(begin: 0, end: score).animate(
       CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
@@ -79,13 +79,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _scoreAnimController.forward();
   }
 
-  /// Loads distracting-minutes from SharedPreferences (user-persisted, not backend).
   Future<void> _loadDistractingMinutes() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() {
-      _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0;
-    });
+    setState(() => _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0);
   }
 
   Future<void> _loadActiveSession() async {
@@ -103,68 +100,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _loadChallenge() async {
     if (!mounted) return;
-    setState(() {
-      _challengeLoading = true;
-      _challengeError = null;
-    });
+    setState(() { _challengeLoading = true; _challengeError = null; });
     try {
       final challenge = await DailyChallengeService.getTodayChallenge();
       if (!mounted) return;
-      setState(() {
-        _challenge = challenge;
-        _challengeLoading = false;
-      });
+      setState(() { _challenge = challenge; _challengeLoading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _challengeError = e.toString();
-        _challengeLoading = false;
-      });
+      setState(() { _challengeError = e.toString(); _challengeLoading = false; });
     }
   }
 
-  /// Fetches activity logs and derives streak + today's session count.
   Future<void> _loadStats() async {
     final logs = await ActivityLogService.fetchLogs();
     if (!mounted) return;
-
     final today     = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
-
-    // Count every activity logged today as one "session"
     final todaySessions = logs.where((l) {
       final d = l.activityDate.toLocal();
       return DateTime(d.year, d.month, d.day) == todayDate;
     }).length;
-
-    // Streak = consecutive days (going back from today) that have ≥1 activity
-    final activeDays = logs
-        .map((l) {
-          final d = l.activityDate.toLocal();
-          return DateTime(d.year, d.month, d.day);
-        })
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a)); // newest first
-
+    final activeDays = logs.map((l) {
+      final d = l.activityDate.toLocal();
+      return DateTime(d.year, d.month, d.day);
+    }).toSet().toList()..sort((a, b) => b.compareTo(a));
     int streak = 0;
     final yesterday = todayDate.subtract(const Duration(days: 1));
     DateTime check = (activeDays.isNotEmpty && activeDays.first == todayDate)
-        ? todayDate
-        : yesterday;
+        ? todayDate : yesterday;
     for (final day in activeDays) {
-      if (day == check) {
-        streak++;
-        check = check.subtract(const Duration(days: 1));
-      } else if (day.isBefore(check)) {
-        break; // gap in days — streak ends
-      }
+      if (day == check) { streak++; check = check.subtract(const Duration(days: 1)); }
+      else if (day.isBefore(check)) break;
     }
-
-    setState(() {
-      _todaySessions = todaySessions;
-      _streakDays    = streak;
-    });
+    setState(() { _todaySessions = todaySessions; _streakDays = streak; });
   }
 
   @override
@@ -187,23 +155,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Log out',
-            style: TextStyle(color: AppColors.onSurface,
-                fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to log out?',
+        title: const Text('Log out',
+            style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out?',
             style: TextStyle(color: AppColors.onSurfaceVariant)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+              backgroundColor: AppColors.error, foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Log out'),
@@ -227,36 +191,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return AlertDialog(
           backgroundColor: AppColors.surfaceContainerLowest,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Distracted Minutes',
-              style: TextStyle(color: AppColors.onSurface,
-                  fontWeight: FontWeight.bold)),
+          title: const Text('Distracted Minutes',
+              style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
           content: TextField(
             controller: ctl,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppColors.onSurface),
+            style: const TextStyle(color: AppColors.onSurface),
             decoration: InputDecoration(
               hintText: 'Minutes on distracting apps',
-              hintStyle: TextStyle(color: AppColors.onSurfaceVariant),
-              filled: true,
-              fillColor: AppColors.surfaceContainerLow,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppColors.outlineVariant)),
+              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+              filled: true, fillColor: AppColors.surfaceContainerLow,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.outlineVariant)),
             ),
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancel',
-                    style: TextStyle(color: AppColors.onSurfaceVariant))),
+            TextButton(onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8))),
-              onPressed: () =>
-                  Navigator.pop(context, int.tryParse(ctl.text) ?? 0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              onPressed: () => Navigator.pop(context, int.tryParse(ctl.text) ?? 0),
               child: const Text('Save'),
             ),
           ],
@@ -271,241 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>();
-    if (user.isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.surface,
-        body: Center(
-            child: CircularProgressIndicator(color: AppColors.primary)),
-      );
-    }
-    final score = user.focusScore;
-
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: Column(
-        children: [
-          _buildHeader(user),
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeSection(user),
-                  _buildFocusScoreRing(score),
-                  _buildStatsRow(),
-                  _buildBentoGrid(),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader(UserProvider user) {
-    return Container(
-      color: const Color(0xFFF0FBF5),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
-        bottom: 12,
-        left: 16,
-        right: 16,
-      ),
-      child: Row(children: [
-        // Avatar
-        GestureDetector(
-          onTap: () => Navigator.pushNamed(context, '/profile'),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primaryContainer,
-              border: Border.all(color: AppColors.primaryContainer, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                user.displayInitial,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        // App name
-        Text(
-          'FocusPro',
-          style: TextStyle(
-            color: AppColors.primary,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const Spacer(),
-        // Settings icon
-        GestureDetector(
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings (TODO)'))),
-          child: Icon(Icons.settings_outlined,
-              color: AppColors.primary, size: 24),
-        ),
-        const SizedBox(width: 8),
-        // Logout
-        GestureDetector(
-          onTap: _logout,
-          child: Icon(Icons.logout_rounded,
-              color: AppColors.onSurfaceVariant, size: 22),
-        ),
-      ]),
-    );
-  }
-
-  // ── Welcome section ───────────────────────────────────────────────────────
-  Widget _buildWelcomeSection(UserProvider user) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(
-          '$_greeting, ${user.name}',
-          style: TextStyle(
-            color: AppColors.onSurfaceVariant,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Ready for deep work?',
-          style: TextStyle(
-            color: AppColors.primary,
-            fontSize: 36,
-            fontWeight: FontWeight.w900,
-            height: 1.1,
-          ),
-        ),
-      ]),
-    );
-  }
-
-  // ── Focus Score Ring ──────────────────────────────────────────────────────
-  Widget _buildFocusScoreRing(double score) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Center(
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_scoreAnim, _pulseAnim]),
-          builder: (_, __) {
-            return SizedBox(
-              width: 200,
-              height: 200,
-              child: Stack(alignment: Alignment.center, children: [
-                CustomPaint(
-                  size: const Size(200, 200),
-                  painter: _DeepFocusRingPainter(
-                      progress: _scoreAnim.value / 100),
-                ),
-                Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(
-                    _scoreAnim.value.toStringAsFixed(0),
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 72,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                    ),
-                  ),
-                  Text(
-                    'FOCUS SCORE',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ]),
-              ]),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // ── Stats row ─────────────────────────────────────────────────────────────
-  Widget _buildStatsRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(children: [
-        Expanded(child: _StatPill(
-          icon: Icons.local_fire_department,
-          iconColor: Colors.deepOrange,
-          value: '$_streakDays days',
-          label: 'STREAK',
-        )),
-        const SizedBox(width: 10),
-        Expanded(child: _StatPill(
-          icon: Icons.history_rounded,
-          iconColor: AppColors.tertiaryContainer,
-          value: '$_todaySessions',
-          label: 'SESSIONS',
-        )),
-        const SizedBox(width: 10),
-        Expanded(child: GestureDetector(
-          onTap: _editUsage,
-          child: _StatPill(
-            icon: Icons.timer_off_outlined,
-            iconColor: AppColors.error,
-            value: '${_distractingMinutes}m',
-            label: 'DISTRACTIONS',
-          ),
-        )),
-      ]),
-    );
-  }
-
-  // ── Bento grid ────────────────────────────────────────────────────────────
-  Widget _buildBentoGrid() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: Column(children: [
-        // Daily Challenge — full width, shown prominently first
-        _buildDailyChallengeCard(),
-        const SizedBox(height: 12),
-        // Focus Room — full width
-        _buildFocusRoomCard(),
-        const SizedBox(height: 12),
-        // Games + Books — half width
-        Row(children: [
-          Expanded(child: _buildGameCard()),
-          const SizedBox(width: 12),
-          Expanded(child: _buildBookCard()),
-        ]),
-        const SizedBox(height: 12),
-        // Wake-Up Mode — full width
-        _buildWakeUpCard(),
-        const SizedBox(height: 12),
-        // Habits — full width
-        _buildHabitsCard(),
-        const SizedBox(height: 12),
-        // AI Coach — full width
-        _buildCoachingCard(),
-      ]),
-    );
-  }
-
-  // ── Daily Challenge Card ──────────────────────────────────────────────────
+  // ── Challenge helpers (unchanged logic) ───────────────────────────────────
 
   static const Map<String, Color> _weaknessColors = {
     'memory':    Color(0xFF7B6FFF),
@@ -523,210 +245,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'reading':   Icons.menu_book_outlined,
   };
 
-  Widget _buildDailyChallengeCard() {
-    // ── Loading ──────────────────────────────────────────────────────────────
-    if (_challengeLoading) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const SizedBox(
-          height: 80,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryFixed,
-              strokeWidth: 2.5,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // ── Error ────────────────────────────────────────────────────────────────
-    if (_challengeError != null || _challenge == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Could not load today\'s challenge.',
-                style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
-              ),
-            ),
-            TextButton(
-              onPressed: _loadChallenge,
-              child: Text('Retry',
-                  style: TextStyle(color: AppColors.primary,
-                      fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ── Loaded ───────────────────────────────────────────────────────────────
-    final challenge = _challenge!;
-    final areaColor = _weaknessColors[challenge.weaknessArea]
-        ?? const Color(0xFF7B6FFF);
-    final areaIcon  = _weaknessIcons[challenge.weaknessArea]
-        ?? Icons.grid_on_rounded;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header row ───────────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: areaColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: areaColor.withOpacity(0.5)),
-                ),
-                child: Icon(areaIcon, color: areaColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Today's Challenge",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Resets at midnight',
-                      style: TextStyle(
-                          color: AppColors.onPrimaryContainer, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              if (challenge.isCompleted)
-                _StatusPill(label: 'Done ✓', color: Colors.green.shade400)
-              else if (challenge.isExpired)
-                _StatusPill(
-                    label: 'Expired',
-                    color: AppColors.onPrimaryContainer),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // ── Title ────────────────────────────────────────────────────────
-          Text(
-            challenge.challengeTitle,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          // ── Description ──────────────────────────────────────────────────
-          Text(
-            challenge.challengeDescription,
-            style: TextStyle(
-                color: Colors.grey[300], fontSize: 13, height: 1.5),
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 14),
-          // ── Action buttons ────────────────────────────────────────────────
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildChallengeActionButton(challenge, areaColor),
-              ),
-              if (!challenge.isCompleted && !challenge.isExpired) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 1,
-                  child: _buildHintButton(),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChallengeActionButton(
-      DailyChallengeModel challenge, Color areaColor) {
-    final bool disabled = challenge.isCompleted || challenge.isExpired;
-    final String label = disabled
-        ? (challenge.isCompleted ? 'Completed' : 'Expired')
-        : _challengeActionLabel(challenge);
-
-    return GestureDetector(
-      onTap: disabled ? null : () => _onChallengeAction(challenge),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          gradient: disabled
-              ? null
-              : LinearGradient(
-                  colors: [areaColor, AppColors.primary],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-          color: disabled ? Colors.white.withOpacity(0.07) : null,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: disabled
-                  ? AppColors.onPrimaryContainer
-                  : Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   String _challengeActionLabel(DailyChallengeModel challenge) {
     switch (challenge.challengeType) {
       case 'GAME':
         final game = challenge.targetGameType != null
-            ? GameRegistry.findById(challenge.targetGameType!)
-            : null;
+            ? GameRegistry.findById(challenge.targetGameType!) : null;
         return 'Play ${game?.title ?? 'Game'}';
-      case 'BOOK':
-        return 'Open Reader';
-      default:
-        return 'Mark Done';
+      case 'BOOK': return 'Open Reader';
+      default:     return 'Mark Done';
     }
   }
 
@@ -737,208 +263,101 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (gameType == null) return;
         final page = GameRegistry.pageFor(gameType);
         if (page == null) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => page),
-        );
-        // After returning from the game, mark challenge complete
-        try {
-          await DailyChallengeService.completeChallenge(challenge.id);
-        } catch (_) {}
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+        try { await DailyChallengeService.completeChallenge(challenge.id); } catch (_) {}
         await _loadChallenge();
         break;
-
       case 'BOOK':
         if (challenge.targetBookId != null) {
-          // Navigate directly to the AI-recommended book
           final book = await BookService.getBookById(challenge.targetBookId!);
           if (!mounted) return;
           if (book != null) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => BookDetailPage(book: book)),
-            );
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => BookDetailPage(book: book)));
           } else {
-            // Book not found — fall back to library
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BooksPage()),
-            );
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const BooksPage()));
           }
         } else {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BooksPage()),
-          );
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const BooksPage()));
         }
         break;
-
-      default: // CUSTOM → Mark Done
-        try {
-          await DailyChallengeService.completeChallenge(challenge.id);
-        } catch (_) {}
+      default:
+        try { await DailyChallengeService.completeChallenge(challenge.id); } catch (_) {}
         await _loadChallenge();
     }
-  }
-
-  Widget _buildHintButton() {
-    return GestureDetector(
-      onTap: _showWeaknessHintSheet,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.onPrimaryContainer),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.edit_outlined,
-                color: AppColors.onPrimaryContainer, size: 14),
-            const SizedBox(width: 4),
-            Text(
-              'I feel weak at...',
-              style: TextStyle(
-                  color: AppColors.onPrimaryContainer,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showWeaknessHintSheet() {
     final controller = TextEditingController();
     bool submitting = false;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.primaryContainer,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.onPrimaryContainer,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+                Center(child: Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: AppColors.onPrimaryContainer, borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 20),
-                const Text(
-                  'Tell the AI what to focus on',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
-                ),
+                const Text('Tell the AI what to focus on',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                Text(
-                  "Tomorrow's challenge will be tailored based on what you share",
-                  style: TextStyle(
-                      color: AppColors.onPrimaryContainer, fontSize: 13),
-                ),
+                Text("Tomorrow's challenge will be tailored based on what you share",
+                    style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 13)),
                 const SizedBox(height: 18),
                 TextField(
-                  controller: controller,
-                  maxLines: 3,
+                  controller: controller, maxLines: 3,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText:
-                        'e.g. I struggle with memory games, I haven\'t read in weeks, my focus drops after lunch...',
-                    hintStyle: TextStyle(
-                        color: AppColors.onPrimaryContainer.withOpacity(0.6),
-                        fontSize: 13),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                          color: AppColors.onPrimaryContainer.withOpacity(0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppColors.primaryFixed, width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                          color: AppColors.onPrimaryContainer.withOpacity(0.3)),
-                    ),
+                    hintText: 'e.g. I struggle with memory games...',
+                    hintStyle: TextStyle(color: AppColors.onPrimaryContainer.withOpacity(0.6), fontSize: 13),
+                    filled: true, fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.onPrimaryContainer.withOpacity(0.3))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primaryFixed, width: 1.5)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.onPrimaryContainer.withOpacity(0.3))),
                   ),
                 ),
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: submitting
-                      ? null
-                      : () async {
-                          final text = controller.text.trim();
-                          if (text.isEmpty) return;
-                          setSheetState(() => submitting = true);
-                          try {
-                            await DailyChallengeService.submitHint(text);
-                            if (!mounted) return;
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Challenge updated based on your input!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            // Reload the card — backend already regenerated it
-                            _loadChallenge();
-                          } catch (_) {
-                            setSheetState(() => submitting = false);
-                          }
-                        },
+                  onTap: submitting ? null : () async {
+                    final text = controller.text.trim();
+                    if (text.isEmpty) return;
+                    setSheetState(() => submitting = true);
+                    try {
+                      await DailyChallengeService.submitHint(text);
+                      if (!mounted) return;
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Challenge updated based on your input!')),
+                      );
+                      _loadChallenge();
+                    } catch (_) { setSheetState(() => submitting = false); }
+                  },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.secondary, AppColors.primary],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
+                      gradient: const LinearGradient(colors: [AppColors.secondary, AppColors.primary],
+                          begin: Alignment.centerLeft, end: Alignment.centerRight),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(
-                      child: submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text(
-                              'Update',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15),
-                            ),
-                    ),
+                    child: Center(child: submitting
+                        ? const SizedBox(width: 20, height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Update', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15))),
                   ),
                 ),
               ],
@@ -949,55 +368,468 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Focus Room Card ───────────────────────────────────────────────────────
-  Widget _buildFocusRoomCard() {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserProvider>();
+    if (user.isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.primary,
+        body: const Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+    final score = user.focusScore;
+
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      bottomNavigationBar: _buildBottomNav(),
+      body: Column(
+        children: [
+          _buildHeroSection(user, score),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Active session banner
+                  if (_activeSession != null) _buildActiveBanner(),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader("Today's Mission"),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildDailyChallengeCard(),
+                  ),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Train Your Mind'),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(children: [
+                      Expanded(child: _buildGameCard()),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildBookCard()),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Your Progress'),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(children: [
+                      _buildCoachingCard(),
+                      const SizedBox(height: 12),
+                      _buildHabitsCard(),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Focus Tools'),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(children: [
+                      _buildWakeUpCard(),
+                      const SizedBox(height: 12),
+                      _buildFocusRoomCard(),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 36),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Bottom Navigation Bar ─────────────────────────────────────────────────
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.08),
+              blurRadius: 20, offset: const Offset(0, -2)),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(icon: Icons.home_rounded, label: 'Home', selected: true, onTap: () {}),
+              _NavItem(icon: Icons.extension_outlined, label: 'Games', selected: false,
+                  onTap: () => Navigator.pushNamed(context, '/games')),
+              _NavItem(icon: Icons.psychology_outlined, label: 'Coach', selected: false,
+                  onTap: () => Navigator.pushNamed(context, '/coaching')),
+              _NavItem(icon: Icons.task_alt_outlined, label: 'Habits', selected: false,
+                  onTap: () => Navigator.pushNamed(context, '/habits')),
+              _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', selected: false,
+                  onTap: () => Navigator.pushNamed(context, '/profile')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Hero Section ──────────────────────────────────────────────────────────
+  Widget _buildHeroSection(UserProvider user, double score) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF012D1D), Color(0xFF0E3A24)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── Top bar ──────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Row(children: [
+                // Avatar
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/profile'),
+                  child: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.12),
+                      border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(user.displayInitial,
+                          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Greeting
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_greeting,
+                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w500)),
+                  Text(user.name ?? 'Focus Pro',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ]),
+                const Spacer(),
+                // Logout button
+                GestureDetector(
+                  onTap: _logout,
+                  child: Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
+                  ),
+                ),
+              ]),
+            ),
+
+            // ── Score ring ───────────────────────────────────────────────────
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: Listenable.merge([_scoreAnim, _pulseAnim]),
+              builder: (_, __) {
+                return SizedBox(
+                  width: 190,
+                  height: 190,
+                  child: Stack(alignment: Alignment.center, children: [
+                    CustomPaint(
+                      size: const Size(190, 190),
+                      painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
+                    ),
+                    Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(
+                        _scoreAnim.value.toStringAsFixed(0),
+                        style: const TextStyle(
+                          color: Colors.white, fontSize: 64,
+                          fontWeight: FontWeight.w900, height: 1.0,
+                        ),
+                      ),
+                      Text(
+                        'FOCUS SCORE',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.55),
+                          fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2,
+                        ),
+                      ),
+                    ]),
+                  ]),
+                );
+              },
+            ),
+
+            // ── Stats strip ──────────────────────────────────────────────────
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Row(children: [
+                  _HeroStat(
+                    icon: Icons.local_fire_department,
+                    iconColor: const Color(0xFFFF6B35),
+                    value: '$_streakDays',
+                    label: 'Day Streak',
+                  ),
+                  _VertDivider(),
+                  _HeroStat(
+                    icon: Icons.bolt_rounded,
+                    iconColor: const Color(0xFFFBBF24),
+                    value: '$_todaySessions',
+                    label: 'Sessions',
+                  ),
+                  _VertDivider(),
+                  _HeroStat(
+                    icon: Icons.timer_off_outlined,
+                    iconColor: const Color(0xFFEF4444),
+                    value: '${_distractingMinutes}m',
+                    label: 'Distracted',
+                    onTap: _editUsage,
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Active session banner ─────────────────────────────────────────────────
+  Widget _buildActiveBanner() {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/rooms'),
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
+        _loadActiveSession();
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.35)),
+        ),
+        child: Row(children: [
+          Container(
+            width: 8, height: 8,
+            decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text('Lock-in session active — tap to return',
+                style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Color(0xFF10B981), size: 18),
+        ]),
+      ),
+    );
+  }
+
+  // ── Section header ────────────────────────────────────────────────────────
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.onSurface,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ── Daily Challenge Card ──────────────────────────────────────────────────
+  Widget _buildDailyChallengeCard() {
+    if (_challengeLoading) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20),
+        ),
+        child: const SizedBox(height: 80,
+            child: Center(child: CircularProgressIndicator(color: AppColors.primaryFixed, strokeWidth: 2.5))),
+      );
+    }
+    if (_challengeError != null || _challenge == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Row(children: [
+          Expanded(child: Text('Could not load today\'s challenge.',
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
+          TextButton(onPressed: _loadChallenge,
+              child: Text('Retry', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))),
+        ]),
+      );
+    }
+
+    final challenge = _challenge!;
+    final areaColor = _weaknessColors[challenge.weaknessArea] ?? const Color(0xFF7B6FFF);
+    final areaIcon  = _weaknessIcons[challenge.weaknessArea]  ?? Icons.grid_on_rounded;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.18),
+              blurRadius: 16, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Row(children: [
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(
+              color: areaColor.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: areaColor.withOpacity(0.4)),
+            ),
+            child: Icon(areaIcon, color: areaColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text("Today's Challenge",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(height: 2),
+              Text('Resets at midnight',
+                  style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11)),
+            ]),
+          ),
+          if (challenge.isCompleted)
+            _StatusPill(label: 'Done ✓', color: Colors.green.shade400)
+          else if (challenge.isExpired)
+            _StatusPill(label: 'Expired', color: AppColors.onPrimaryContainer),
+        ]),
+        const SizedBox(height: 14),
+        Text(challenge.challengeTitle,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+        const SizedBox(height: 6),
+        Text(challenge.challengeDescription,
+            style: TextStyle(color: Colors.grey[300], fontSize: 13, height: 1.5),
+            maxLines: 4, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 16),
+        // Action buttons
+        Row(children: [
+          Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
+          if (!challenge.isCompleted && !challenge.isExpired) ...[
+            const SizedBox(width: 8),
+            Expanded(flex: 1, child: _buildHintButton()),
+          ],
+        ]),
+      ]),
+    );
+  }
+
+  Widget _buildChallengeActionButton(DailyChallengeModel challenge, Color areaColor) {
+    final bool disabled = challenge.isCompleted || challenge.isExpired;
+    final String label = disabled
+        ? (challenge.isCompleted ? 'Completed' : 'Expired')
+        : _challengeActionLabel(challenge);
+    return GestureDetector(
+      onTap: disabled ? null : () { HapticFeedback.lightImpact(); _onChallengeAction(challenge); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          gradient: disabled ? null : LinearGradient(
+            colors: [areaColor, AppColors.primary],
+            begin: Alignment.centerLeft, end: Alignment.centerRight,
+          ),
+          color: disabled ? Colors.white.withOpacity(0.07) : null,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(child: Text(label,
+            style: TextStyle(color: disabled ? AppColors.onPrimaryContainer : Colors.white,
+                fontWeight: FontWeight.bold, fontSize: 13))),
+      ),
+    );
+  }
+
+  Widget _buildHintButton() {
+    return GestureDetector(
+      onTap: _showWeaknessHintSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.onPrimaryContainer),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.edit_outlined, color: AppColors.onPrimaryContainer, size: 14),
+          const SizedBox(width: 4),
+          Text('I feel weak at…',
+              style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+
+  // ── Games card ────────────────────────────────────────────────────────────
+  Widget _buildGameCard() {
+    return GestureDetector(
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/games'); },
       child: Container(
         height: 160,
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF5B4FE8), Color(0xFF8B5CF6)],
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(children: [
-              Icon(Icons.sensor_door_outlined,
-                  color: AppColors.primaryFixed, size: 36),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () => Navigator.pushNamed(context, '/rooms'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: AppColors.primaryFixed,
-                  side: BorderSide.none,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  shape: StadiumBorder(),
-                ),
-                child: Text('Enter Now',
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13)),
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
               ),
-            ]),
+              child: const Icon(Icons.extension_rounded, color: Colors.white, size: 22),
+            ),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text(
-                'Start Focus Room',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Join others in a quiet session.',
-                style: TextStyle(
-                    color: AppColors.onPrimaryContainer, fontSize: 13),
-              ),
+              const Text('Brain Games',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 3),
+              Text('6 games  •  2–6 min',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
             ]),
           ],
         ),
@@ -1005,299 +837,355 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildGameCard() {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/games'),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.07),
-                blurRadius: 10,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.extension_outlined,
-                color: AppColors.secondary, size: 30),
-            const SizedBox(height: 12),
-            const Text('Play a Game',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: AppColors.onSurface)),
-            const SizedBox(height: 4),
-            Text('2–6 min sessions',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // ── Books card ────────────────────────────────────────────────────────────
   Widget _buildBookCard() {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/books'),
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/books'); },
       child: Container(
+        height: 160,
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.07),
-                blurRadius: 10,
-                offset: const Offset(0, 2))
-          ],
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.menu_book_outlined,
-                color: AppColors.tertiaryContainer, size: 30),
-            const SizedBox(height: 12),
-            const Text('Read a Book',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: AppColors.onSurface)),
-            const SizedBox(height: 4),
-            Text('TTS / Reader',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.onSurfaceVariant)),
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 22),
+            ),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Read',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 3),
+              Text('TTS  •  Reader',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+            ]),
           ],
         ),
       ),
     );
   }
 
+  // ── AI Coach card ─────────────────────────────────────────────────────────
+  Widget _buildCoachingCard() {
+    final goalCount = _todayGoals.length;
+    final doneCount = _todayGoals.where((g) => g.status == 'DONE').length;
+    final progress  = goalCount > 0 ? doneCount / goalCount : 0.0;
+
+    return GestureDetector(
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/coaching'); },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.6)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 2))],
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('AI Daily Coach',
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+                Text(
+                  goalCount == 0 ? 'Set your goals for today' : '$doneCount of $goalCount goals done',
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                ),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
+          ]),
+          if (goalCount > 0) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress, minHeight: 5,
+                backgroundColor: AppColors.surfaceContainerHigh,
+                valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  // ── Habits card ───────────────────────────────────────────────────────────
   Widget _buildHabitsCard() {
     return Consumer<HabitProvider>(
       builder: (context, provider, _) {
-        final remaining = provider.totalCount - provider.doneCount;
+        final done      = provider.doneCount;
+        final total     = provider.totalCount;
+        final remaining = total - done;
         return GestureDetector(
-          onTap: () => Navigator.pushNamed(context, '/habits'),
+          onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.secondaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.secondaryContainer.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.secondaryContainer),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.all(18),
             child: Row(children: [
-              Icon(Icons.task_alt_outlined,
-                  color: AppColors.secondary, size: 28),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('My Habits',
-                        style: TextStyle(
-                            color: AppColors.onSecondaryFixedVariant,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(
-                      provider.isLoading
-                          ? 'Loading...'
-                          : '$remaining task${remaining == 1 ? '' : 's'} remaining for today',
-                      style: TextStyle(
-                          color: AppColors.onSecondaryContainer,
-                          fontSize: 12),
-                    ),
-                  ],
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withOpacity(0.12), borderRadius: BorderRadius.circular(12),
                 ),
+                child: const Icon(Icons.task_alt_rounded, color: AppColors.secondary, size: 22),
               ),
-              Icon(Icons.chevron_right_rounded,
-                  color: AppColors.onSecondaryFixedVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('My Habits',
+                      style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text(
+                    provider.isLoading
+                        ? 'Loading…'
+                        : (remaining == 0 && total > 0)
+                            ? 'All done for today 🎉'
+                            : '$remaining remaining today',
+                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                  ),
+                ]),
+              ),
+              // Progress dots (up to 5)
+              if (total > 0)
+                Row(
+                  children: List.generate(total.clamp(0, 5), (i) => Container(
+                    margin: const EdgeInsets.only(left: 5),
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i < done ? AppColors.secondary : AppColors.outlineVariant,
+                    ),
+                  )),
+                ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
             ]),
           ),
         );
       },
     );
   }
+
+  // ── Wake-Up card ──────────────────────────────────────────────────────────
   Widget _buildWakeUpCard() {
     final hasActive = _activeSession != null;
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LockInPage()),
-            );
-            _loadActiveSession();
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF111827),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+    return Column(children: [
+      GestureDetector(
+        onTap: () async {
+          HapticFeedback.lightImpact();
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
+          _loadActiveSession();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.lockInCard,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: hasActive
+                  ? const Color(0xFF10B981).withOpacity(0.45)
+                  : Colors.white.withOpacity(0.07),
+            ),
+            boxShadow: hasActive
+                ? [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.12),
+                    blurRadius: 14, offset: const Offset(0, 4))]
+                : [],
+          ),
+          padding: const EdgeInsets.all(18),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
                 color: hasActive
-                    ? const Color(0xFF10B981).withOpacity(0.5)
-                    : AppColors.primary.withOpacity(0.2),
+                    ? const Color(0xFF10B981).withOpacity(0.15)
+                    : AppColors.secondary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-              boxShadow: hasActive
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      )
-                    ]
-                  : [],
+              child: Stack(alignment: Alignment.topRight, children: [
+                Center(child: Icon(Icons.alarm_rounded,
+                    color: hasActive ? const Color(0xFF10B981) : AppColors.secondary, size: 22)),
+                if (hasActive)
+                  Positioned(top: 6, right: 6,
+                      child: Container(width: 7, height: 7,
+                          decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle))),
+              ]),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(children: [
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Icon(Icons.alarm_rounded,
-                      color: hasActive
-                          ? const Color(0xFF10B981)
-                          : AppColors.secondary,
-                      size: 28),
-                  if (hasActive)
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasActive ? 'Session Active' : 'Wake-Up Mode',
-                      style: TextStyle(
-                          color: hasActive
-                              ? const Color(0xFF10B981)
-                              : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      hasActive
-                          ? 'Tap to return to your session'
-                          : 'Lock in and crush your morning',
-                      style: const TextStyle(
-                          color: Color(0xFF9CA3AF), fontSize: 12),
-                    ),
-                  ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(hasActive ? 'Session Active' : 'Wake-Up Mode',
+                    style: TextStyle(
+                        color: hasActive ? const Color(0xFF10B981) : Colors.white,
+                        fontSize: 15, fontWeight: FontWeight.bold)),
+                Text(hasActive ? 'Tap to return to your session' : 'Lock in and crush your morning',
+                    style: TextStyle(color: AppColors.lockInMuted, fontSize: 12)),
+              ]),
+            ),
+            if (hasActive)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
                 ),
-              ),
-              if (hasActive)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: const Color(0xFF10B981).withOpacity(0.4)),
-                  ),
-                  child: const Text('Return',
-                      style: TextStyle(
-                          color: Color(0xFF10B981),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
-                )
-              else
-                const Icon(Icons.chevron_right_rounded,
-                    color: Color(0xFF6B7280)),
-            ]),
-          ),
+                child: const Text('Return',
+                    style: TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold)),
+              )
+            else
+              Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted),
+          ]),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SchedulesPage()),
-            ),
-            style: TextButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-            ),
-            child: const Text('Schedules',
-                style: TextStyle(
-                    color: AppColors.secondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-          ),
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SchedulesPage())),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4)),
+          child: const Text('View Schedules →',
+              style: TextStyle(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.w600)),
         ),
-      ],
-    );
+      ),
+    ]);
   }
 
-  Widget _buildCoachingCard() {
-    final goalCount = _todayGoals.length;
-    final doneCount = _todayGoals.where((g) => g.status == 'DONE').length;
-    final subtitle = goalCount == 0
-        ? 'Start your day'
-        : '$doneCount / $goalCount goals done today';
+  // ── Focus Rooms card ──────────────────────────────────────────────────────
+  Widget _buildFocusRoomCard() {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/coaching'),
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/rooms'); },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.07),
-                blurRadius: 10,
-                offset: const Offset(0, 2))
-          ],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.6)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 2))],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.all(18),
         child: Row(children: [
-          Icon(Icons.psychology_outlined,
-              color: AppColors.primary, size: 28),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('AI Daily Coach',
-                    style: TextStyle(
-                        color: AppColors.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 12)),
-              ],
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.tertiaryContainer.withOpacity(0.25), borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(Icons.group_outlined, color: AppColors.tertiary, size: 22),
           ),
-          const Icon(Icons.chevron_right_rounded,
-              color: AppColors.onSurfaceVariant),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Focus Rooms',
+                  style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text('Study alongside others',
+                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
+            ]),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary, borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('Join', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+          ),
         ]),
       ),
     );
   }
 }
 
-// ── Status pill (Done / Expired) ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER WIDGETS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _HeroStat extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _HeroStat({
+    required this.icon, required this.iconColor,
+    required this.value, required this.label, this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: iconColor, size: 18),
+          const SizedBox(height: 5),
+          Text(value,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 10, fontWeight: FontWeight.w500)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _VertDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 36, color: Colors.white.withOpacity(0.12));
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primary : AppColors.onSurfaceVariant;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 3),
+          Text(label, style: TextStyle(
+              color: color, fontSize: 10,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+        ]),
+      ),
+    );
+  }
+}
+
 class _StatusPill extends StatelessWidget {
   final String label;
   final Color color;
-
   const _StatusPill({required this.label, required this.color});
 
   @override
@@ -1305,41 +1193,35 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.5)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.bold),
-      ),
+      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 }
 
-// ── Deep Focus Ring Painter ────────────────────────────────────────────────
+// ── Deep Focus Ring Painter ───────────────────────────────────────────────────
 class _DeepFocusRingPainter extends CustomPainter {
   final double progress;
   _DeepFocusRingPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 8.0;
+    const stroke = 12.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - stroke) / 2;
 
-    // Track ring
+    // Track ring — white translucent on dark hero background
     canvas.drawCircle(
-      center,
-      radius,
+      center, radius,
       Paint()
-        ..color = AppColors.surfaceContainerHigh
+        ..color = Colors.white.withOpacity(0.12)
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke,
     );
 
-    // Progress arc
+    // Progress arc — bright mint green
     if (progress > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -1347,7 +1229,7 @@ class _DeepFocusRingPainter extends CustomPainter {
         2 * math.pi * progress,
         false,
         Paint()
-          ..color = AppColors.primaryContainer
+          ..color = const Color(0xFFA0F4C8)   // AppColors.secondaryFixed
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke
           ..strokeCap = StrokeCap.round,
@@ -1357,49 +1239,4 @@ class _DeepFocusRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DeepFocusRingPainter old) => old.progress != progress;
-}
-
-// ── Stat pill widget ──────────────────────────────────────────────────────
-class _StatPill extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String value;
-  final String label;
-
-  const _StatPill({
-    required this.icon,
-    required this.iconColor,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(height: 8),
-          Text(value,
-              style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: TextStyle(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8)),
-        ],
-      ),
-    );
-  }
 }
