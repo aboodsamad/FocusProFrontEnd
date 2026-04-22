@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/update_service.dart';
 import '../providers/user_provider.dart';
 import '../../habits/providers/habit_provider.dart';
 import '../../profile/services/activity_log_service.dart';
@@ -65,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loadTodayGoals();
       _loadChallenge();
       _loadActiveSession();
+      UpdateService.checkForUpdate(context);
     });
   }
 
