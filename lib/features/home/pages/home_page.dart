@@ -376,15 +376,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
     if (user.isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.primary,
-        body: const Center(child: CircularProgressIndicator(color: Colors.white)),
+      return const Scaffold(
+        backgroundColor: AppColors.lockInBackground,
+        body: Center(child: CircularProgressIndicator(
+            color: AppColors.secondaryFixed, strokeWidth: 2.5)),
       );
     }
     final score = user.focusScore;
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.lockInBackground,
       bottomNavigationBar: _buildBottomNav(),
       body: Column(
         children: [
@@ -395,7 +396,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Active session banner
                   if (_activeSession != null) _buildActiveBanner(),
 
                   const SizedBox(height: 24),
@@ -406,21 +406,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: _buildDailyChallengeCard(),
                   ),
 
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Train Your Mind'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader('Features'),
+                  const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(children: [
-                      Expanded(child: _buildGameCard()),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildBookCard()),
-                    ]),
+                    child: _buildFeatureGrid(),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   _buildSectionHeader('Your Progress'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: [
@@ -430,19 +426,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ]),
                   ),
 
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Focus Tools'),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(children: [
-                      _buildWakeUpCard(),
-                      const SizedBox(height: 12),
-                      _buildFocusRoomCard(),
-                    ]),
-                  ),
-
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -456,11 +440,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08),
-              blurRadius: 20, offset: const Offset(0, -2)),
-        ],
+        color: AppColors.lockInCard,
+        border: Border(top: BorderSide(color: AppColors.lockInBorder, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -488,13 +469,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Hero Section ──────────────────────────────────────────────────────────
   Widget _buildHeroSection(UserProvider user, double score) {
     return Container(
+      // Gradient fades INTO the dark page background — seamless blend
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF012D1D), Color(0xFF0E3A24)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF012D1D), Color(0xFF080D1A)],
+          stops: [0.0, 1.0],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
       ),
       child: SafeArea(
         bottom: false,
@@ -504,15 +486,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
               child: Row(children: [
-                // Avatar
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/profile'),
                   child: Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.12),
-                      border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
+                      color: Colors.white.withOpacity(0.10),
+                      border: Border.all(color: AppColors.secondaryFixed.withOpacity(0.35), width: 1.5),
                     ),
                     child: Center(
                       child: Text(user.displayInitial,
@@ -521,22 +502,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Greeting
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_greeting,
-                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w500)),
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.w500)),
                   Text(user.name ?? 'Focus Pro',
                       style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ]),
                 const Spacer(),
-                // Logout button
                 GestureDetector(
                   onTap: _logout,
                   child: Container(
                     width: 38, height: 38,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.08),
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
                   ),
@@ -545,31 +525,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
 
             // ── Score ring ───────────────────────────────────────────────────
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             AnimatedBuilder(
               animation: Listenable.merge([_scoreAnim, _pulseAnim]),
               builder: (_, __) {
                 return SizedBox(
-                  width: 190,
-                  height: 190,
+                  width: 180, height: 180,
                   child: Stack(alignment: Alignment.center, children: [
                     CustomPaint(
-                      size: const Size(190, 190),
+                      size: const Size(180, 180),
                       painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
                     ),
                     Column(mainAxisSize: MainAxisSize.min, children: [
                       Text(
                         _scoreAnim.value.toStringAsFixed(0),
                         style: const TextStyle(
-                          color: Colors.white, fontSize: 64,
+                          color: Colors.white, fontSize: 60,
                           fontWeight: FontWeight.w900, height: 1.0,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         'FOCUS SCORE',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
-                          fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2,
+                          color: AppColors.secondaryFixed.withOpacity(0.7),
+                          fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2.5,
                         ),
                       ),
                     ]),
@@ -578,18 +558,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               },
             ),
 
-            // ── Stats strip ──────────────────────────────────────────────────
-            const SizedBox(height: 20),
+            // ── Stats row ────────────────────────────────────────────────────
+            const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Row(children: [
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
                   _HeroStat(
                     icon: Icons.local_fire_department,
                     iconColor: const Color(0xFFFF6B35),
@@ -599,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _VertDivider(),
                   _HeroStat(
                     icon: Icons.bolt_rounded,
-                    iconColor: const Color(0xFFFBBF24),
+                    iconColor: AppColors.secondaryFixed,
                     value: '$_todaySessions',
                     label: 'Sessions',
                   ),
@@ -611,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     label: 'Distracted',
                     onTap: _editUsage,
                   ),
-                ]),
+                ],
               ),
             ),
           ],
@@ -632,15 +607,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withOpacity(0.1),
+          color: const Color(0xFF10B981).withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.35)),
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
         ),
         child: Row(children: [
-          Container(
-            width: 8, height: 8,
-            decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
-          ),
+          Container(width: 7, height: 7,
+              decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
           const SizedBox(width: 10),
           const Expanded(
             child: Text('Lock-in session active — tap to return',
@@ -656,14 +629,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.onSurface,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+      child: Row(children: [
+        Container(
+          width: 3, height: 16,
+          decoration: BoxDecoration(
+            color: AppColors.secondaryFixed,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ]),
     );
   }
 
@@ -673,30 +657,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20),
+          color: AppColors.lockInCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.lockInBorder),
         ),
         child: const SizedBox(height: 80,
-            child: Center(child: CircularProgressIndicator(color: AppColors.primaryFixed, strokeWidth: 2.5))),
+            child: Center(child: CircularProgressIndicator(
+                color: AppColors.secondaryFixed, strokeWidth: 2.5))),
       );
     }
     if (_challengeError != null || _challenge == null) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.outlineVariant),
+          color: AppColors.lockInCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.lockInBorder),
         ),
         child: Row(children: [
-          Expanded(child: Text('Could not load today\'s challenge.',
-              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
+          const Expanded(child: Text('Could not load today\'s challenge.',
+              style: TextStyle(color: AppColors.lockInMuted, fontSize: 13))),
           TextButton(onPressed: _loadChallenge,
-              child: Text('Retry', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))),
+              child: const Text('Retry',
+                  style: TextStyle(color: AppColors.secondaryFixed, fontWeight: FontWeight.bold))),
         ]),
       );
     }
 
     final challenge = _challenge!;
-    final areaColor = _weaknessColors[challenge.weaknessArea] ?? const Color(0xFF7B6FFF);
+    final areaColor = _weaknessColors[challenge.weaknessArea] ?? AppColors.secondaryFixed;
     final areaIcon  = _weaknessIcons[challenge.weaknessArea]  ?? Icons.grid_on_rounded;
 
     return Container(
@@ -704,20 +693,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: AppColors.primaryContainer,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.35)),
-        boxShadow: [
-          BoxShadow(color: AppColors.primary.withOpacity(0.18),
-              blurRadius: 16, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Header
         Row(children: [
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color: areaColor.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: areaColor.withOpacity(0.4)),
+              color: areaColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: areaColor.withOpacity(0.3)),
             ),
             child: Icon(areaIcon, color: areaColor, size: 20),
           ),
@@ -728,23 +712,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 2),
               Text('Resets at midnight',
-                  style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11)),
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
             ]),
           ),
           if (challenge.isCompleted)
-            _StatusPill(label: 'Done ✓', color: Colors.green.shade400)
+            _StatusPill(label: 'Done ✓', color: AppColors.secondaryFixed)
           else if (challenge.isExpired)
-            _StatusPill(label: 'Expired', color: AppColors.onPrimaryContainer),
+            _StatusPill(label: 'Expired', color: AppColors.lockInMuted),
         ]),
         const SizedBox(height: 14),
         Text(challenge.challengeTitle,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
         const SizedBox(height: 6),
         Text(challenge.challengeDescription,
-            style: TextStyle(color: Colors.grey[300], fontSize: 13, height: 1.5),
+            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, height: 1.5),
             maxLines: 4, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 16),
-        // Action buttons
         Row(children: [
           Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
           if (!challenge.isCompleted && !challenge.isExpired) ...[
@@ -764,18 +747,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: disabled ? null : () { HapticFeedback.lightImpact(); _onChallengeAction(challenge); },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          gradient: disabled ? null : LinearGradient(
-            colors: [areaColor, AppColors.primary],
-            begin: Alignment.centerLeft, end: Alignment.centerRight,
-          ),
-          color: disabled ? Colors.white.withOpacity(0.07) : null,
+          color: disabled ? Colors.white.withOpacity(0.07) : AppColors.secondary,
           borderRadius: BorderRadius.circular(12),
+          border: disabled ? null : Border.all(color: AppColors.secondaryFixed.withOpacity(0.2)),
         ),
         child: Center(child: Text(label,
-            style: TextStyle(color: disabled ? AppColors.onPrimaryContainer : Colors.white,
-                fontWeight: FontWeight.bold, fontSize: 13))),
+            style: TextStyle(
+              color: disabled ? AppColors.lockInMuted : Colors.white,
+              fontWeight: FontWeight.bold, fontSize: 13,
+            ))),
       ),
     );
   }
@@ -784,33 +766,71 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: _showWeaknessHintSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.onPrimaryContainer),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.edit_outlined, color: AppColors.onPrimaryContainer, size: 14),
+          Icon(Icons.edit_outlined, color: Colors.white.withOpacity(0.5), size: 13),
           const SizedBox(width: 4),
           Text('I feel weak at…',
-              style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11, fontWeight: FontWeight.w600)),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
   }
 
-  // ── Games card ────────────────────────────────────────────────────────────
-  Widget _buildGameCard() {
+  // ── 2×2 Feature Grid ─────────────────────────────────────────────────────
+  Widget _buildFeatureGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.05,
+      children: [
+        _buildFeatureTile(
+          icon: Icons.extension_rounded,
+          title: 'Brain Games',
+          subtitle: '6 games  •  2–6 min',
+          accentColor: AppColors.secondaryFixed,
+          onTap: () => Navigator.pushNamed(context, '/games'),
+        ),
+        _buildFeatureTile(
+          icon: Icons.menu_book_rounded,
+          title: 'Reader',
+          subtitle: 'TTS  •  Deep focus',
+          accentColor: AppColors.primaryFixed,
+          onTap: () => Navigator.pushNamed(context, '/books'),
+        ),
+        _buildFeatureTile(
+          icon: Icons.group_outlined,
+          title: 'Focus Rooms',
+          subtitle: 'Study alongside others',
+          accentColor: AppColors.onTertiaryContainer,
+          onTap: () => Navigator.pushNamed(context, '/rooms'),
+        ),
+        _buildWakeUpTile(),
+      ],
+    );
+  }
+
+  Widget _buildFeatureTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/games'); },
+      onTap: () { HapticFeedback.lightImpact(); onTap(); },
       child: Container(
-        height: 160,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF5B4FE8), Color(0xFF8B5CF6)],
-          ),
+          color: AppColors.lockInCard,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.lockInBorder),
         ),
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -818,18 +838,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              width: 42, height: 42,
+              width: 44, height: 44,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
+                color: accentColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: accentColor.withOpacity(0.22)),
               ),
-              child: const Icon(Icons.extension_rounded, color: Colors.white, size: 22),
+              child: Icon(icon, color: accentColor, size: 22),
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Brain Games',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(title, style: const TextStyle(
+                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 3),
-              Text('6 games  •  2–6 min',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+              Text(subtitle, style: const TextStyle(
+                  color: AppColors.lockInMuted, fontSize: 11)),
             ]),
           ],
         ),
@@ -837,37 +859,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Books card ────────────────────────────────────────────────────────────
-  Widget _buildBookCard() {
+  Widget _buildWakeUpTile() {
+    final hasActive = _activeSession != null;
+    final accentColor = hasActive ? const Color(0xFF10B981) : AppColors.secondary;
     return GestureDetector(
-      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/books'); },
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
+        _loadActiveSession();
+      },
       child: Container(
-        height: 160,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
-          ),
+          color: hasActive
+              ? const Color(0xFF10B981).withOpacity(0.07)
+              : AppColors.lockInCard,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasActive
+                ? const Color(0xFF10B981).withOpacity(0.3)
+                : AppColors.lockInBorder,
+          ),
         ),
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12),
+            Stack(clipBehavior: Clip.none, children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accentColor.withOpacity(0.22)),
+                ),
+                child: Icon(Icons.alarm_rounded, color: accentColor, size: 22),
               ),
-              child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 22),
-            ),
+              if (hasActive)
+                Positioned(
+                  top: -2, right: -2,
+                  child: Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.lockInBackground, width: 1.5),
+                    ),
+                  ),
+                ),
+            ]),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Read',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(hasActive ? 'Active' : 'Wake-Up',
+                  style: TextStyle(
+                    color: hasActive ? const Color(0xFF10B981) : Colors.white,
+                    fontSize: 14, fontWeight: FontWeight.bold,
+                  )),
               const SizedBox(height: 3),
-              Text('TTS  •  Reader',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+              Text(hasActive ? 'Session running' : 'Lock-in mode',
+                  style: const TextStyle(color: AppColors.lockInMuted, fontSize: 11)),
             ]),
           ],
         ),
@@ -885,10 +934,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/coaching'); },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
+          color: AppColors.lockInCard,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.6)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 2))],
+          border: Border.all(color: AppColors.lockInBorder),
         ),
         padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -896,30 +944,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12),
+                color: AppColors.secondary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.secondary.withOpacity(0.22)),
               ),
-              child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 22),
+              child: const Icon(Icons.psychology_outlined, color: AppColors.secondary, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('AI Daily Coach',
-                    style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                 Text(
                   goalCount == 0 ? 'Set your goals for today' : '$doneCount of $goalCount goals done',
-                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                  style: const TextStyle(color: AppColors.lockInMuted, fontSize: 12),
                 ),
               ]),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted, size: 20),
           ]),
           if (goalCount > 0) ...[
             const SizedBox(height: 14),
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: progress, minHeight: 5,
-                backgroundColor: AppColors.surfaceContainerHigh,
+                value: progress, minHeight: 4,
+                backgroundColor: AppColors.lockInBorder,
                 valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
               ),
             ),
@@ -940,175 +990,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.secondaryContainer.withOpacity(0.25),
+              color: AppColors.lockInCard,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.secondaryContainer),
+              border: Border.all(color: AppColors.lockInBorder),
             ),
             padding: const EdgeInsets.all(18),
             child: Row(children: [
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.12), borderRadius: BorderRadius.circular(12),
+                  color: AppColors.secondaryFixed.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.secondaryFixed.withOpacity(0.2)),
                 ),
-                child: const Icon(Icons.task_alt_rounded, color: AppColors.secondary, size: 22),
+                child: const Icon(Icons.task_alt_rounded, color: AppColors.secondaryFixed, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('My Habits',
-                      style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                   Text(
                     provider.isLoading
                         ? 'Loading…'
                         : (remaining == 0 && total > 0)
                             ? 'All done for today 🎉'
                             : '$remaining remaining today',
-                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                    style: const TextStyle(color: AppColors.lockInMuted, fontSize: 12),
                   ),
                 ]),
               ),
-              // Progress dots (up to 5)
-              if (total > 0)
+              if (total > 0) ...[
                 Row(
                   children: List.generate(total.clamp(0, 5), (i) => Container(
                     margin: const EdgeInsets.only(left: 5),
-                    width: 8, height: 8,
+                    width: 7, height: 7,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: i < done ? AppColors.secondary : AppColors.outlineVariant,
+                      color: i < done
+                          ? AppColors.secondaryFixed
+                          : AppColors.lockInBorder,
                     ),
                   )),
                 ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
+                const SizedBox(width: 8),
+              ],
+              const Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted, size: 20),
             ]),
           ),
         );
       },
-    );
-  }
-
-  // ── Wake-Up card ──────────────────────────────────────────────────────────
-  Widget _buildWakeUpCard() {
-    final hasActive = _activeSession != null;
-    return Column(children: [
-      GestureDetector(
-        onTap: () async {
-          HapticFeedback.lightImpact();
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
-          _loadActiveSession();
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.lockInCard,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: hasActive
-                  ? const Color(0xFF10B981).withOpacity(0.45)
-                  : Colors.white.withOpacity(0.07),
-            ),
-            boxShadow: hasActive
-                ? [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.12),
-                    blurRadius: 14, offset: const Offset(0, 4))]
-                : [],
-          ),
-          padding: const EdgeInsets.all(18),
-          child: Row(children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: hasActive
-                    ? const Color(0xFF10B981).withOpacity(0.15)
-                    : AppColors.secondary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Stack(alignment: Alignment.topRight, children: [
-                Center(child: Icon(Icons.alarm_rounded,
-                    color: hasActive ? const Color(0xFF10B981) : AppColors.secondary, size: 22)),
-                if (hasActive)
-                  Positioned(top: 6, right: 6,
-                      child: Container(width: 7, height: 7,
-                          decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle))),
-              ]),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(hasActive ? 'Session Active' : 'Wake-Up Mode',
-                    style: TextStyle(
-                        color: hasActive ? const Color(0xFF10B981) : Colors.white,
-                        fontSize: 15, fontWeight: FontWeight.bold)),
-                Text(hasActive ? 'Tap to return to your session' : 'Lock in and crush your morning',
-                    style: TextStyle(color: AppColors.lockInMuted, fontSize: 12)),
-              ]),
-            ),
-            if (hasActive)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
-                ),
-                child: const Text('Return',
-                    style: TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold)),
-              )
-            else
-              Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted),
-          ]),
-        ),
-      ),
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SchedulesPage())),
-          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4)),
-          child: const Text('View Schedules →',
-              style: TextStyle(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.w600)),
-        ),
-      ),
-    ]);
-  }
-
-  // ── Focus Rooms card ──────────────────────────────────────────────────────
-  Widget _buildFocusRoomCard() {
-    return GestureDetector(
-      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/rooms'); },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.6)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 2))],
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.tertiaryContainer.withOpacity(0.25), borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.group_outlined, color: AppColors.tertiary, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Focus Rooms',
-                  style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
-              Text('Study alongside others',
-                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
-            ]),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary, borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text('Join', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-          ),
-        ]),
-      ),
     );
   }
 }
