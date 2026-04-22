@@ -71,6 +71,16 @@ class AppColors {
   static const Color background           = Color(0xFFF8F9FA);
   static const Color scrim               = Color(0xFF000000);
 
+  // ── Lock-in / dark-mode surfaces ───────────────────────────────────────────
+  /// Deep near-black background used by the Wake-Up / Lock-In screens.
+  static const Color lockInBackground    = Color(0xFF080D1A);
+  /// Dark card surface inside Lock-In screens.
+  static const Color lockInCard          = Color(0xFF111827);
+  /// Muted text color used inside Lock-In screens.
+  static const Color lockInMuted         = Color(0xFF9CA3AF);
+  /// Divider / border color inside Lock-In screens.
+  static const Color lockInBorder        = Color(0xFF1F2937);
+
   // ── Legacy aliases (kept to avoid breaking existing references) ────────────
   // These will be removed once all screens are updated.
   @Deprecated('Use AppColors.primary instead')

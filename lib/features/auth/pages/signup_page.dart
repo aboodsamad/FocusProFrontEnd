@@ -279,12 +279,15 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 32,
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 32,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 32,
             ),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),

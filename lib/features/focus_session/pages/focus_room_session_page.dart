@@ -41,6 +41,10 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
   bool _sendingMessage = false;
   int _unreadCount = 0;
 
+  // Locks to prevent concurrent polls from racing each other
+  bool _memberPollInFlight = false;
+  bool _chatPollInFlight = false;
+
   // ── tab state ─────────────────────────────────────────────────────────────
   bool _showChat = true;
 
@@ -161,16 +165,29 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       }
     } catch (_) {}
 
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+    // Poll interval constants — named so intent is clear
+    const _memberPollInterval = Duration(seconds: 4);
+    const _chatPollInterval = Duration(milliseconds: 2500);
+
+    _pollTimer = Timer.periodic(_memberPollInterval, (_) async {
+      if (_memberPollInFlight || !mounted) return;
+      _memberPollInFlight = true;
       try {
         final room = await FocusRoomService.getRoom(widget.room.id);
         if (mounted) setState(() => _members = room.members);
-      } catch (_) {}
+      } catch (_) {
+        // Silently skip — transient network error; next tick will retry
+      } finally {
+        _memberPollInFlight = false;
+      }
     });
 
-    _chatPollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+    _chatPollTimer = Timer.periodic(_chatPollInterval, (_) async {
+      if (_chatPollInFlight || !mounted) return;
+      _chatPollInFlight = true;
       try {
-        final newMsgs = await FocusRoomService.fetchMessages(widget.room.id, _lastMessageTimestamp);
+        final newMsgs = await FocusRoomService.fetchMessages(
+            widget.room.id, _lastMessageTimestamp);
         final unique = newMsgs.where((m) => !_messageIds.contains(m.id)).toList();
         if (unique.isNotEmpty && mounted) {
           setState(() {
@@ -181,7 +198,11 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           });
           if (_showChat) _scrollToBottom();
         }
-      } catch (_) {}
+      } catch (_) {
+        // Silently skip — next tick will retry
+      } finally {
+        _chatPollInFlight = false;
+      }
     });
   }
 
@@ -530,19 +551,29 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         ),
         // Messages
         Expanded(
-          child: _messages.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('💬', style: TextStyle(fontSize: 40)),
-                      const SizedBox(height: 12),
-                      const Text('No messages yet', style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      const Text('Be the first to say hi!', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
-                    ],
-                  ),
+          child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.secondary),
                 )
+              : _messages.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('💬', style: TextStyle(fontSize: 40)),
+                          const SizedBox(height: 12),
+                          const Text('No messages yet',
+                              style: TextStyle(
+                                  color: AppColors.onSurface,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          const Text('Be the first to say hi!',
+                              style: TextStyle(
+                                  color: AppColors.onSurfaceVariant,
+                                  fontSize: 12)),
+                        ],
+                      ),
+                    )
               : ListView.builder(
                   controller: _chatScrollController,
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -783,7 +814,7 @@ class _ChatBubble extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isMe ? AppColors.primaryContainer : const Color(0xFF2E3132),
+                    color: isMe ? AppColors.primaryContainer : AppColors.inverseSurface,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),

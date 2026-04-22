@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/habit.dart';
@@ -38,7 +39,7 @@ class ManageHabitsPage extends StatelessWidget {
             if (existing == null) {
               provider.add(habit);
             } else {
-              provider.edit(existing, habit);
+              provider.editSafe(existing, habit);
             }
           },
         ),
@@ -132,7 +133,18 @@ class ManageHabitsPage extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _HabitCard(
                               habit: habit,
-                              onToggle: () => provider.toggle(habit),
+                              onToggle: () async {
+                                HapticFeedback.lightImpact();
+                                final err = await provider.toggle(habit);
+                                if (err != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(err),
+                                      backgroundColor: Colors.red.shade600,
+                                    ),
+                                  );
+                                }
+                              },
                               onEdit: () =>
                                   _showHabitSheet(context, habit),
                               onDelete: () => _confirmDelete(
@@ -156,7 +168,18 @@ class ManageHabitsPage extends StatelessWidget {
                     if (provider.habits.isNotEmpty)
                       _UpcomingSection(
                         habits: provider.habits,
-                        onToggle: provider.toggle,
+                        onToggle: (h) async {
+                          HapticFeedback.lightImpact();
+                          final err = await provider.toggle(h);
+                          if (err != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err),
+                                backgroundColor: Colors.red.shade600,
+                              ),
+                            );
+                          }
+                        },
                       ),
                   ]),
                 ),
@@ -779,7 +802,7 @@ class _EmptyState extends StatelessWidget {
 // ── Upcoming section ──────────────────────────────────────────────────────────
 class _UpcomingSection extends StatelessWidget {
   final List<Habit> habits;
-  final Future<void> Function(Habit) onToggle;
+  final Future<void> Function(Habit) onToggle;  // callers handle error display
 
   const _UpcomingSection(
       {required this.habits, required this.onToggle});

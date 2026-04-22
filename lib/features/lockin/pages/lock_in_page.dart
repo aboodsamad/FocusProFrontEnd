@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/auth_service.dart';
 import '../../coaching/pages/coaching_page.dart';
 import '../../coaching/models/daily_goal_model.dart';
 import '../../coaching/services/coaching_service.dart';
@@ -28,7 +29,8 @@ class LockInPage extends StatefulWidget {
 }
 
 class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
-  static const _dark = Color(0xFF080D1A);
+  // Use named constant from AppColors instead of a magic inline hex value
+  static const _dark = AppColors.lockInBackground;
 
   LockInState _state = LockInState.setup;
   LockInSessionModel? _session;
@@ -49,6 +51,9 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
   // Offline retry
   Timer? _offlineRetry;
   bool _offline = false;
+
+  // Guard against _endSession being called twice (back gesture + timer)
+  bool _sessionEnded = false;
 
   // Summary data
   bool _endedEarly = false;
@@ -234,6 +239,10 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
   }
 
   Future<void> _endSession({required bool early}) async {
+    // Prevent double-call from back gesture + timer firing simultaneously
+    if (_sessionEnded) return;
+    _sessionEnded = true;
+
     _sessionTimer?.cancel();
     _offlineRetry?.cancel();
     if (_session != null) {
@@ -262,7 +271,8 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
 
   Future<List<DailyGoalModel>> _loadGoals() async {
     try {
-      final token = await Future.value('');
+      final token = await AuthService.getToken() ?? '';
+      if (token.isEmpty) return [];
       final goals = await CoachingService.getTodayGoals(token);
       return goals;
     } catch (_) {
@@ -325,7 +335,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF111827),
+                color: AppColors.lockInCard,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
@@ -471,7 +481,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   decoration: BoxDecoration(
                     color: active
                         ? AppColors.secondary.withValues(alpha: 0.2)
-                        : const Color(0xFF1F2937),
+                        : AppColors.lockInBorder,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: active
@@ -483,7 +493,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                     labelFn(opt),
                     style: TextStyle(
                       color:
-                          active ? AppColors.secondary : const Color(0xFF9CA3AF),
+                          active ? AppColors.secondary : AppColors.lockInMuted,
                       fontSize: 13,
                       fontWeight:
                           active ? FontWeight.bold : FontWeight.normal,
@@ -539,7 +549,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
               OutlinedButton(
                 onPressed: _skipPrep,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF9CA3AF),
+                  foregroundColor: AppColors.lockInMuted,
                   side: const BorderSide(color: Color(0xFF374151)),
                   shape: StadiumBorder(),
                   padding: const EdgeInsets.symmetric(
@@ -570,7 +580,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
           SafeArea(
             bottom: false,
             child: Container(
-              color: const Color(0xFF111827),
+              color: AppColors.lockInCard,
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(children: [
@@ -618,7 +628,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
 
           // Bottom persistent "End Session" bar
           Container(
-            color: const Color(0xFF111827),
+            color: AppColors.lockInCard,
             padding: EdgeInsets.only(
               left: 16,
               right: 16,
@@ -748,9 +758,9 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111827),
+          color: AppColors.lockInCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF1F2937)),
+          border: Border.all(color: AppColors.lockInBorder),
         ),
         child: Row(children: [
           Icon(statusIcon, color: statusColor, size: 18),
@@ -805,7 +815,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   child: LinearProgressIndicator(
                     value: frac.clamp(0.0, 1.0),
                     minHeight: 5,
-                    backgroundColor: const Color(0xFF1F2937),
+                    backgroundColor: AppColors.lockInBorder,
                     valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
                   ),
                 ),

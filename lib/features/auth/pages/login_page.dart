@@ -171,12 +171,16 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 32,
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 32,
+              // Extra padding so the button is never hidden by the keyboard
+              bottom: MediaQuery.of(context).viewInsets.bottom + 32,
             ),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),

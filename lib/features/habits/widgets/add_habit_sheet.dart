@@ -84,7 +84,18 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
 
   void _save() {
     final title = _titleCtl.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a habit name.')),
+      );
+      return;
+    }
+    if (title.length > 80) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Habit name must be 80 characters or fewer.')),
+      );
+      return;
+    }
     final duration = int.tryParse(_durationCtl.text.trim()) ?? 10;
     final activeCount = _days.where((d) => d).length;
 
@@ -172,8 +183,11 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
             TextField(
               controller: _titleCtl,
               autofocus: true,
+              maxLength: 80,
+              maxLengthEnforcement: MaxLengthEnforcement.enforced,
               style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
-              decoration: _inputDeco(hint: 'e.g. Morning meditation'),
+              decoration: _inputDeco(hint: 'e.g. Morning meditation')
+                  .copyWith(counterStyle: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
             ),
             const SizedBox(height: 16),
 
