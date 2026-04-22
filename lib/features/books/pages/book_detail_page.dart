@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:html' as html;
 import 'package:capstone_front_end/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:just_audio/just_audio.dart';
 import 'dart:convert';
 import '../../../core/constants/app_colors.dart';
 import '../models/book_model.dart';
@@ -34,13 +34,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   bool _audioMode = false;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
-  html.AudioElement? _htmlAudio;
-  StreamSubscription? _timeUpdateSub;
-  StreamSubscription? _endedSub;
-  StreamSubscription? _errorSub;
-  StreamSubscription? _playSub;
-  StreamSubscription? _pauseSub;
-  StreamSubscription? _metadataSub;
+  AudioPlayer? _audioPlayer;
+  StreamSubscription? _durationSub;
+  StreamSubscription? _positionSub;
+  StreamSubscription? _playingSub;
+  StreamSubscription? _stateSub;
   bool _ttsPlaying = false;
   bool _ttsLoading = false;
   double _ttsProgress = 0.0;
@@ -55,7 +53,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   // Tracks in-flight prefetch requests so _ttsPlay() can await them instead
   // of firing a duplicate HTTP request to the same /tts endpoint.
   final Map<int, Completer<void>> _prefetchCompleters = {};
-  String? _blobUrl; // current blob URL (revoked on each new load)
 
   // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _enterCtrl;
@@ -94,16 +91,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     for (final c in _barCtrls) c.stop();
   }
 
-  void _disposeHtmlAudio() {
-    _timeUpdateSub?.cancel();
-    _endedSub?.cancel();
-    _errorSub?.cancel();
-    _playSub?.cancel();
-    _pauseSub?.cancel();
-    _metadataSub?.cancel();
-    _timeUpdateSub = _endedSub = _errorSub = _playSub = _pauseSub = _metadataSub = null;
-    _htmlAudio?.pause();
-    _htmlAudio = null;
+  void _disposeAudioPlayer() {
+    _durationSub?.cancel();
+    _positionSub?.cancel();
+    _playingSub?.cancel();
+    _stateSub?.cancel();
+    _durationSub = _positionSub = _playingSub = _stateSub = null;
+    _audioPlayer?.stop();
+    _audioPlayer?.dispose();
+    _audioPlayer = null;
   }
 
   Future<void> _onAudioEnded() async {
@@ -147,8 +143,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   @override
   void dispose() {
-    _disposeHtmlAudio();
-    if (_blobUrl != null) html.Url.revokeObjectUrl(_blobUrl!);
+    _disposeAudioPlayer();
     _enterCtrl.dispose();
     _pulseCtrl.dispose();
     _pageController.dispose();
@@ -156,67 +151,55 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     super.dispose();
   }
 
-  /// Load bytes via a native HTML AudioElement — avoids just_audio's
-  /// broken blob-URL handling on Flutter Web.
+  /// Play raw MP3 bytes using just_audio (works on Android/iOS/desktop).
   Future<void> _playBytes(Uint8List bytes) async {
-    _disposeHtmlAudio();
-    if (_blobUrl != null) {
-      html.Url.revokeObjectUrl(_blobUrl!);
-      _blobUrl = null;
-    }
-    final blob = html.Blob([bytes], 'audio/mpeg');
-    _blobUrl = html.Url.createObjectUrl(blob);
+    _disposeAudioPlayer();
 
-    final audio = html.AudioElement();
-    audio.src = _blobUrl!;
-    audio.playbackRate = _ttsSpeed;
-    _htmlAudio = audio;
+    final player = AudioPlayer();
+    _audioPlayer = player;
 
-    _metadataSub = audio.onLoadedMetadata.listen((_) {
-      if (!mounted) return;
-      final durMs = (audio.duration * 1000).round();
-      setState(() => _audioDuration = Duration(milliseconds: durMs));
+    _durationSub = player.durationStream.listen((dur) {
+      if (!mounted || dur == null) return;
+      setState(() => _audioDuration = dur);
     });
 
-    _timeUpdateSub = audio.onTimeUpdate.listen((_) {
+    _positionSub = player.positionStream.listen((pos) {
       if (!mounted) return;
-      final posMs = (audio.currentTime * 1000).round();
-      final pos = Duration(milliseconds: posMs);
       setState(() {
         _audioPosition = pos;
         if (_audioDuration.inMilliseconds > 0) {
-          _ttsProgress = (posMs / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
+          _ttsProgress =
+              (pos.inMilliseconds / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
         }
       });
     });
 
-    _playSub = audio.onPlay.listen((_) {
+    _playingSub = player.playingStream.listen((playing) {
       if (!mounted) return;
-      if (!_ttsPlaying) {
-        setState(() => _ttsPlaying = true);
+      setState(() => _ttsPlaying = playing);
+      if (playing) {
         for (final c in _barCtrls) c.repeat(reverse: true);
-      }
-    });
-
-    _pauseSub = audio.onPause.listen((_) {
-      if (!mounted || _speedChanging) return;
-      if (_ttsPlaying) {
-        setState(() => _ttsPlaying = false);
+      } else if (!_speedChanging) {
         for (final c in _barCtrls) c.stop();
       }
     });
 
-    _endedSub = audio.onEnded.listen((_) async {
-      await _onAudioEnded();
+    _stateSub = player.playerStateStream.listen((state) async {
+      if (!mounted) return;
+      if (state.processingState == ProcessingState.completed) {
+        await _onAudioEnded();
+      }
     });
 
-    _errorSub = audio.onError.listen((e) {
-      debugPrint('html.AudioElement error: $e');
+    try {
+      await player.setAudioSource(_BytesAudioSource(bytes));
+      await player.setSpeed(_ttsSpeed);
+      await player.play();
+    } catch (e) {
+      debugPrint('just_audio playback error: $e');
       if (mounted) setState(() { _ttsPlaying = false; _ttsLoading = false; });
       for (final c in _barCtrls) c.stop();
-    });
-
-    await audio.play();
+    }
   }
 
   Future<void> _loadSnippets() async {
@@ -293,7 +276,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   Future<void> _ttsPlay() async {
     if (_currentText.isEmpty || !mounted) return;
-    _disposeHtmlAudio();
+    _disposeAudioPlayer();
     if (!mounted) return;
     setState(() {
       _ttsPlaying = false;
@@ -385,35 +368,42 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Future<void> _ttsStop() async {
-    _disposeHtmlAudio();
+    _disposeAudioPlayer();
     if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; });
     for (final c in _barCtrls) c.stop();
   }
 
   Future<void> _ttsPauseResume() async {
-    final audio = _htmlAudio;
-    if (audio == null) {
+    final player = _audioPlayer;
+    if (player == null) {
       await _ttsPlay();
       return;
     }
     if (_ttsPlaying) {
-      audio.pause();
+      await player.pause();
     } else {
-      await audio.play();
+      await player.play();
     }
   }
 
   Future<void> _seekRelative(int seconds) async {
-    final audio = _htmlAudio;
-    if (audio == null || audio.duration == 0) return;
-    final newTime = (audio.currentTime + seconds).clamp(0, audio.duration);
-    audio.currentTime = newTime;
+    final player = _audioPlayer;
+    if (player == null || _audioDuration == Duration.zero) return;
+    final target = _audioPosition + Duration(seconds: seconds);
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : target > _audioDuration
+            ? _audioDuration
+            : target;
+    await player.seek(clamped);
   }
 
   Future<void> _seekTo(double fraction) async {
-    final audio = _htmlAudio;
-    if (audio == null || audio.duration == 0) return;
-    audio.currentTime = fraction * audio.duration;
+    final player = _audioPlayer;
+    if (player == null || _audioDuration == Duration.zero) return;
+    final pos = Duration(
+        milliseconds: (fraction * _audioDuration.inMilliseconds).round());
+    await player.seek(pos);
   }
 
   String _formatDuration(Duration d) {
@@ -431,7 +421,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _ttsSpeed = speed;
     _speedChanging = true;
     if (mounted) setState(() {});
-    _htmlAudio?.playbackRate = speed;
+    await _audioPlayer?.setSpeed(speed);
     _speedChanging = false;
   }
 
@@ -439,7 +429,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   Future<void> _goTo(int i, {bool autoPlay = false}) async {
     if (i < 0 || i >= _snippets.length || !mounted) return;
-    _disposeHtmlAudio();
+    _disposeAudioPlayer();
     if (!mounted) return;
     setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; _audioDuration = Duration.zero; _currentIndex = i; });
     for (final c in _barCtrls) c.stop();
@@ -477,7 +467,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _showCompletionSheet() {
-    _disposeHtmlAudio();
+    _disposeAudioPlayer();
     if (mounted) setState(() => _ttsPlaying = false);
     showModalBottomSheet(
       context: context,
@@ -1786,6 +1776,27 @@ class _AudioCoverFallback extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// _BytesAudioSource — serves raw Uint8List bytes to just_audio
+// ═════════════════════════════════════════════════════════════════════════════
+class _BytesAudioSource extends StreamAudioSource {
+  final Uint8List _bytes;
+  _BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    start ??= 0;
+    end ??= _bytes.length;
+    return StreamAudioResponse(
+      sourceLength: _bytes.length,
+      contentLength: end - start,
+      offset: start,
+      stream: Stream.value(_bytes.sublist(start, end)),
+      contentType: 'audio/mpeg',
     );
   }
 }
