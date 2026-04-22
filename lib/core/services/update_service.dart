@@ -4,18 +4,19 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
-  // ── Change this every time you publish a new APK ──────────────────────────
-  static const String _currentVersion = '1.0';
+  // ── KEEP THIS IN SYNC with your GitHub release tag (without the "v") ───────
+  // Rule: before building an APK, bump this + pubspec version + GitHub tag
+  // Example: release "v1.2" on GitHub → set this to '1.2'
+  static const String _currentVersion = '1.1';
 
-  // ── Your GitHub repo details ───────────────────────────────────────────────
   static const String _owner = 'aboodsamad';
   static const String _repo  = 'FocusProFrontEnd';
 
   static const String _apiUrl =
       'https://api.github.com/repos/$_owner/$_repo/releases/latest';
 
-  /// Checks GitHub for the latest release. If a newer version exists,
-  /// shows an update dialog. Call this once from initState.
+  /// Checks GitHub for the latest release. Only shows a dialog if a version
+  /// strictly newer than [_currentVersion] exists AND has an attached .apk.
   static Future<void> checkForUpdate(BuildContext context) async {
     try {
       final resp = await http
@@ -26,23 +27,30 @@ class UpdateService {
       if (resp.statusCode != 200) return;
 
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final latestTag = (data['tag_name'] as String? ?? '').replaceFirst('v', '');
+
+      // Strip the leading "v" from the tag (e.g. "v1.2" → "1.2")
+      final latestTag =
+          (data['tag_name'] as String? ?? '').replaceFirst('v', '').trim();
+
       final downloadUrl = _extractApkUrl(data);
 
+      // Only show dialog if GitHub has something strictly NEWER
       if (!_isNewer(latestTag, _currentVersion)) return;
-      if (downloadUrl == null) return;
+
+      // Only show dialog if there is actually an APK attached to the release
+      if (downloadUrl == null || downloadUrl.isEmpty) return;
 
       if (context.mounted) {
         _showUpdateDialog(context, latestTag, downloadUrl);
       }
     } catch (_) {
-      // Silent fail — never crash the app over an update check
+      // Silent fail — never crash the app because of an update check
     }
   }
 
-  /// Returns true if [latest] is newer than [current] using simple
-  /// numeric comparison on each version segment (1.2 > 1.1 > 1.0).
+  /// Returns true only if [latest] is strictly greater than [current].
   static bool _isNewer(String latest, String current) {
+    if (latest.isEmpty || current.isEmpty) return false;
     final l = _toInts(latest);
     final c = _toInts(current);
     for (int i = 0; i < l.length || i < c.length; i++) {
@@ -51,13 +59,13 @@ class UpdateService {
       if (lv > cv) return true;
       if (lv < cv) return false;
     }
-    return false;
+    return false; // equal → not newer
   }
 
   static List<int> _toInts(String v) =>
-      v.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+      v.split('.').map((s) => int.tryParse(s.trim()) ?? 0).toList();
 
-  /// Finds the .apk asset URL in the release assets list.
+  /// Finds the first .apk asset URL in the release.
   static String? _extractApkUrl(Map<String, dynamic> data) {
     final assets = data['assets'] as List<dynamic>? ?? [];
     for (final asset in assets) {
@@ -100,7 +108,8 @@ class UpdateService {
         ),
         content: Text(
           'FocusPro v$version is ready to install with new features and fixes.\n\nTap Update to download the new APK.',
-          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, height: 1.5),
+          style: const TextStyle(
+              color: Color(0xFF9CA3AF), fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
@@ -120,11 +129,14 @@ class UpdateService {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.of(context).pop();
-              final uri = Uri.parse(downloadUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri,
-                    mode: LaunchMode.externalApplication);
-              }
+              // Skip canLaunchUrl — it fails silently on Android for https
+              // when the query isn't whitelisted. Just launch directly.
+              try {
+                await launchUrl(
+                  Uri.parse(downloadUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              } catch (_) {}
             },
           ),
         ],
