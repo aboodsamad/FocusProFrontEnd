@@ -86,7 +86,15 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       final rawFocusScore = profile?['focusScore'];
       print('[OAuth] raw focusScore field: $rawFocusScore (type: ${rawFocusScore?.runtimeType})');
 
-      final focusScore = rawFocusScore != null ? double.tryParse(rawFocusScore.toString()) : null;
+      // Safely coerce int, double, or string to double without stringify round-trip
+      double? focusScore;
+      if (rawFocusScore is double) {
+        focusScore = rawFocusScore;
+      } else if (rawFocusScore is int) {
+        focusScore = rawFocusScore.toDouble();
+      } else if (rawFocusScore is String && rawFocusScore.isNotEmpty) {
+        focusScore = double.tryParse(rawFocusScore);
+      }
       print('[OAuth] parsed focusScore: $focusScore');
 
       final isNewUser = focusScore == null || focusScore == 0.0;

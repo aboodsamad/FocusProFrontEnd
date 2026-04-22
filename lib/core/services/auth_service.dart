@@ -130,14 +130,37 @@ class AuthService {
   static String _readError(http.Response resp) {
     final body = resp.body.trim();
     if (body.isEmpty) return 'Request failed (${resp.statusCode})';
+
+    String raw = body;
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map) {
-        return decoded['message']?.toString() ??
+        raw = decoded['message']?.toString() ??
             decoded['error']?.toString() ??
             body;
       }
     } catch (_) {}
-    return body;
+
+    // Map backend constraint/error phrases to user-friendly messages
+    final lower = raw.toLowerCase();
+    if (lower.contains('duplicate') || lower.contains('already exists') || lower.contains('unique constraint')) {
+      return 'This email or username is already taken. Please try a different one.';
+    }
+    if (lower.contains('bad credentials') || lower.contains('invalid password') || lower.contains('wrong password')) {
+      return 'Incorrect username or password. Please try again.';
+    }
+    if (lower.contains('user not found') || lower.contains('not found')) {
+      return 'No account found with that username or email.';
+    }
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'The server took too long to respond. Please check your connection.';
+    }
+    if (resp.statusCode == 401 || resp.statusCode == 403) {
+      return 'Your session has expired. Please log in again.';
+    }
+    if (resp.statusCode >= 500) {
+      return 'Something went wrong on our end. Please try again later.';
+    }
+    return raw;
   }
 }

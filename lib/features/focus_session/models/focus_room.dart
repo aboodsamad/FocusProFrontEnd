@@ -49,12 +49,12 @@ class RoomMessage {
   });
 
   factory RoomMessage.fromJson(Map<String, dynamic> json) => RoomMessage(
-        id: json['id'],
-        roomId: json['roomId'],
-        userId: json['userId'],
-        username: json['username'] ?? '',
-        content: json['content'] ?? '',
-        sentAt: json['sentAt'] ?? '',
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        roomId: (json['roomId'] as num?)?.toInt() ?? 0,
+        userId: (json['userId'] as num?)?.toInt() ?? 0,
+        username: json['username']?.toString() ?? '',
+        content: json['content']?.toString() ?? '',
+        sentAt: json['sentAt']?.toString() ?? '',
       );
 }
 
@@ -115,8 +115,8 @@ class FocusRoom {
   });
 
   factory FocusRoom.fromJson(Map<String, dynamic> json) => FocusRoom(
-        id: json['id'],
-        name: json['name'] ?? '',
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name']?.toString() ?? '',
         emoji: json['emoji'] ?? '🎯',
         createdBy: json['createdBy'] ?? '',
         memberCount: json['memberCount'] ?? 0,

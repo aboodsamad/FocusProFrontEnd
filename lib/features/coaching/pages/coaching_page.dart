@@ -192,7 +192,7 @@ class _CoachingPageState extends State<CoachingPage> {
         _settingGoals = false;
         _sending = false;
       });
-      _persistMessages();
+      await _persistMessages();
       _scrollToBottom();
     } else {
       setState(() => _sending = false);
@@ -245,7 +245,7 @@ class _CoachingPageState extends State<CoachingPage> {
             timestamp: DateTime.now()));
         _sending = false;
       });
-      _persistMessages();
+      await _persistMessages();
     } else {
       // Remove the optimistically-added user message and show error
       setState(() {
@@ -282,7 +282,7 @@ class _CoachingPageState extends State<CoachingPage> {
             timestamp: DateTime.now()));
         _sending = false;
       });
-      _persistMessages();
+      await _persistMessages();
       _scrollToBottom();
     } else {
       setState(() => _sending = false);

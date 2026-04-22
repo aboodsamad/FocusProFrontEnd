@@ -33,9 +33,13 @@ class HabitProvider extends ChangeNotifier {
   }
 
   // ── Toggle done today ─────────────────────────────────────────────────────
-  Future<void> toggle(Habit habit) async {
+  // Returns an error message if the sync failed, null on success.
+  Future<String?> toggle(Habit habit) async {
     final idx = _habits.indexWhere((h) => h.id == habit.id);
-    if (idx < 0) return;
+    if (idx < 0) return null;
+
+    // Snapshot original so we can revert on failure
+    final original = _habits[idx];
 
     // Optimistic update
     _habits[idx] = habit.copyWith(
@@ -51,8 +55,34 @@ class HabitProvider extends ChangeNotifier {
       final updated = await HabitService.logHabit(token, habit);
       _habits[idx] = updated;
       notifyListeners();
+      return null;
     } catch (_) {
-      // Keep optimistic result
+      // Revert to the original state so the user isn't misled
+      _habits[idx] = original;
+      notifyListeners();
+      return 'Could not save habit. Check your connection.';
+    }
+  }
+
+  // ── Edit ──────────────────────────────────────────────────────────────────
+  Future<String?> editSafe(Habit old, Habit updated) async {
+    final idx = _habits.indexWhere((h) => h.id == old.id);
+    if (idx < 0) return null;
+
+    final original = _habits[idx];
+    _habits[idx] = updated;
+    notifyListeners();
+
+    try {
+      final token = await AuthService.getToken() ?? '';
+      final saved = await HabitService.updateHabit(token, updated);
+      _habits[idx] = saved;
+      notifyListeners();
+      return null;
+    } catch (_) {
+      _habits[idx] = original;
+      notifyListeners();
+      return 'Could not update habit. Check your connection.';
     }
   }
 
@@ -67,22 +97,6 @@ class HabitProvider extends ChangeNotifier {
       _error = 'Could not save habit';
       notifyListeners();
     }
-  }
-
-  // ── Edit ──────────────────────────────────────────────────────────────────
-  Future<void> edit(Habit old, Habit updated) async {
-    final idx = _habits.indexWhere((h) => h.id == old.id);
-    if (idx < 0) return;
-
-    _habits[idx] = updated;
-    notifyListeners();
-
-    try {
-      final token = await AuthService.getToken() ?? '';
-      final saved = await HabitService.updateHabit(token, updated);
-      _habits[idx] = saved;
-      notifyListeners();
-    } catch (_) {}
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────
