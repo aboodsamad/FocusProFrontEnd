@@ -21,6 +21,9 @@ import '../../lockin/pages/lock_in_page.dart';
 import '../../lockin/pages/schedules_page.dart';
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
+import '../../games/daily/models/daily_game_models.dart';
+import '../../games/daily/services/daily_game_service.dart';
+import '../../games/daily/pages/daily_game_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -37,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Lock-In state ─────────────────────────────────────────────────────────
   LockInSessionModel? _activeSession;
+
+  // ── Daily game state ──────────────────────────────────────────────────────
+  DailyGameStatus? _dailyGameStatus;
 
   // ── Daily challenge state ─────────────────────────────────────────────────
   DailyChallengeModel? _challenge;
@@ -112,6 +118,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadStats() async {
+    try {
+      _dailyGameStatus = await DailyGameService.getTodayStatus();
+    } catch (_) {}
+    if (mounted) setState(() {});
+
     final logs = await ActivityLogService.fetchLogs();
     if (!mounted) return;
     final today     = DateTime.now();
@@ -412,6 +423,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildFeatureGrid(),
                   ),
+
+                  _buildDailyGameBanner(),
 
                   const SizedBox(height: 24),
                   _buildSectionHeader('Your Progress'),
@@ -909,6 +922,98 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
             ]),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ── Daily Game Banner ─────────────────────────────────────────────────────
+  Widget _buildDailyGameBanner() {
+    final dayIndex = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 86400000 % 3;
+
+    Color bannerColor;
+    IconData bannerIcon;
+    String bannerSubtitle;
+    switch (dayIndex) {
+      case 0:
+        bannerColor   = const Color(0xFF7B6FFF);
+        bannerIcon    = Icons.grid_view_rounded;
+        bannerSubtitle= 'Visual N-Back · Memory';
+        break;
+      case 1:
+        bannerColor   = const Color(0xFF10B981);
+        bannerIcon    = Icons.radio_button_checked_rounded;
+        bannerSubtitle= 'Go/No-Go · Inhibition';
+        break;
+      default:
+        bannerColor   = const Color(0xFF06B6D4);
+        bannerIcon    = Icons.compare_arrows_rounded;
+        bannerSubtitle= 'Flanker Task · Attention';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DailyGamePage()),
+        ).then((_) => _loadStats()),
+        child: Container(
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: bannerColor.withOpacity(0.35), width: 1.5),
+            boxShadow: [BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2),
+            )],
+          ),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: bannerColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(bannerIcon, color: bannerColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Daily Game',
+                    style: TextStyle(color: AppColors.onSurface,
+                        fontSize: 14, fontWeight: FontWeight.bold)),
+                Text(bannerSubtitle,
+                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
+              ],
+            )),
+            if (_dailyGameStatus?.hasPlayed == true)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Played ✓',
+                    style: TextStyle(color: Color(0xFF10B981),
+                        fontSize: 12, fontWeight: FontWeight.w600)))
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    bannerColor, bannerColor.withOpacity(0.7),
+                  ]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Play',
+                    style: TextStyle(color: Colors.white,
+                        fontSize: 12, fontWeight: FontWeight.bold))),
+          ]),
         ),
       ),
     );
