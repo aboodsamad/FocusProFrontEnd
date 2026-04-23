@@ -37,8 +37,8 @@ class _GamesHubPageState extends State<GamesHubPage>
   }
 
   List<GameItem> get _filteredGames {
-    if (_activeFilter == null) return GameRegistry.all;
-    return GameRegistry.all.where((g) => g.category == _activeFilter).toList();
+    if (_activeFilter == null) return GameRegistry.hubGames;
+    return GameRegistry.hubGames.where((g) => g.category == _activeFilter).toList();
   }
 
   void _openGame(GameItem game) {
@@ -145,7 +145,7 @@ class _GamesHubPageState extends State<GamesHubPage>
                   color: AppColors.onSecondaryContainer, size: 14),
               const SizedBox(width: 6),
               Text(
-                '${GameRegistry.available.length} playable',
+                '${GameRegistry.hubGames.length} playable',
                 style: const TextStyle(
                   color:      AppColors.onSecondaryContainer,
                   fontSize:   11,
@@ -161,7 +161,7 @@ class _GamesHubPageState extends State<GamesHubPage>
 
   Widget _buildStatsBar() {
     final stats = [
-      _StatItem('Games',  '${GameRegistry.all.length}',                                    Icons.sports_esports_outlined,  AppColors.primary),
+      _StatItem('Games',  '${GameRegistry.hubGames.length}',                               Icons.sports_esports_outlined,  AppColors.primary),
       _StatItem('Memory', '${GameRegistry.byCategory(GameCategory.memory).length}',        Icons.psychology_outlined,       AppColors.secondary),
       _StatItem('Logic',  '${GameRegistry.byCategory(GameCategory.logic).length}',         Icons.lightbulb_outline,         const Color(0xFF7C3AED)),
       _StatItem('Speed',  '${GameRegistry.byCategory(GameCategory.speed).length}',         Icons.bolt_outlined,             const Color(0xFFF59E0B)),
@@ -181,8 +181,8 @@ class _GamesHubPageState extends State<GamesHubPage>
   }
 
   Widget _buildFeatured() {
-    final featured = GameRegistry.available.isNotEmpty
-        ? GameRegistry.available.first
+    final featured = GameRegistry.hubGames.isNotEmpty
+        ? GameRegistry.hubGames.first
         : null;
     if (featured == null) return const SizedBox.shrink();
 

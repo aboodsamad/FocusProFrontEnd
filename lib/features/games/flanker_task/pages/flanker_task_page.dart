@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../services/game_service.dart';
+
+const _kAccent = Color(0xFF06B6D4);
 
 enum _ArrowDir { left, right }
 
@@ -114,7 +117,6 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
 
     _trialTimer = Timer(const Duration(milliseconds: _trialTimeoutMs), () {
       if (_showStimulus && mounted) {
-        // No response — auto advance
         setState(() => _score = max(0, _score - 3));
         _round++;
         _startRound();
@@ -141,8 +143,8 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
     int delta;
     if (correct) {
       delta = 10;
-      if (rt <= 400) delta += 6;
-      else if (rt <= 700) delta += 3;
+      if (rt <= 400) { delta += 6; }
+      else if (rt <= 700) { delta += 3; }
       _totalCorrect++;
       HapticFeedback.lightImpact();
     } else {
@@ -245,43 +247,66 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
     final trial = _round < _totalRounds ? _trials[_round] : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
-      body: SafeArea(
-        child: Column(children: [
-          _buildTopBar(),
-          const SizedBox(height: 32),
-          Expanded(child: Center(
-            child: _showStimulus && trial != null
-                ? _buildArrowRow(trial)
-                : const SizedBox.shrink(),
-          )),
-          _buildButtons(),
-          const SizedBox(height: 24),
-        ]),
-      ),
+      backgroundColor: AppColors.surface,
+      body: Column(children: [
+        _buildHeader(),
+        Expanded(child: Center(
+          child: _showStimulus && trial != null
+              ? _buildArrowRow(trial)
+              : const SizedBox.shrink(),
+        )),
+        _buildButtons(),
+        const SizedBox(height: 24),
+      ]),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildHeader() {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      color: Colors.white,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        bottom: 12,
+        left: 16,
+        right: 16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.outlineVariant, width: 1)),
+      ),
       child: Row(children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.close_rounded, color: Colors.white54, size: 22),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant, size: 18),
+          ),
         ),
         const SizedBox(width: 12),
-        Text('Round ${min(_round + 1, _totalRounds)} / $_totalRounds',
-            style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        Text(
+          'Round ${min(_round + 1, _totalRounds)} / $_totalRounds',
+          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+        ),
         const Spacer(),
-        Text('$_score pts',
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          '$_score pts',
+          style: TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(width: 12),
-        Text('${_secondsLeft}s',
-            style: TextStyle(
-                color: _secondsLeft <= 10 ? const Color(0xFFEF4444) : Colors.white70,
-                fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(
+          '${_secondsLeft}s',
+          style: TextStyle(
+            color: _secondsLeft <= 10 ? const Color(0xFFEF4444) : AppColors.onSurfaceVariant,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ]),
     );
   }
@@ -292,14 +317,17 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
       final isCenterArrow = i == 2;
       final dir = isCenterArrow ? trial.center : trial.flanker;
       final icon = dir == _ArrowDir.left ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded;
-      widgets.add(Icon(icon, color: Colors.white, size: isCenterArrow ? 48 : 40));
+      widgets.add(Icon(
+        icon,
+        color: isCenterArrow ? _kAccent : AppColors.onSurfaceVariant,
+        size: isCenterArrow ? 52 : 40,
+      ));
       if (i < 4) widgets.add(const SizedBox(width: 4));
     }
     return Row(mainAxisSize: MainAxisSize.min, children: widgets);
   }
 
   Widget _buildButtons() {
-    final accentColor = const Color(0xFF06B6D4);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: SizedBox(
@@ -308,7 +336,6 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
           Expanded(child: _ArrowButton(
             label: 'LEFT',
             icon: Icons.arrow_back_rounded,
-            accentColor: accentColor,
             flash: _flashButton == 0,
             correct: _lastCorrect,
             onTap: () => _onResponse(_ArrowDir.left),
@@ -317,7 +344,6 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
           Expanded(child: _ArrowButton(
             label: 'RIGHT',
             icon: Icons.arrow_forward_rounded,
-            accentColor: accentColor,
             flash: _flashButton == 1,
             correct: _lastCorrect,
             onTap: () => _onResponse(_ArrowDir.right),
@@ -330,7 +356,7 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
   Widget _buildGameOver() {
     final fe = _flankerEffect;
     return Scaffold(
-      backgroundColor: const Color(0xFF080D1A),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -339,49 +365,93 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
             children: [
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.close_rounded, color: Colors.white54, size: 22),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant, size: 18),
+                ),
               ),
-              const SizedBox(height: 32),
-              const Text('Flanker Results',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              Center(
-                child: Text('$_score',
-                    style: const TextStyle(color: Colors.white, fontSize: 64, fontWeight: FontWeight.w900)),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.outlineVariant),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(children: [
+                  Text(
+                    'Flanker Results',
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$_score',
+                    style: TextStyle(color: _kAccent, fontSize: 64, fontWeight: FontWeight.w900),
+                  ),
+                  Text('pts', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
+                ]),
               ),
-              Center(child: Text('pts', style: TextStyle(color: Colors.grey[500], fontSize: 14))),
-              const SizedBox(height: 24),
-              _StatRow('Correct', '$_totalCorrect / $_totalRounds'),
-              _StatRow('Errors', '$_totalWrong'),
-              _StatRow('Avg response time', '${_avgRt}ms'),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4).withOpacity(0.08),
+                  color: AppColors.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                  border: Border.all(color: AppColors.outlineVariant),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Your Flanker Effect: ${fe}ms — lower is better',
-                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 13, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(_flankerRating,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Column(children: [
+                  _StatRow('Correct', '$_totalCorrect / $_totalRounds'),
+                  _StatRow('Errors', '$_totalWrong'),
+                  _StatRow('Avg response time', '${_avgRt}ms'),
                 ]),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _kAccent.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _kAccent.withValues(alpha: 0.25)),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    'Flanker Effect: ${fe}ms — lower is better',
+                    style: const TextStyle(color: _kAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _flankerRating,
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 12),
               Text(
                 'The Flanker Effect measures how much surrounding distractors slow you down. Elite performers show near-zero interference.',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12, height: 1.5),
+                style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12, height: 1.5),
               ),
               const SizedBox(height: 32),
               Row(children: [
                 Expanded(child: OutlinedButton(
                   onPressed: _playAgain,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white24),
+                    foregroundColor: AppColors.onSurface,
+                    side: BorderSide(color: AppColors.outlineVariant),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -391,8 +461,8 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
                 Expanded(child: ElevatedButton(
                   onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF06B6D4),
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -413,7 +483,6 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
 class _ArrowButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color accentColor;
   final bool flash;
   final bool correct;
   final VoidCallback onTap;
@@ -421,7 +490,6 @@ class _ArrowButton extends StatelessWidget {
   const _ArrowButton({
     required this.label,
     required this.icon,
-    required this.accentColor,
     required this.flash,
     required this.correct,
     required this.onTap,
@@ -439,20 +507,31 @@ class _ArrowButton extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         height: 90,
         decoration: BoxDecoration(
-          color: flash ? flashColor.withOpacity(0.2) : const Color(0xFF0F1624),
+          color: flash ? flashColor.withValues(alpha: 0.12) : AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: flash ? flashColor : accentColor.withOpacity(0.3),
+            color: flash ? flashColor : _kAccent.withValues(alpha: 0.4),
             width: flash ? 2 : 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, color: flash ? flashColor : accentColor, size: 32),
+          Icon(icon, color: flash ? flashColor : _kAccent, size: 32),
           const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  color: flash ? flashColor : Colors.white70,
-                  fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: TextStyle(
+              color: flash ? flashColor : AppColors.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ]),
       ),
     );
@@ -469,10 +548,12 @@ class _StatRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(children: [
-        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+        Text(label, style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
         const Spacer(),
-        Text(value,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+        ),
       ]),
     );
   }
