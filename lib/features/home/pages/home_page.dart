@@ -466,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Hero Section — compact: ring on left, stats on right ─────────────────
+  // ── Hero Section ──────────────────────────────────────────────────────────
   Widget _buildHeroSection(UserProvider user, double score) {
     return Container(
       decoration: const BoxDecoration(
@@ -479,13 +479,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Top bar ────────────────────────────────────────────────────
-              Row(children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Top bar ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Row(children: [
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/profile'),
                   child: Container(
@@ -497,16 +497,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     child: Center(
                       child: Text(user.displayInitial,
-                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(color: Colors.white,
+                              fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_greeting,
-                      style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 11)),
+                      style: TextStyle(color: Colors.white.withOpacity(0.55),
+                          fontSize: 11, fontWeight: FontWeight.w500)),
                   Text(user.name ?? 'Focus Pro',
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(color: Colors.white,
+                          fontSize: 14, fontWeight: FontWeight.bold)),
                 ]),
                 const Spacer(),
                 GestureDetector(
@@ -521,104 +524,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ]),
+            ),
 
-              const SizedBox(height: 16),
-
-              // ── Ring (left) + Stats (right) ────────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Score ring — 130 px
-                  AnimatedBuilder(
-                    animation: Listenable.merge([_scoreAnim, _pulseAnim]),
-                    builder: (_, __) => SizedBox(
-                      width: 130, height: 130,
-                      child: Stack(alignment: Alignment.center, children: [
-                        CustomPaint(
-                          size: const Size(130, 130),
-                          painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
-                        ),
-                        Column(mainAxisSize: MainAxisSize.min, children: [
-                          Text(
-                            _scoreAnim.value.toStringAsFixed(0),
-                            style: const TextStyle(color: Colors.white,
-                                fontSize: 42, fontWeight: FontWeight.w900, height: 1.0),
-                          ),
-                          const SizedBox(height: 2),
-                          Text('SCORE',
-                              style: TextStyle(color: Colors.white.withOpacity(0.5),
-                                  fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2)),
-                        ]),
-                      ]),
-                    ),
+            // ── Score ring ─────────────────────────────────────────────────
+            const SizedBox(height: 6),
+            AnimatedBuilder(
+              animation: Listenable.merge([_scoreAnim, _pulseAnim]),
+              builder: (_, __) => SizedBox(
+                width: 140, height: 140,
+                child: Stack(alignment: Alignment.center, children: [
+                  CustomPaint(
+                    size: const Size(140, 140),
+                    painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
                   ),
-
-                  const SizedBox(width: 20),
-
-                  // Stats column
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildStatRow(
-                          icon: Icons.local_fire_department,
-                          iconColor: const Color(0xFFFF8A65),
-                          value: '$_streakDays',
-                          label: 'Day Streak',
-                        ),
-                        const SizedBox(height: 10),
-                        Container(height: 1, color: Colors.white.withOpacity(0.1)),
-                        const SizedBox(height: 10),
-                        _buildStatRow(
-                          icon: Icons.bolt_rounded,
-                          iconColor: AppColors.primaryFixed,
-                          value: '$_todaySessions',
-                          label: 'Sessions Today',
-                        ),
-                        const SizedBox(height: 10),
-                        Container(height: 1, color: Colors.white.withOpacity(0.1)),
-                        const SizedBox(height: 10),
-                        _buildStatRow(
-                          icon: Icons.timer_off_outlined,
-                          iconColor: AppColors.primaryFixedDim,
-                          value: '${_distractingMinutes}m',
-                          label: 'Distracted',
-                          onTap: _editUsage,
-                        ),
-                      ],
+                  Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(
+                      _scoreAnim.value.toStringAsFixed(0),
+                      style: const TextStyle(color: Colors.white,
+                          fontSize: 48, fontWeight: FontWeight.w900, height: 1.0),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text('FOCUS SCORE',
+                        style: TextStyle(color: Colors.white.withOpacity(0.5),
+                            fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2)),
+                  ]),
+                ]),
               ),
-            ],
-          ),
+            ),
+
+            // ── Stats strip ────────────────────────────────────────────────
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Row(children: [
+                  _HeroStat(icon: Icons.local_fire_department,
+                      iconColor: const Color(0xFFFF8A65),
+                      value: '$_streakDays', label: 'Streak'),
+                  _VertDivider(),
+                  _HeroStat(icon: Icons.bolt_rounded,
+                      iconColor: AppColors.primaryFixed,
+                      value: '$_todaySessions', label: 'Sessions'),
+                  _VertDivider(),
+                  _HeroStat(icon: Icons.timer_off_outlined,
+                      iconColor: AppColors.primaryFixedDim,
+                      value: '${_distractingMinutes}m', label: 'Distracted',
+                      onTap: _editUsage),
+                ]),
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatRow({
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(children: [
-        Icon(icon, color: iconColor, size: 17),
-        const SizedBox(width: 8),
-        Text(value,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(width: 6),
-        Text(label,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
-        if (onTap != null) ...[
-          const SizedBox(width: 4),
-          Icon(Icons.edit_outlined, color: Colors.white.withOpacity(0.3), size: 11),
-        ],
-      ]),
     );
   }
 
@@ -1075,6 +1038,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPER WIDGETS
 // ═══════════════════════════════════════════════════════════════════════════════
+
+class _HeroStat extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+  const _HeroStat({required this.icon, required this.iconColor,
+      required this.value, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: iconColor, size: 16),
+          const SizedBox(height: 3),
+          Text(value,
+              style: const TextStyle(color: Colors.white,
+                  fontSize: 15, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 1),
+          Text(label,
+              style: TextStyle(color: Colors.white.withOpacity(0.5),
+                  fontSize: 9, fontWeight: FontWeight.w500)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _VertDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 30, color: Colors.white.withOpacity(0.12));
+}
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
