@@ -18,6 +18,7 @@ class UpdateService {
   /// Checks GitHub for the latest release. Only shows a dialog if a version
   /// strictly newer than [_currentVersion] exists AND has an attached .apk.
   static Future<void> checkForUpdate(BuildContext context) async {
+    
     try {
       final resp = await http
           .get(Uri.parse(_apiUrl),
