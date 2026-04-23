@@ -377,15 +377,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final user = context.watch<UserProvider>();
     if (user.isLoading) {
       return const Scaffold(
-        backgroundColor: AppColors.lockInBackground,
-        body: Center(child: CircularProgressIndicator(
-            color: AppColors.secondaryFixed, strokeWidth: 2.5)),
+        backgroundColor: AppColors.surface,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     final score = user.focusScore;
 
     return Scaffold(
-      backgroundColor: AppColors.lockInBackground,
+      backgroundColor: AppColors.surface,
       bottomNavigationBar: _buildBottomNav(),
       body: Column(
         children: [
@@ -398,35 +397,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   if (_activeSession != null) _buildActiveBanner(),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   _buildSectionHeader("Today's Mission"),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildDailyChallengeCard(),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   _buildSectionHeader('Features'),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildFeatureGrid(),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   _buildSectionHeader('Your Progress'),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: [
                       _buildCoachingCard(),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _buildHabitsCard(),
                     ]),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -440,8 +439,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.lockInCard,
-        border: Border(top: BorderSide(color: AppColors.lockInBorder, width: 1)),
+        color: AppColors.surfaceContainerLowest,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06),
+            blurRadius: 16, offset: const Offset(0, -2))],
       ),
       child: SafeArea(
         top: false,
@@ -466,132 +466,159 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Hero Section ──────────────────────────────────────────────────────────
+  // ── Hero Section — compact: ring on left, stats on right ─────────────────
   Widget _buildHeroSection(UserProvider user, double score) {
     return Container(
-      // Gradient fades INTO the dark page background — seamless blend
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF012D1D), Color(0xFF080D1A)],
-          stops: [0.0, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryContainer],
         ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            // ── Top bar ──────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Row(children: [
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Top bar ────────────────────────────────────────────────────
+              Row(children: [
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/profile'),
                   child: Container(
-                    width: 44, height: 44,
+                    width: 38, height: 38,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.10),
-                      border: Border.all(color: AppColors.secondaryFixed.withOpacity(0.35), width: 1.5),
+                      color: Colors.white.withOpacity(0.12),
+                      border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
                     ),
                     child: Center(
                       child: Text(user.displayInitial,
-                          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_greeting,
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.w500)),
+                      style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 11)),
                   Text(user.name ?? 'Focus Pro',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
                 ]),
                 const Spacer(),
                 GestureDetector(
                   onTap: _logout,
                   child: Container(
-                    width: 38, height: 38,
+                    width: 34, height: 34,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: Colors.white.withOpacity(0.1),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
-                    child: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
+                    child: const Icon(Icons.logout_rounded, color: Colors.white, size: 16),
                   ),
                 ),
               ]),
-            ),
 
-            // ── Score ring ───────────────────────────────────────────────────
-            const SizedBox(height: 10),
-            AnimatedBuilder(
-              animation: Listenable.merge([_scoreAnim, _pulseAnim]),
-              builder: (_, __) {
-                return SizedBox(
-                  width: 180, height: 180,
-                  child: Stack(alignment: Alignment.center, children: [
-                    CustomPaint(
-                      size: const Size(180, 180),
-                      painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
-                    ),
-                    Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(
-                        _scoreAnim.value.toStringAsFixed(0),
-                        style: const TextStyle(
-                          color: Colors.white, fontSize: 60,
-                          fontWeight: FontWeight.w900, height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'FOCUS SCORE',
-                        style: TextStyle(
-                          color: AppColors.secondaryFixed.withOpacity(0.7),
-                          fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2.5,
-                        ),
-                      ),
-                    ]),
-                  ]),
-                );
-              },
-            ),
+              const SizedBox(height: 16),
 
-            // ── Stats row ────────────────────────────────────────────────────
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              // ── Ring (left) + Stats (right) ────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _HeroStat(
-                    icon: Icons.local_fire_department,
-                    iconColor: const Color(0xFFFF6B35),
-                    value: '$_streakDays',
-                    label: 'Day Streak',
+                  // Score ring — 130 px
+                  AnimatedBuilder(
+                    animation: Listenable.merge([_scoreAnim, _pulseAnim]),
+                    builder: (_, __) => SizedBox(
+                      width: 130, height: 130,
+                      child: Stack(alignment: Alignment.center, children: [
+                        CustomPaint(
+                          size: const Size(130, 130),
+                          painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
+                        ),
+                        Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(
+                            _scoreAnim.value.toStringAsFixed(0),
+                            style: const TextStyle(color: Colors.white,
+                                fontSize: 42, fontWeight: FontWeight.w900, height: 1.0),
+                          ),
+                          const SizedBox(height: 2),
+                          Text('SCORE',
+                              style: TextStyle(color: Colors.white.withOpacity(0.5),
+                                  fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2)),
+                        ]),
+                      ]),
+                    ),
                   ),
-                  _VertDivider(),
-                  _HeroStat(
-                    icon: Icons.bolt_rounded,
-                    iconColor: AppColors.secondaryFixed,
-                    value: '$_todaySessions',
-                    label: 'Sessions',
-                  ),
-                  _VertDivider(),
-                  _HeroStat(
-                    icon: Icons.timer_off_outlined,
-                    iconColor: const Color(0xFFEF4444),
-                    value: '${_distractingMinutes}m',
-                    label: 'Distracted',
-                    onTap: _editUsage,
+
+                  const SizedBox(width: 20),
+
+                  // Stats column
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildStatRow(
+                          icon: Icons.local_fire_department,
+                          iconColor: const Color(0xFFFF8A65),
+                          value: '$_streakDays',
+                          label: 'Day Streak',
+                        ),
+                        const SizedBox(height: 10),
+                        Container(height: 1, color: Colors.white.withOpacity(0.1)),
+                        const SizedBox(height: 10),
+                        _buildStatRow(
+                          icon: Icons.bolt_rounded,
+                          iconColor: AppColors.primaryFixed,
+                          value: '$_todaySessions',
+                          label: 'Sessions Today',
+                        ),
+                        const SizedBox(height: 10),
+                        Container(height: 1, color: Colors.white.withOpacity(0.1)),
+                        const SizedBox(height: 10),
+                        _buildStatRow(
+                          icon: Icons.timer_off_outlined,
+                          iconColor: AppColors.primaryFixedDim,
+                          value: '${_distractingMinutes}m',
+                          label: 'Distracted',
+                          onTap: _editUsage,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatRow({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(children: [
+        Icon(icon, color: iconColor, size: 17),
+        const SizedBox(width: 8),
+        Text(value,
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 6),
+        Text(label,
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+        if (onTap != null) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.edit_outlined, color: Colors.white.withOpacity(0.3), size: 11),
+        ],
+      ]),
     );
   }
 
@@ -604,22 +631,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _loadActiveSession();
       },
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withOpacity(0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+          color: AppColors.secondary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
         ),
         child: Row(children: [
           Container(width: 7, height: 7,
-              decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+              decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle)),
           const SizedBox(width: 10),
           const Expanded(
             child: Text('Lock-in session active — tap to return',
-                style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w600, fontSize: 13)),
+                style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13)),
           ),
-          const Icon(Icons.chevron_right_rounded, color: Color(0xFF10B981), size: 18),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.secondary, size: 18),
         ]),
       ),
     );
@@ -633,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Container(
           width: 3, height: 16,
           decoration: BoxDecoration(
-            color: AppColors.secondaryFixed,
+            color: AppColors.secondary,
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -641,7 +668,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Text(
           title,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.onSurface,
             fontSize: 16,
             fontWeight: FontWeight.bold,
             letterSpacing: -0.2,
@@ -657,77 +684,75 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.lockInCard,
+          color: AppColors.primaryContainer,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.lockInBorder),
         ),
-        child: const SizedBox(height: 80,
+        child: const SizedBox(height: 72,
             child: Center(child: CircularProgressIndicator(
-                color: AppColors.secondaryFixed, strokeWidth: 2.5))),
+                color: AppColors.primaryFixed, strokeWidth: 2.5))),
       );
     }
     if (_challengeError != null || _challenge == null) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.lockInCard,
+          color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.lockInBorder),
+          border: Border.all(color: AppColors.outlineVariant),
         ),
         child: Row(children: [
           const Expanded(child: Text('Could not load today\'s challenge.',
-              style: TextStyle(color: AppColors.lockInMuted, fontSize: 13))),
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
           TextButton(onPressed: _loadChallenge,
               child: const Text('Retry',
-                  style: TextStyle(color: AppColors.secondaryFixed, fontWeight: FontWeight.bold))),
+                  style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold))),
         ]),
       );
     }
 
     final challenge = _challenge!;
-    final areaColor = _weaknessColors[challenge.weaknessArea] ?? AppColors.secondaryFixed;
+    final areaColor = _weaknessColors[challenge.weaknessArea] ?? AppColors.secondary;
     final areaIcon  = _weaknessIcons[challenge.weaknessArea]  ?? Icons.grid_on_rounded;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.primaryContainer,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.2),
+            blurRadius: 14, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 42, height: 42,
+            width: 40, height: 40,
             decoration: BoxDecoration(
-              color: areaColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: areaColor.withOpacity(0.3)),
+              color: areaColor.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: areaColor.withOpacity(0.35)),
             ),
-            child: Icon(areaIcon, color: areaColor, size: 20),
+            child: Icon(areaIcon, color: areaColor, size: 19),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("Today's Challenge",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 2),
-              Text('Resets at midnight',
-                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-            ]),
-          ),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text("Today's Challenge",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text('Resets at midnight',
+                style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11)),
+          ])),
           if (challenge.isCompleted)
             _StatusPill(label: 'Done ✓', color: AppColors.secondaryFixed)
           else if (challenge.isExpired)
-            _StatusPill(label: 'Expired', color: AppColors.lockInMuted),
+            _StatusPill(label: 'Expired', color: AppColors.onPrimaryContainer),
         ]),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Text(challenge.challengeTitle,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(challenge.challengeDescription,
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, height: 1.5),
-            maxLines: 4, overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 16),
+            style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 13, height: 1.45),
+            maxLines: 3, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 14),
         Row(children: [
           Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
           if (!challenge.isCompleted && !challenge.isExpired) ...[
@@ -747,15 +772,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: disabled ? null : () { HapticFeedback.lightImpact(); _onChallengeAction(challenge); },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: disabled ? Colors.white.withOpacity(0.07) : AppColors.secondary,
-          borderRadius: BorderRadius.circular(12),
-          border: disabled ? null : Border.all(color: AppColors.secondaryFixed.withOpacity(0.2)),
+          color: disabled ? Colors.white.withOpacity(0.08) : AppColors.secondary,
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Center(child: Text(label,
             style: TextStyle(
-              color: disabled ? AppColors.lockInMuted : Colors.white,
+              color: disabled ? AppColors.onPrimaryContainer : Colors.white,
               fontWeight: FontWeight.bold, fontSize: 13,
             ))),
       ),
@@ -766,16 +790,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: _showWeaknessHintSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.onPrimaryContainer.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.edit_outlined, color: Colors.white.withOpacity(0.5), size: 13),
+          Icon(Icons.edit_outlined, color: AppColors.onPrimaryContainer, size: 13),
           const SizedBox(width: 4),
-          Text('I feel weak at…',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11, fontWeight: FontWeight.w600)),
+          Text('Weak at…',
+              style: TextStyle(color: AppColors.onPrimaryContainer,
+                  fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
@@ -789,27 +814,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.05,
+      childAspectRatio: 1.1,
       children: [
         _buildFeatureTile(
           icon: Icons.extension_rounded,
           title: 'Brain Games',
           subtitle: '6 games  •  2–6 min',
-          accentColor: AppColors.secondaryFixed,
+          accentColor: AppColors.secondary,
           onTap: () => Navigator.pushNamed(context, '/games'),
         ),
         _buildFeatureTile(
           icon: Icons.menu_book_rounded,
           title: 'Reader',
           subtitle: 'TTS  •  Deep focus',
-          accentColor: AppColors.primaryFixed,
+          accentColor: AppColors.primary,
           onTap: () => Navigator.pushNamed(context, '/books'),
         ),
         _buildFeatureTile(
           icon: Icons.group_outlined,
           title: 'Focus Rooms',
           subtitle: 'Study alongside others',
-          accentColor: AppColors.onTertiaryContainer,
+          accentColor: AppColors.primaryContainer,
           onTap: () => Navigator.pushNamed(context, '/rooms'),
         ),
         _buildWakeUpTile(),
@@ -828,30 +853,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () { HapticFeedback.lightImpact(); onTap(); },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.lockInCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.lockInBorder),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              width: 44, height: 44,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.12),
+                color: accentColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: accentColor.withOpacity(0.22)),
               ),
-              child: Icon(icon, color: accentColor, size: 22),
+              child: Icon(icon, color: accentColor, size: 21),
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: const TextStyle(
-                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 3),
+                  color: AppColors.onSurface, fontSize: 13,
+                  fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
               Text(subtitle, style: const TextStyle(
-                  color: AppColors.lockInMuted, fontSize: 11)),
+                  color: AppColors.onSurfaceVariant, fontSize: 11)),
             ]),
           ],
         ),
@@ -861,7 +888,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildWakeUpTile() {
     final hasActive = _activeSession != null;
-    final accentColor = hasActive ? const Color(0xFF10B981) : AppColors.secondary;
     return GestureDetector(
       onTap: () async {
         HapticFeedback.lightImpact();
@@ -871,29 +897,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Container(
         decoration: BoxDecoration(
           color: hasActive
-              ? const Color(0xFF10B981).withOpacity(0.07)
-              : AppColors.lockInCard,
-          borderRadius: BorderRadius.circular(20),
+              ? AppColors.secondary.withOpacity(0.08)
+              : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: hasActive
-                ? const Color(0xFF10B981).withOpacity(0.3)
-                : AppColors.lockInBorder,
+                ? AppColors.secondary.withOpacity(0.4)
+                : AppColors.outlineVariant.withOpacity(0.5),
           ),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Stack(clipBehavior: Clip.none, children: [
               Container(
-                width: 44, height: 44,
+                width: 42, height: 42,
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.12),
+                  color: AppColors.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: accentColor.withOpacity(0.22)),
                 ),
-                child: Icon(Icons.alarm_rounded, color: accentColor, size: 22),
+                child: Icon(Icons.alarm_rounded, color: AppColors.primary, size: 21),
               ),
               if (hasActive)
                 Positioned(
@@ -901,9 +928,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Container(
                     width: 10, height: 10,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981),
+                      color: AppColors.secondary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.lockInBackground, width: 1.5),
+                      border: Border.all(color: AppColors.surfaceContainerLowest, width: 1.5),
                     ),
                   ),
                 ),
@@ -911,12 +938,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(hasActive ? 'Active' : 'Wake-Up',
                   style: TextStyle(
-                    color: hasActive ? const Color(0xFF10B981) : Colors.white,
-                    fontSize: 14, fontWeight: FontWeight.bold,
+                    color: hasActive ? AppColors.secondary : AppColors.onSurface,
+                    fontSize: 13, fontWeight: FontWeight.bold,
                   )),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(hasActive ? 'Session running' : 'Lock-in mode',
-                  style: const TextStyle(color: AppColors.lockInMuted, fontSize: 11)),
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
             ]),
           ],
         ),
@@ -934,42 +961,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/coaching'); },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.lockInCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.lockInBorder),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
-              width: 44, height: 44,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: AppColors.secondary.withOpacity(0.12),
+                color: AppColors.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary.withOpacity(0.22)),
               ),
-              child: const Icon(Icons.psychology_outlined, color: AppColors.secondary, size: 22),
+              child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 21),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('AI Daily Coach',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                Text(
-                  goalCount == 0 ? 'Set your goals for today' : '$doneCount of $goalCount goals done',
-                  style: const TextStyle(color: AppColors.lockInMuted, fontSize: 12),
-                ),
-              ]),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted, size: 20),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('AI Daily Coach',
+                  style: TextStyle(color: AppColors.onSurface,
+                      fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(
+                goalCount == 0 ? 'Set your goals for today'
+                    : '$doneCount of $goalCount goals done',
+                style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+              ),
+            ])),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.onSurfaceVariant, size: 20),
           ]),
           if (goalCount > 0) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
                 value: progress, minHeight: 4,
-                backgroundColor: AppColors.lockInBorder,
+                backgroundColor: AppColors.outlineVariant.withOpacity(0.4),
                 valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
               ),
             ),
@@ -990,52 +1019,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.lockInCard,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.lockInBorder),
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8, offset: const Offset(0, 2))],
             ),
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             child: Row(children: [
               Container(
-                width: 44, height: 44,
+                width: 42, height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.secondaryFixed.withOpacity(0.10),
+                  color: AppColors.secondary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.secondaryFixed.withOpacity(0.2)),
                 ),
-                child: const Icon(Icons.task_alt_rounded, color: AppColors.secondaryFixed, size: 22),
+                child: const Icon(Icons.task_alt_rounded,
+                    color: AppColors.secondary, size: 21),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('My Habits',
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text(
-                    provider.isLoading
-                        ? 'Loading…'
-                        : (remaining == 0 && total > 0)
-                            ? 'All done for today 🎉'
-                            : '$remaining remaining today',
-                    style: const TextStyle(color: AppColors.lockInMuted, fontSize: 12),
-                  ),
-                ]),
-              ),
-              if (total > 0) ...[
-                Row(
-                  children: List.generate(total.clamp(0, 5), (i) => Container(
-                    margin: const EdgeInsets.only(left: 5),
-                    width: 7, height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i < done
-                          ? AppColors.secondaryFixed
-                          : AppColors.lockInBorder,
-                    ),
-                  )),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('My Habits',
+                    style: TextStyle(color: AppColors.onSurface,
+                        fontSize: 14, fontWeight: FontWeight.bold)),
+                Text(
+                  provider.isLoading ? 'Loading…'
+                      : (remaining == 0 && total > 0)
+                          ? 'All done for today 🎉'
+                          : '$remaining remaining today',
+                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
                 ),
+              ])),
+              if (total > 0) ...[
+                Row(children: List.generate(total.clamp(0, 5), (i) => Container(
+                  margin: const EdgeInsets.only(left: 5),
+                  width: 7, height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i < done
+                        ? AppColors.secondary
+                        : AppColors.outlineVariant,
+                  ),
+                ))),
                 const SizedBox(width: 8),
               ],
-              const Icon(Icons.chevron_right_rounded, color: AppColors.lockInMuted, size: 20),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.onSurfaceVariant, size: 20),
             ]),
           ),
         );
@@ -1048,51 +1076,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 // HELPER WIDGETS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _HeroStat extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String value;
-  final String label;
-  final VoidCallback? onTap;
-
-  const _HeroStat({
-    required this.icon, required this.iconColor,
-    required this.value, required this.label, this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: iconColor, size: 18),
-          const SizedBox(height: 5),
-          Text(value,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 10, fontWeight: FontWeight.w500)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _VertDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 36, color: Colors.white.withOpacity(0.12));
-  }
-}
-
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _NavItem({required this.icon, required this.label,
+      required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
