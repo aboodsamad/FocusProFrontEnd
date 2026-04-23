@@ -392,14 +392,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
-    final score = user.focusScore;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: _buildBottomNav(),
       body: Column(
         children: [
-          _buildHeroSection(user, score),
+          // ── Non-scrollable header + score block ──────────────────────────
+          SafeArea(
+            bottom: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(user),
+                _buildScoreBlock(),
+              ],
+            ),
+          ),
+          // ── Scrollable content ───────────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -408,32 +418,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   if (_activeSession != null) _buildActiveBanner(),
 
-                  const SizedBox(height: 20),
-                  _buildSectionHeader("Today's Mission"),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
+                  _buildSectionHeader("Today's Challenge"),
+                  const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildDailyChallengeCard(),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildSectionHeader('Features'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildFeatureGrid(),
+                    child: _buildFeaturesBento(),
                   ),
 
                   _buildDailyGameBanner(),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildSectionHeader('Your Progress'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: [
                       _buildCoachingCard(),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _buildHabitsCard(),
                     ]),
                   ),
@@ -479,121 +489,192 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Hero Section ──────────────────────────────────────────────────────────
-  Widget _buildHeroSection(UserProvider user, double score) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryContainer],
+  // ── Light header row ──────────────────────────────────────────────────────
+  Widget _buildHeader(UserProvider user) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Row(children: [
+        // Greeting
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('$_greeting,',
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w500,
+                    color: AppColors.outline, letterSpacing: 0.2)),
+            Text(user.name ?? 'Focus Pro',
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700,
+                    color: AppColors.primary, height: 1.2)),
+          ]),
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Top bar ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: Row(children: [
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/profile'),
+        // FocusPro brand pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
+          child: RichText(text: const TextSpan(
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+                letterSpacing: -0.3),
+            children: [
+              TextSpan(text: 'Focus', style: TextStyle(color: Colors.white)),
+              TextSpan(text: 'Pro',
+                  style: TextStyle(color: AppColors.secondaryFixed)),
+            ],
+          )),
+        ),
+        const SizedBox(width: 8),
+        // Logout
+        GestureDetector(
+          onTap: _logout,
+          child: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surfaceContainerLowest,
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: const Icon(Icons.logout_rounded,
+                color: AppColors.onSurfaceVariant, size: 17),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Score block card ──────────────────────────────────────────────────────
+  Widget _buildScoreBlock() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: AnimatedBuilder(
+        animation: _scoreAnim,
+        builder: (_, __) {
+          final s = _scoreAnim.value;
+          final mood = s >= 70 ? 'Great focus today'
+              : s >= 40 ? 'Building momentum'
+              : "Let's get started";
+          return Container(
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Decorative circles
+                Positioned(
+                  right: -30, top: -30,
                   child: Container(
-                    width: 38, height: 38,
+                    width: 160, height: 160,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.12),
-                      border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(user.displayInitial,
-                          style: const TextStyle(color: Colors.white,
-                              fontSize: 15, fontWeight: FontWeight.bold)),
+                      border: Border.all(
+                          color: AppColors.secondaryFixed.withOpacity(0.12)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_greeting,
-                      style: TextStyle(color: Colors.white.withOpacity(0.55),
-                          fontSize: 11, fontWeight: FontWeight.w500)),
-                  Text(user.name ?? 'Focus Pro',
-                      style: const TextStyle(color: Colors.white,
-                          fontSize: 14, fontWeight: FontWeight.bold)),
-                ]),
-                const Spacer(),
-                GestureDetector(
-                  onTap: _logout,
+                Positioned(
+                  right: 10, top: 10,
                   child: Container(
-                    width: 34, height: 34,
+                    width: 100, height: 100,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
                       shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.secondaryFixed.withOpacity(0.08)),
                     ),
-                    child: const Icon(Icons.logout_rounded, color: Colors.white, size: 16),
                   ),
                 ),
-              ]),
-            ),
-
-            // ── Score ring ─────────────────────────────────────────────────
-            const SizedBox(height: 6),
-            AnimatedBuilder(
-              animation: Listenable.merge([_scoreAnim, _pulseAnim]),
-              builder: (_, __) => SizedBox(
-                width: 140, height: 140,
-                child: Stack(alignment: Alignment.center, children: [
-                  CustomPaint(
-                    size: const Size(140, 140),
-                    painter: _DeepFocusRingPainter(progress: _scoreAnim.value / 100),
-                  ),
-                  Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(
-                      _scoreAnim.value.toStringAsFixed(0),
-                      style: const TextStyle(color: Colors.white,
-                          fontSize: 48, fontWeight: FontWeight.w900, height: 1.0),
+                // Content row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Left: score + bar + mood
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('FOCUS SCORE',
+                              style: TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.w700,
+                                  color: Colors.white.withOpacity(0.45),
+                                  letterSpacing: 2)),
+                          const SizedBox(height: 2),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(s.toStringAsFixed(0),
+                                  style: const TextStyle(
+                                      fontSize: 72, fontWeight: FontWeight.w900,
+                                      color: Colors.white, letterSpacing: -3,
+                                      height: 0.9)),
+                              const SizedBox(width: 6),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text('/100',
+                                    style: TextStyle(
+                                        fontSize: 20, fontWeight: FontWeight.w300,
+                                        color: Colors.white.withOpacity(0.3))),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Progress bar
+                          LayoutBuilder(builder: (ctx, box) {
+                            final w = box.maxWidth * 0.82;
+                            return SizedBox(
+                              width: w, height: 3,
+                              child: Stack(children: [
+                                Container(
+                                    width: w, height: 3,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    )),
+                                AnimatedContainer(
+                                    duration: const Duration(milliseconds: 1100),
+                                    curve: Curves.easeOutCubic,
+                                    width: w * (s / 100).clamp(0, 1),
+                                    height: 3,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondaryFixed,
+                                      borderRadius: BorderRadius.circular(4),
+                                    )),
+                              ]),
+                            );
+                          }),
+                          const SizedBox(height: 6),
+                          Text(mood,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withOpacity(0.5))),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text('FOCUS SCORE',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5),
-                            fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2)),
-                  ]),
-                ]),
-              ),
-            ),
-
-            // ── Stats strip ────────────────────────────────────────────────
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    const SizedBox(width: 16),
+                    // Right: 3 stats stacked
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _ScoreStat(emoji: '🔥',
+                            value: '$_streakDays', label: 'streak'),
+                        const SizedBox(height: 14),
+                        _ScoreStat(emoji: '⚡',
+                            value: '$_todaySessions', label: 'sessions'),
+                        const SizedBox(height: 14),
+                        GestureDetector(
+                          onTap: _editUsage,
+                          child: _ScoreStat(emoji: '🚫',
+                              value: '${_distractingMinutes}m', label: 'dist.'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                child: Row(children: [
-                  _HeroStat(icon: Icons.local_fire_department,
-                      iconColor: const Color(0xFFFF8A65),
-                      value: '$_streakDays', label: 'Streak'),
-                  _VertDivider(),
-                  _HeroStat(icon: Icons.bolt_rounded,
-                      iconColor: AppColors.primaryFixed,
-                      value: '$_todaySessions', label: 'Sessions'),
-                  _VertDivider(),
-                  _HeroStat(icon: Icons.timer_off_outlined,
-                      iconColor: AppColors.primaryFixedDim,
-                      value: '${_distractingMinutes}m', label: 'Distracted',
-                      onTap: _editUsage),
-                ]),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -607,22 +688,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _loadActiveSession();
       },
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.secondary.withOpacity(0.08),
+          color: AppColors.secondary.withOpacity(0.07),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+          border: Border.all(color: AppColors.secondary.withOpacity(0.25)),
         ),
         child: Row(children: [
           Container(width: 7, height: 7,
-              decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle)),
+              decoration: const BoxDecoration(
+                  color: AppColors.secondary, shape: BoxShape.circle)),
           const SizedBox(width: 10),
           const Expanded(
             child: Text('Lock-in session active — tap to return',
-                style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13)),
+                style: TextStyle(color: AppColors.secondary,
+                    fontWeight: FontWeight.w600, fontSize: 13)),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.secondary, size: 18),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColors.secondary, size: 18),
         ]),
       ),
     );
@@ -632,25 +716,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(children: [
-        Container(
-          width: 3, height: 16,
-          decoration: BoxDecoration(
-            color: AppColors.secondary,
-            borderRadius: BorderRadius.circular(4),
-          ),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w700,
+          color: AppColors.outline, letterSpacing: 1.0,
         ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.onSurface,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.2,
-          ),
-        ),
-      ]),
+      ),
     );
   }
 
@@ -658,19 +730,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildDailyChallengeCard() {
     if (_challengeLoading) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        height: 80,
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
+          color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant),
         ),
-        child: const SizedBox(height: 72,
-            child: Center(child: CircularProgressIndicator(
-                color: AppColors.primaryFixed, strokeWidth: 2.5))),
+        child: const Center(child: CircularProgressIndicator(
+            color: AppColors.primary, strokeWidth: 2.5)),
       );
     }
     if (_challengeError != null || _challenge == null) {
       return Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(20),
@@ -681,7 +753,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
           TextButton(onPressed: _loadChallenge,
               child: const Text('Retry',
-                  style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold))),
+                  style: TextStyle(color: AppColors.secondary,
+                      fontWeight: FontWeight.bold))),
         ]),
       );
     }
@@ -691,51 +764,58 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final areaIcon  = _weaknessIcons[challenge.weaknessArea]  ?? Icons.grid_on_rounded;
 
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.2),
-            blurRadius: 14, offset: const Offset(0, 4))],
+        border: Border.all(color: AppColors.outlineVariant),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+            blurRadius: 8, offset: const Offset(0, 2))],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: areaColor.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: areaColor.withOpacity(0.35)),
-            ),
-            child: Icon(areaIcon, color: areaColor, size: 19),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text("Today's Challenge",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-            Text('Resets at midnight',
-                style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 11)),
-          ])),
-          if (challenge.isCompleted)
-            _StatusPill(label: 'Done ✓', color: AppColors.secondaryFixed)
-          else if (challenge.isExpired)
-            _StatusPill(label: 'Expired', color: AppColors.onPrimaryContainer),
-        ]),
-        const SizedBox(height: 12),
-        Text(challenge.challengeTitle,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 5),
-        Text(challenge.challengeDescription,
-            style: TextStyle(color: AppColors.onPrimaryContainer, fontSize: 13, height: 1.45),
-            maxLines: 3, overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 14),
-        Row(children: [
-          Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
-          if (!challenge.isCompleted && !challenge.isExpired) ...[
+        // Colored top strip
+        Container(
+          color: areaColor,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(children: [
+            Icon(areaIcon, color: Colors.white, size: 15),
             const SizedBox(width: 8),
-            Expanded(flex: 1, child: _buildHintButton()),
-          ],
-        ]),
+            const Text("TODAY'S CHALLENGE",
+                style: TextStyle(color: Colors.white, fontSize: 11,
+                    fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            const Spacer(),
+            if (challenge.isCompleted)
+              _StatusPill(label: 'Done ✓', color: Colors.white)
+            else if (challenge.isExpired)
+              _StatusPill(label: 'Expired', color: Colors.white70)
+            else
+              Text('Resets at midnight',
+                  style: TextStyle(
+                      fontSize: 10, color: Colors.white.withOpacity(0.65))),
+          ]),
+        ),
+        // Body
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(challenge.challengeTitle,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                    color: AppColors.primary)),
+            const SizedBox(height: 4),
+            Text(challenge.challengeDescription,
+                style: const TextStyle(fontSize: 12, color: AppColors.outline,
+                    height: 1.45),
+                maxLines: 3, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
+              if (!challenge.isCompleted && !challenge.isExpired) ...[
+                const SizedBox(width: 8),
+                Expanded(flex: 1, child: _buildHintButton()),
+              ],
+            ]),
+          ]),
+        ),
       ]),
     );
   }
@@ -748,14 +828,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: disabled ? null : () { HapticFeedback.lightImpact(); _onChallengeAction(challenge); },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: disabled ? Colors.white.withOpacity(0.08) : AppColors.secondary,
-          borderRadius: BorderRadius.circular(11),
+          color: disabled ? AppColors.surfaceContainerLow : AppColors.primary,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Center(child: Text(label,
             style: TextStyle(
-              color: disabled ? AppColors.onPrimaryContainer : Colors.white,
+              color: disabled ? AppColors.outline : Colors.white,
               fontWeight: FontWeight.bold, fontSize: 13,
             ))),
       ),
@@ -766,59 +846,148 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: _showWeaknessHintSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.onPrimaryContainer.withOpacity(0.5)),
-          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: AppColors.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.edit_outlined, color: AppColors.onPrimaryContainer, size: 13),
+          const Icon(Icons.edit_outlined, color: AppColors.outline, size: 13),
           const SizedBox(width: 4),
-          Text('Weak at…',
-              style: TextStyle(color: AppColors.onPrimaryContainer,
+          const Text('Weak at…',
+              style: TextStyle(color: AppColors.outline,
                   fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
   }
 
-  // ── 2×2 Feature Grid ─────────────────────────────────────────────────────
-  Widget _buildFeatureGrid() {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.1,
-      children: [
-        _buildFeatureTile(
-          icon: Icons.extension_rounded,
-          title: 'Brain Games',
-          subtitle: '6 games  •  2–6 min',
-          accentColor: AppColors.secondary,
-          onTap: () => Navigator.pushNamed(context, '/games'),
+  // ── Features Bento ────────────────────────────────────────────────────────
+  Widget _buildFeaturesBento() {
+    return Column(children: [
+      // Brain Games — full width
+      GestureDetector(
+        onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/games'); },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.outlineVariant),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+                blurRadius: 6, offset: const Offset(0, 2))],
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Brain Games',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
+                const SizedBox(height: 2),
+                const Text('7 games  ·  2–6 min each',
+                    style: TextStyle(fontSize: 11, color: AppColors.outline)),
+                const SizedBox(height: 10),
+                // Category chips
+                Wrap(spacing: 6, children: ['Memory', 'Speed', 'Logic', 'Focus']
+                    .map((g) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(g, style: const TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant)),
+                )).toList()),
+              ]),
+              // Category dots
+              Column(children: [
+                AppColors.secondary, AppColors.secondaryFixed,
+                AppColors.primaryFixed, AppColors.onPrimaryContainer,
+              ].map((c) => Container(
+                margin: const EdgeInsets.only(bottom: 5),
+                width: 8, height: 8,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: c),
+              )).toList()),
+            ],
+          ),
         ),
-        _buildFeatureTile(
+      ),
+
+      const SizedBox(height: 8),
+
+      // Reader + Focus Rooms — half/half
+      Row(children: [
+        Expanded(child: _buildSmallBentoCard(
           icon: Icons.menu_book_rounded,
           title: 'Reader',
-          subtitle: 'TTS  •  Deep focus',
+          subtitle: 'TTS · Deep focus',
           accentColor: AppColors.primary,
           onTap: () => Navigator.pushNamed(context, '/books'),
-        ),
-        _buildFeatureTile(
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildSmallBentoCard(
           icon: Icons.group_outlined,
           title: 'Focus Rooms',
-          subtitle: 'Study alongside others',
-          accentColor: AppColors.primaryContainer,
+          subtitle: 'Study with others',
+          accentColor: AppColors.secondary,
           onTap: () => Navigator.pushNamed(context, '/rooms'),
+        )),
+      ]),
+
+      const SizedBox(height: 8),
+
+      // Wake-Up / Lock-In — full width dark green
+      GestureDetector(
+        onTap: () async {
+          HapticFeedback.lightImpact();
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
+          _loadActiveSession();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  _activeSession != null ? 'Session Active' : 'Wake-Up · Lock-In',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _activeSession != null
+                      ? 'Tap to return to your session'
+                      : 'Start a distraction-free session',
+                  style: const TextStyle(fontSize: 11,
+                      color: AppColors.onPrimaryContainer),
+                ),
+              ]),
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _activeSession != null ? Icons.arrow_forward_rounded : Icons.alarm_rounded,
+                  color: AppColors.secondaryFixed, size: 20,
+                ),
+              ),
+            ],
+          ),
         ),
-        _buildWakeUpTile(),
-      ],
-    );
+      ),
+    ]);
   }
 
-  Widget _buildFeatureTile({
+  Widget _buildSmallBentoCard({
     required IconData icon,
     required String title,
     required String subtitle,
@@ -831,98 +1000,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-              blurRadius: 8, offset: const Offset(0, 2))],
+          border: Border.all(color: AppColors.outlineVariant),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+              blurRadius: 6, offset: const Offset(0, 2))],
         ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: accentColor, size: 21),
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(
-                  color: AppColors.onSurface, fontSize: 13,
-                  fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(
-                  color: AppColors.onSurfaceVariant, fontSize: 11)),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWakeUpTile() {
-    final hasActive = _activeSession != null;
-    return GestureDetector(
-      onTap: () async {
-        HapticFeedback.lightImpact();
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const LockInPage()));
-        _loadActiveSession();
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasActive
-              ? AppColors.secondary.withOpacity(0.08)
-              : AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: hasActive
-                ? AppColors.secondary.withOpacity(0.4)
-                : AppColors.outlineVariant.withOpacity(0.5),
+            child: Icon(icon, color: accentColor, size: 18),
           ),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-              blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Stack(clipBehavior: Clip.none, children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.alarm_rounded, color: AppColors.primary, size: 21),
-              ),
-              if (hasActive)
-                Positioned(
-                  top: -2, right: -2,
-                  child: Container(
-                    width: 10, height: 10,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surfaceContainerLowest, width: 1.5),
-                    ),
-                  ),
-                ),
-            ]),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(hasActive ? 'Active' : 'Wake-Up',
-                  style: TextStyle(
-                    color: hasActive ? AppColors.secondary : AppColors.onSurface,
-                    fontSize: 13, fontWeight: FontWeight.bold,
-                  )),
-              const SizedBox(height: 2),
-              Text(hasActive ? 'Session running' : 'Lock-in mode',
-                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
-            ]),
-          ],
-        ),
+          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+              color: AppColors.primary)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(fontSize: 10,
+              color: AppColors.outline)),
+        ]),
       ),
     );
   }
@@ -930,89 +1028,80 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Daily Game Banner ─────────────────────────────────────────────────────
   Widget _buildDailyGameBanner() {
     final dayIndex = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 86400000 % 3;
-
     Color bannerColor;
     IconData bannerIcon;
     String bannerSubtitle;
     switch (dayIndex) {
       case 0:
-        bannerColor   = const Color(0xFF7B6FFF);
-        bannerIcon    = Icons.grid_view_rounded;
-        bannerSubtitle= 'Visual N-Back · Memory';
+        bannerColor    = AppColors.secondary;
+        bannerIcon     = Icons.grid_view_rounded;
+        bannerSubtitle = 'Visual N-Back · Memory';
         break;
       case 1:
-        bannerColor   = const Color(0xFF10B981);
-        bannerIcon    = Icons.radio_button_checked_rounded;
-        bannerSubtitle= 'Go/No-Go · Inhibition';
+        bannerColor    = AppColors.primary;
+        bannerIcon     = Icons.radio_button_checked_rounded;
+        bannerSubtitle = 'Go/No-Go · Inhibition';
         break;
       default:
-        bannerColor   = const Color(0xFF06B6D4);
-        bannerIcon    = Icons.compare_arrows_rounded;
-        bannerSubtitle= 'Flanker Task · Attention';
+        bannerColor    = AppColors.primaryContainer;
+        bannerIcon     = Icons.compare_arrows_rounded;
+        bannerSubtitle = 'Flanker Task · Attention';
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: GestureDetector(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DailyGamePage()),
         ).then((_) => _loadStats()),
         child: Container(
-          height: 72,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: bannerColor.withOpacity(0.35), width: 1.5),
-            boxShadow: [BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8, offset: const Offset(0, 2),
-            )],
+            border: Border.all(color: AppColors.outlineVariant),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
+                blurRadius: 6, offset: const Offset(0, 2))],
           ),
           child: Row(children: [
             Container(
-              width: 44, height: 44,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: bannerColor.withOpacity(0.12),
+                color: bannerColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(bannerIcon, color: bannerColor, size: 22),
+              child: Icon(bannerIcon, color: bannerColor, size: 21),
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Daily Game',
-                    style: TextStyle(color: AppColors.onSurface,
-                        fontSize: 14, fontWeight: FontWeight.bold)),
-                Text(bannerSubtitle,
-                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
+                const Text('Daily Game', style: TextStyle(
+                    color: AppColors.onSurface, fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+                Text(bannerSubtitle, style: const TextStyle(
+                    color: AppColors.onSurfaceVariant, fontSize: 11)),
               ],
             )),
             if (_dailyGameStatus?.hasPlayed == true)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.12),
+                  color: AppColors.secondary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Played ✓',
-                    style: TextStyle(color: Color(0xFF10B981),
-                        fontSize: 12, fontWeight: FontWeight.w600)))
+                child: const Text('Played ✓', style: TextStyle(
+                    color: AppColors.secondary, fontSize: 12,
+                    fontWeight: FontWeight.w600)))
             else
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                    bannerColor, bannerColor.withOpacity(0.7),
-                  ]),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text('Play',
-                    style: TextStyle(color: Colors.white,
-                        fontSize: 12, fontWeight: FontWeight.bold))),
+                  color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
+                child: const Text('Play', style: TextStyle(
+                    color: Colors.white, fontSize: 12,
+                    fontWeight: FontWeight.bold))),
           ]),
         ),
       ),
@@ -1024,14 +1113,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final goalCount = _todayGoals.length;
     final doneCount = _todayGoals.where((g) => g.status == 'DONE').length;
     final progress  = goalCount > 0 ? doneCount / goalCount : 0.0;
+    final pct       = goalCount > 0 ? '${(progress * 100).round()}%' : '';
 
     return GestureDetector(
       onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/coaching'); },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
               blurRadius: 8, offset: const Offset(0, 2))],
         ),
@@ -1039,37 +1129,88 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
-              width: 42, height: 42,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 21),
+              child: const Icon(Icons.psychology_outlined,
+                  color: AppColors.primary, size: 18),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('AI Daily Coach',
-                  style: TextStyle(color: AppColors.onSurface,
-                      fontSize: 14, fontWeight: FontWeight.bold)),
-              Text(
-                goalCount == 0 ? 'Set your goals for today'
-                    : '$doneCount of $goalCount goals done',
-                style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
-              ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              const Text('AI Daily Coach', style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+              Text(goalCount == 0 ? 'Set your goals for today'
+                  : '$doneCount of $goalCount goals done',
+                  style: const TextStyle(fontSize: 11, color: AppColors.outline)),
             ])),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.onSurfaceVariant, size: 20),
+            if (pct.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.secondaryFixed,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(pct, style: const TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: AppColors.onSecondaryContainer)),
+              ),
           ]),
           if (goalCount > 0) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress, minHeight: 4,
-                backgroundColor: AppColors.outlineVariant.withOpacity(0.4),
-                valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
+            const SizedBox(height: 10),
+            // Thin progress track
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: FractionallySizedBox(
+                widthFactor: progress.clamp(0, 1),
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: 10),
+            // Goals list — up to 4 items
+            ...(_todayGoals.take(4).map((g) {
+              final isDone = g.status == 'DONE';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Container(
+                    width: 16, height: 16,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDone ? AppColors.secondary : Colors.transparent,
+                      border: Border.all(
+                          color: isDone ? AppColors.secondary : AppColors.outlineVariant,
+                          width: 1.5),
+                    ),
+                    child: isDone
+                        ? const Icon(Icons.check, color: Colors.white, size: 10)
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(g.goalText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDone ? AppColors.outline : AppColors.onSurface,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        )),
+                  ),
+                ]),
+              );
+            })),
           ],
         ]),
       ),
@@ -1083,55 +1224,75 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final done      = provider.doneCount;
         final total     = provider.totalCount;
         final remaining = total - done;
+        // Day-of-week squares: fill first `done` squares
+        final dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        final today = DateTime.now().weekday - 1; // 0=Mon
+
         return GestureDetector(
           onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.outlineVariant),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
                   blurRadius: 8, offset: const Offset(0, 2))],
             ),
             padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.task_alt_rounded,
-                    color: AppColors.secondary, size: 21),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('My Habits',
-                    style: TextStyle(color: AppColors.onSurface,
-                        fontSize: 14, fontWeight: FontWeight.bold)),
-                Text(
-                  provider.isLoading ? 'Loading…'
-                      : (remaining == 0 && total > 0)
-                          ? 'All done for today 🎉'
-                          : '$remaining remaining today',
-                  style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
-                ),
-              ])),
-              if (total > 0) ...[
-                Row(children: List.generate(total.clamp(0, 5), (i) => Container(
-                  margin: const EdgeInsets.only(left: 5),
-                  width: 7, height: 7,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  width: 36, height: 36,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i < done
-                        ? AppColors.secondary
-                        : AppColors.outlineVariant,
+                    color: AppColors.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ))),
-                const SizedBox(width: 8),
+                  child: const Icon(Icons.task_alt_rounded,
+                      color: AppColors.secondary, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Daily Habits', style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: AppColors.onSurface)),
+                  Text(
+                    provider.isLoading ? 'Loading…'
+                        : (remaining == 0 && total > 0) ? 'All done today!'
+                        : '$remaining remaining today',
+                    style: const TextStyle(fontSize: 11, color: AppColors.outline),
+                  ),
+                ])),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.outlineVariant, size: 18),
+              ]),
+              if (total > 0) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: List.generate(7, (i) {
+                    final filled = i <= today && (today - i) < _streakDays;
+                    final isToday = i == today;
+                    return Expanded(child: Column(children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: filled
+                              ? AppColors.secondaryFixed
+                              : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(6),
+                          border: isToday
+                              ? Border.all(color: AppColors.secondary, width: 1.5)
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(dayLabels[i], style: const TextStyle(
+                          fontSize: 9, color: AppColors.outline)),
+                    ]));
+                  }),
+                ),
               ],
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.onSurfaceVariant, size: 20),
             ]),
           ),
         );
@@ -1191,18 +1352,29 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.onSurfaceVariant;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 3),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(icon,
+                color: selected ? Colors.white : AppColors.onSurfaceVariant,
+                size: 22),
+          ),
+          const SizedBox(height: 2),
           Text(label, style: TextStyle(
-              color: color, fontSize: 10,
-              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
         ]),
       ),
     );
@@ -1224,6 +1396,40 @@ class _StatusPill extends StatelessWidget {
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
+  }
+}
+
+// ── Score Stat (used inside score block) ─────────────────────────────────────
+class _ScoreStat extends StatelessWidget {
+  final String emoji;
+  final String value;
+  final String label;
+  const _ScoreStat({required this.emoji,
+      required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Text(value, style: const TextStyle(
+            fontSize: 15, fontWeight: FontWeight.w700,
+            color: Colors.white, height: 1)),
+        Text(label, style: TextStyle(
+            fontSize: 9, color: Colors.white.withOpacity(0.4),
+            fontWeight: FontWeight.w500)),
+      ]),
+      const SizedBox(width: 6),
+      Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(emoji, style: const TextStyle(fontSize: 14)),
+        ),
+      ),
+    ]);
   }
 }
 
