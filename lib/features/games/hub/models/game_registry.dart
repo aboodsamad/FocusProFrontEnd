@@ -8,6 +8,9 @@ import '../../train_of_thought/pages/train_of_thought_page.dart';
 import '../../color_match/pages/color_match_page.dart';
 import '../../speed_match/pages/speed_match_page.dart';
 import '../../pattern_trail/pages/pattern_trail_page.dart';
+import '../../visual_nback/pages/visual_nback_page.dart';
+import '../../go_no_go/pages/go_no_go_page.dart';
+import '../../flanker_task/pages/flanker_task_page.dart';
 import '../../services/game_progress_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +113,45 @@ class GameRegistry {
       icon:       Icons.train_rounded,
       imageUrl:   'assets/images/games/train_of_thought.png',
     ),
+    GameItem(
+      id:          'visual_nback',
+      title:       'Visual N-Back',
+      description: 'A cell lights up in a 3×3 grid. Remember which '
+          'cell lit up 2 steps ago and judge if it matches now. '
+          'Tests working memory — the most important cognitive skill.',
+      shortDesc:   '2-back working memory test',
+      category:    GameCategory.memory,
+      difficulty:  GameDifficulty.hard,
+      status:      GameStatus.available,
+      colorValue:  0xFF7B6FFF,
+      icon:        Icons.grid_view_rounded,
+    ),
+    GameItem(
+      id:          'go_no_go',
+      title:       'Go/No-Go',
+      description: 'Tap the green circle fast. Never tap the red one. '
+          'Sounds easy — until the pace doubles. Measures impulse control '
+          'and response inhibition.',
+      shortDesc:   'Tap Go, resist No-Go',
+      category:    GameCategory.attention,
+      difficulty:  GameDifficulty.medium,
+      status:      GameStatus.available,
+      colorValue:  0xFF10B981,
+      icon:        Icons.radio_button_checked_rounded,
+    ),
+    GameItem(
+      id:          'flanker_task',
+      title:       'Flanker Task',
+      description: 'Five arrows appear. Respond to the CENTER arrow '
+          'direction while ignoring the surrounding ones. Incongruent '
+          'flankers fight your attention.',
+      shortDesc:   'Focus on the center arrow',
+      category:    GameCategory.attention,
+      difficulty:  GameDifficulty.medium,
+      status:      GameStatus.available,
+      colorValue:  0xFF06B6D4,
+      icon:        Icons.compare_arrows_rounded,
+    ),
   ];
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -146,6 +188,12 @@ class GameRegistry {
         return const SpeedMatchPage();
       case 'pattern_trail':
         return const PatternTrailPage();
+      case 'visual_nback':
+        return const VisualNBackPage();
+      case 'go_no_go':
+        return const GoNoGoPage();
+      case 'flanker_task':
+        return const FlankerTaskPage();
       default:
         return null;
     }
