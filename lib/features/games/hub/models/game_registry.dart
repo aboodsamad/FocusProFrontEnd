@@ -156,11 +156,18 @@ class GameRegistry {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  /// Game IDs that only appear in the Daily Game feature, not the hub.
+  static const Set<String> _dailyOnlyIds = {'visual_nback', 'go_no_go', 'flanker_task'};
+
+  /// Games shown in the Games Hub (excludes daily-game-only entries).
+  static List<GameItem> get hubGames =>
+      all.where((g) => !_dailyOnlyIds.contains(g.id)).toList();
+
   static List<GameItem> byCategory(GameCategory category) =>
-      all.where((g) => g.category == category).toList();
+      hubGames.where((g) => g.category == category).toList();
 
   static List<GameItem> get available =>
-      all.where((g) => g.isAvailable).toList();
+      hubGames.where((g) => g.isAvailable).toList();
 
   static GameItem? findById(String id) {
     try {
