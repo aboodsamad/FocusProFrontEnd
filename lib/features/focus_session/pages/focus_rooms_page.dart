@@ -700,34 +700,19 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
 
   Widget _buildAppBar() {
     return Container(
-      color: Colors.green.shade50,
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.outlineVariant),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: AppColors.primary, size: 16),
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+            children: [
+              TextSpan(text: 'Locked', style: TextStyle(color: AppColors.primary)),
+              TextSpan(text: 'In', style: TextStyle(color: AppColors.secondary)),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Text(
-            'FocusPro',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+        const Spacer(),
         // Smart Match
         GestureDetector(
           onTap: () async {

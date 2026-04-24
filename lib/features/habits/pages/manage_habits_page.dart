@@ -113,7 +113,6 @@ class ManageHabitsPage extends StatelessWidget {
                 subtitle: done >= total && total > 0
                     ? 'You\'ve reached your flow state.'
                     : 'Track your daily habits below.',
-                onBack: () => Navigator.pop(context),
               ),
 
               SliverPadding(
@@ -198,11 +197,7 @@ class ManageHabitsPage extends StatelessWidget {
 class _HabitsAppBar extends StatelessWidget {
   final String title;
   final String subtitle;
-  final VoidCallback onBack;
-  const _HabitsAppBar(
-      {required this.title,
-      required this.subtitle,
-      required this.onBack});
+  const _HabitsAppBar({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -220,44 +215,22 @@ class _HabitsAppBar extends StatelessWidget {
             )
           ],
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: onBack,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.onSurface, size: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                height: 1.15,
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      height: 1.15,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 14),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
             ),
           ],
         ),
