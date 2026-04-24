@@ -401,7 +401,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       gameType:          'pattern_trail',
       score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         false,
+      completed:         true,
       levelReached:      _game.level,
       mistakes:          _game.mistakes,
     );
@@ -458,10 +458,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             _LevelScoreChip(level: _game.level, score: _game.score),
             const SizedBox(width: 10),
           ],
-          if (showStats)
-            _LivesRow(lives: _game.lives)
-          else
-            const SizedBox(width: 40),
+          const SizedBox(width: 40),
         ],
       ),
     );

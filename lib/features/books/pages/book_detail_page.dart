@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:capstone_front_end/core/services/auth_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
@@ -203,7 +204,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     });
 
     try {
-      await player.setAudioSource(_BytesAudioSource(bytes));
+      if (kIsWeb) {
+        // On Flutter Web, StreamAudioSource doesn't report duration correctly.
+        // Use a base64 data URI which the browser's audio element handles natively.
+        final base64Audio = base64Encode(bytes);
+        await player.setUrl('data:audio/mpeg;base64,\$base64Audio');
+      } else {
+        await player.setAudioSource(_BytesAudioSource(bytes));
+      }
       await player.setSpeed(_ttsSpeed);
       await player.play();
     } catch (e) {

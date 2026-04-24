@@ -472,10 +472,8 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
           if (isPlaying) ...[
             _ScoreChip(score: _game.score, streak: _game.streak),
             const SizedBox(width: 10),
-          ],
-          if (isPlaying)
-            _LivesRow(lives: _game.lives)
-          else
+            _SessionTimerChip(secondsLeft: _sessionSecondsLeft),
+          ] else
             const SizedBox(width: 40),
         ],
       ),
@@ -1189,27 +1187,33 @@ class _ScoreChip extends StatelessWidget {
       );
 }
 
-class _LivesRow extends StatelessWidget {
-  final int lives;
-  const _LivesRow({required this.lives});
+class _SessionTimerChip extends StatelessWidget {
+  final int secondsLeft;
+  const _SessionTimerChip({required this.secondsLeft});
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(
-          3,
-          (i) => Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Icon(
-              i < lives
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: i < lives ? _kWrong : AppColors.outlineVariant,
-              size: 18,
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final fraction = (secondsLeft / 60).clamp(0.0, 1.0);
+    final color = fraction > 0.5 ? _kAccent
+        : fraction > 0.25 ? _kGold
+        : _kWrong;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.45)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.timer_rounded, color: color, size: 14),
+        const SizedBox(width: 5),
+        Text(
+          '${secondsLeft}s',
+          style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
         ),
-      );
+      ]),
+    );
+  }
 }
 
 class _StatRow extends StatelessWidget {
