@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/services/update_service.dart';
 import '../providers/user_provider.dart';
 import '../../habits/providers/habit_provider.dart';
@@ -395,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AppBottomNav(current: NavTab.home),
       body: Column(
         children: [
           // ── Non-scrollable header + score block ──────────────────────────
@@ -454,37 +455,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ── Bottom Navigation Bar ─────────────────────────────────────────────────
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06),
-            blurRadius: 16, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(icon: Icons.home_rounded, label: 'Home', selected: true, onTap: () {}),
-              _NavItem(icon: Icons.extension_outlined, label: 'Games', selected: false,
-                  onTap: () => Navigator.pushNamed(context, '/games')),
-              _NavItem(icon: Icons.psychology_outlined, label: 'Coach', selected: false,
-                  onTap: () => Navigator.pushNamed(context, '/coaching')),
-              _NavItem(icon: Icons.task_alt_outlined, label: 'Habits', selected: false,
-                  onTap: () => Navigator.pushNamed(context, '/habits')),
-              _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', selected: false,
-                  onTap: () => Navigator.pushNamed(context, '/profile')),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1342,44 +1312,6 @@ class _VertDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Container(width: 1, height: 30, color: Colors.white.withOpacity(0.12));
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavItem({required this.icon, required this.label,
-      required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 50, height: 50,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon,
-                color: selected ? Colors.white : AppColors.onSurfaceVariant,
-                size: 24),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(
-              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
-              fontSize: 10,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
-        ]),
-      ),
-    );
-  }
 }
 
 class _StatusPill extends StatelessWidget {

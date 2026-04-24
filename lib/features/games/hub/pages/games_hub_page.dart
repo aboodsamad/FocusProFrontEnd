@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../models/game_item.dart';
 import '../models/game_registry.dart';
 import '../widgets/game_hub_card.dart';
@@ -66,6 +67,7 @@ class _GamesHubPageState extends State<GamesHubPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.games),
       body: Column(
         children: [
           _buildHeader(),

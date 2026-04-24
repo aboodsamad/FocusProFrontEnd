@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../../home/providers/user_provider.dart';
 import '../models/activity_log.dart';
 import '../services/activity_log_service.dart';
@@ -235,6 +236,7 @@ class _ProfilePageState extends State<ProfilePage>
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.profile),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
