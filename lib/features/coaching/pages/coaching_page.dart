@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../models/coaching_message.dart';
 import '../models/daily_goal_model.dart';
 import '../services/coaching_service.dart';
@@ -533,6 +534,7 @@ class _CoachingPageState extends State<CoachingPage> {
     }
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.coach),
       appBar: AppBar(
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: Colors.white,

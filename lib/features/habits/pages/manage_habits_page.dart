@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../models/habit.dart';
 import '../providers/habit_provider.dart';
 import '../widgets/add_habit_sheet.dart';
@@ -90,6 +91,7 @@ class ManageHabitsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.habits),
       body: Consumer<HabitProvider>(
         builder: (context, provider, _) {
           // Loading
