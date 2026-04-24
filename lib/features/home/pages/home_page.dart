@@ -20,7 +20,7 @@ import '../../books/pages/books_page.dart';
 import '../../lockin/models/lock_in_session_model.dart';
 import '../../lockin/services/lock_in_service.dart';
 import '../../lockin/pages/lock_in_page.dart';
-import '../../lockin/pages/schedules_page.dart';
+
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
 import '../../games/daily/models/daily_game_models.dart';
@@ -51,25 +51,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _challengeLoading = true;
   String? _challengeError;
 
-  late AnimationController _scoreAnimController;
-  late Animation<double> _scoreAnim;
   late AnimationController _pulseController;
-  late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
-    _scoreAnimController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
     _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _scoreAnim = Tween<double>(begin: 0, end: 0).animate(_scoreAnimController);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _animateScore();
       _loadDistractingMinutes();
       _loadStats();
       _loadTodayGoals();
@@ -77,14 +67,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loadActiveSession();
       UpdateService.checkForUpdate(context);
     });
-  }
-
-  void _animateScore() {
-    final daily = context.read<DailyScoreProvider>().todayScore;
-    _scoreAnim = Tween<double>(begin: 0, end: daily).animate(
-      CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
-    );
-    _scoreAnimController.forward();
   }
 
   Future<void> _loadDistractingMinutes() async {
@@ -150,7 +132,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _scoreAnimController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -572,21 +553,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          AnimatedBuilder(
-                            animation: _scoreAnim,
-                            builder: (_, __) => Text(
-                              dailyScore > 0
-                                  ? '+${dailyScore.toStringAsFixed(1)}'
-                                  : '0',
-                              style: const TextStyle(
-                                  fontSize: 64, fontWeight: FontWeight.w900,
-                                  color: Colors.white, letterSpacing: -3,
-                                  height: 0.9),
-                            ),
+                          Text(
+                            dailyScore.toInt().toString(),
+                            style: const TextStyle(
+                                fontSize: 72, fontWeight: FontWeight.w900,
+                                color: Colors.white, letterSpacing: -3,
+                                height: 0.9),
                           ),
                           const SizedBox(width: 6),
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 10),
                             child: Text('pts',
                                 style: TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.w300,
