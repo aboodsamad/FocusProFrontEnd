@@ -48,6 +48,7 @@ class GameProgressService {
     if (clamped > current) {
       await prefs.setInt('$_prefix$gameId', clamped);
       
+
     }
   }
 
