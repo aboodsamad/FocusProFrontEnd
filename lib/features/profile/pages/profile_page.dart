@@ -264,45 +264,36 @@ class _ProfilePageState extends State<ProfilePage>
   // ── AppBar ─────────────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context) {
     return Container(
-      color: AppColors.secondaryContainer,
+      color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
-              ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.primary, size: 16),
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Text(
-              'FocusPro',
+          // Brand mark
+          RichText(
+            text: const TextSpan(
               style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.3,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
               ),
+              children: [
+                TextSpan(text: 'Locked', style: TextStyle(color: AppColors.primary)),
+                TextSpan(text: 'In', style: TextStyle(color: AppColors.secondary)),
+              ],
             ),
           ),
+          const Spacer(),
+          // Settings button — modern icon
           GestureDetector(
             onTap: () {},
             child: Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.outlineVariant),
               ),
-              child: const Icon(Icons.settings_outlined,
+              child: const Icon(Icons.tune_rounded,
                   color: AppColors.primary, size: 20),
             ),
           ),

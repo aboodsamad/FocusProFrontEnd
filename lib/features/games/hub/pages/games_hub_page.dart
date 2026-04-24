@@ -94,7 +94,7 @@ class _GamesHubPageState extends State<GamesHubPage>
 
   Widget _buildHeader() {
     return Container(
-      color: const Color(0xFFF0FBF5),
+      color: AppColors.surface,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8,
         bottom: 12,
@@ -103,21 +103,6 @@ class _GamesHubPageState extends State<GamesHubPage>
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width:  40,
-              height: 40,
-              decoration: BoxDecoration(
-                color:        AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border:       Border.all(color: AppColors.outlineVariant),
-              ),
-              child: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.onSurfaceVariant, size: 16),
-            ),
-          ),
-          const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

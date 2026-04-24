@@ -8,6 +8,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/services/update_service.dart';
 import '../providers/user_provider.dart';
+import '../../../core/providers/daily_score_provider.dart';
 import '../../habits/providers/habit_provider.dart';
 import '../../profile/services/activity_log_service.dart';
 import '../../coaching/services/coaching_service.dart';
@@ -79,8 +80,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _animateScore() {
-    final score = context.read<UserProvider>().focusScore;
-    _scoreAnim = Tween<double>(begin: 0, end: score).animate(
+    final daily = context.read<DailyScoreProvider>().todayScore;
+    _scoreAnim = Tween<double>(begin: 0, end: daily).animate(
       CurvedAnimation(parent: _scoreAnimController, curve: Curves.easeOutCubic),
     );
     _scoreAnimController.forward();
@@ -477,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     color: AppColors.primary, height: 1.2)),
           ]),
         ),
-        // FocusPro brand pill
+        // LockedIn brand pill
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
@@ -486,8 +487,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
                 letterSpacing: -0.3),
             children: [
-              TextSpan(text: 'Focus', style: TextStyle(color: Colors.white)),
-              TextSpan(text: 'Pro',
+              TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+              TextSpan(text: 'In',
                   style: TextStyle(color: AppColors.secondaryFixed)),
             ],
           )),
@@ -513,138 +514,143 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Score block card ──────────────────────────────────────────────────────
   Widget _buildScoreBlock() {
+    final dailyScore = context.watch<DailyScoreProvider>().todayScore;
+    // Cap the bar at 50 pts = 100%; each game/snippet earns ~5–15 pts
+    const barMax = 50.0;
+    final mood = dailyScore >= 30 ? 'Crushing it today 🔥'
+        : dailyScore >= 10 ? 'Building momentum'
+        : "Let's get started";
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: AnimatedBuilder(
-        animation: _scoreAnim,
-        builder: (_, __) {
-          final s = _scoreAnim.value;
-          final mood = s >= 70 ? 'Great focus today'
-              : s >= 40 ? 'Building momentum'
-              : "Let's get started";
-          return Container(
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Decorative circles
+            Positioned(
+              right: -30, top: -30,
+              child: Container(
+                width: 160, height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.secondaryFixed.withOpacity(0.12)),
+                ),
+              ),
             ),
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-            child: Stack(
-              clipBehavior: Clip.none,
+            Positioned(
+              right: 10, top: 10,
+              child: Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.secondaryFixed.withOpacity(0.08)),
+                ),
+              ),
+            ),
+            // Content row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Decorative circles
-                Positioned(
-                  right: -30, top: -30,
-                  child: Container(
-                    width: 160, height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: AppColors.secondaryFixed.withOpacity(0.12)),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 10, top: 10,
-                  child: Container(
-                    width: 100, height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: AppColors.secondaryFixed.withOpacity(0.08)),
-                    ),
-                  ),
-                ),
-                // Content row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Left: score + bar + mood
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Left: score + bar + mood
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('DAILY SCORE',
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              color: Colors.white.withOpacity(0.45),
+                              letterSpacing: 2)),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('FOCUS SCORE',
-                              style: TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.w700,
-                                  color: Colors.white.withOpacity(0.45),
-                                  letterSpacing: 2)),
-                          const SizedBox(height: 2),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(s.toStringAsFixed(0),
-                                  style: const TextStyle(
-                                      fontSize: 72, fontWeight: FontWeight.w900,
-                                      color: Colors.white, letterSpacing: -3,
-                                      height: 0.9)),
-                              const SizedBox(width: 6),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text('/100',
-                                    style: TextStyle(
-                                        fontSize: 20, fontWeight: FontWeight.w300,
-                                        color: Colors.white.withOpacity(0.3))),
-                              ),
-                            ],
+                          AnimatedBuilder(
+                            animation: _scoreAnim,
+                            builder: (_, __) => Text(
+                              dailyScore > 0
+                                  ? '+${dailyScore.toStringAsFixed(1)}'
+                                  : '0',
+                              style: const TextStyle(
+                                  fontSize: 64, fontWeight: FontWeight.w900,
+                                  color: Colors.white, letterSpacing: -3,
+                                  height: 0.9),
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          // Progress bar
-                          LayoutBuilder(builder: (ctx, box) {
-                            final w = box.maxWidth * 0.82;
-                            return SizedBox(
-                              width: w, height: 3,
-                              child: Stack(children: [
-                                Container(
-                                    width: w, height: 3,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    )),
-                                AnimatedContainer(
-                                    duration: const Duration(milliseconds: 1100),
-                                    curve: Curves.easeOutCubic,
-                                    width: w * (s / 100).clamp(0, 1),
-                                    height: 3,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.secondaryFixed,
-                                      borderRadius: BorderRadius.circular(4),
-                                    )),
-                              ]),
-                            );
-                          }),
-                          const SizedBox(height: 6),
-                          Text(mood,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white.withOpacity(0.5))),
+                          const SizedBox(width: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text('pts',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w300,
+                                    color: Colors.white.withOpacity(0.4))),
+                          ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Right: 3 stats stacked
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _ScoreStat(emoji: '🔥',
-                            value: '$_streakDays', label: 'streak'),
-                        const SizedBox(height: 14),
-                        _ScoreStat(emoji: '⚡',
-                            value: '$_todaySessions', label: 'sessions'),
-                        const SizedBox(height: 14),
-                        GestureDetector(
-                          onTap: _editUsage,
-                          child: _ScoreStat(emoji: '🚫',
-                              value: '${_distractingMinutes}m', label: 'dist.'),
-                        ),
-                      ],
+                      const SizedBox(height: 10),
+                      // Progress bar (capped at barMax)
+                      LayoutBuilder(builder: (ctx, box) {
+                        final w = box.maxWidth * 0.82;
+                        final fill = (dailyScore / barMax).clamp(0.0, 1.0);
+                        return SizedBox(
+                          width: w, height: 3,
+                          child: Stack(children: [
+                            Container(
+                                width: w, height: 3,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                )),
+                            AnimatedContainer(
+                                duration: const Duration(milliseconds: 900),
+                                curve: Curves.easeOutCubic,
+                                width: w * fill,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondaryFixed,
+                                  borderRadius: BorderRadius.circular(4),
+                                )),
+                          ]),
+                        );
+                      }),
+                      const SizedBox(height: 6),
+                      Text(mood,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.5))),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Right: 3 stats stacked
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _ScoreStat(emoji: '🔥',
+                        value: '$_streakDays', label: 'streak'),
+                    const SizedBox(height: 14),
+                    _ScoreStat(emoji: '⚡',
+                        value: '$_todaySessions', label: 'sessions'),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: _editUsage,
+                      child: _ScoreStat(emoji: '🚫',
+                          value: '${_distractingMinutes}m', label: 'dist.'),
                     ),
                   ],
                 ),
               ],
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
