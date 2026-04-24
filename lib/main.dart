@@ -5,6 +5,7 @@ import 'package:capstone_front_end/core/utils/url_helper.dart';
 import 'core/services/notification_service.dart';
 import 'features/home/providers/user_provider.dart';
 import 'features/habits/providers/habit_provider.dart';
+import 'core/providers/daily_score_provider.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/oauth_callback_page.dart';
 import 'features/home/pages/home_page.dart';
@@ -24,8 +25,10 @@ void main() async {
   await userProvider.init();
 
   final habitProvider = HabitProvider();
+  final dailyScoreProvider = DailyScoreProvider();
   if (userProvider.isLoggedIn) {
     await habitProvider.load();
+    await dailyScoreProvider.init();
     // Start notification polling if already logged in
     NotificationService.init();
   }
@@ -35,6 +38,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider.value(value: userProvider),
         ChangeNotifierProvider.value(value: habitProvider),
+        ChangeNotifierProvider.value(value: dailyScoreProvider),
       ],
       child: const MyApp(),
     ),

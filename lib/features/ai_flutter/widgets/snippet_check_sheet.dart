@@ -13,6 +13,7 @@ Future<bool> showSnippetCheckSheet(
   BuildContext context, {
   required int snippetId,
   required String token,
+  void Function(double gained)? onScoreGained,
 }) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
@@ -20,7 +21,11 @@ Future<bool> showSnippetCheckSheet(
     backgroundColor: Colors.transparent,
     isDismissible: false,
     enableDrag: false,
-    builder: (_) => _SnippetCheckSheet(snippetId: snippetId, token: token),
+    builder: (_) => _SnippetCheckSheet(
+      snippetId: snippetId,
+      token: token,
+      onScoreGained: onScoreGained,
+    ),
   );
   return result ?? false;
 }
@@ -28,7 +33,12 @@ Future<bool> showSnippetCheckSheet(
 class _SnippetCheckSheet extends StatefulWidget {
   final int snippetId;
   final String token;
-  const _SnippetCheckSheet({required this.snippetId, required this.token});
+  final void Function(double gained)? onScoreGained;
+  const _SnippetCheckSheet({
+    required this.snippetId,
+    required this.token,
+    this.onScoreGained,
+  });
 
   @override
   State<_SnippetCheckSheet> createState() => _SnippetCheckSheetState();
@@ -81,6 +91,9 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
     final result = await AiService.submitSnippetAnswers(widget.snippetId, _answers, widget.token);
     if (!mounted) return;
     setState(() { _submitting = false; _result = result; });
+    if (result != null && result.passed && result.focusScoreGained > 0) {
+      widget.onScoreGained?.call(result.focusScoreGained);
+    }
   }
 
   void _nextQuestion() {

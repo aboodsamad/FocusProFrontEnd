@@ -9,6 +9,7 @@ import '../../../core/widgets/app_bottom_nav.dart';
 import '../../home/providers/user_provider.dart';
 import '../models/activity_log.dart';
 import '../services/activity_log_service.dart';
+import '../widgets/daily_score_section.dart';
 
 // ── Category definition ────────────────────────────────────────────────────────
 class _Category {
@@ -247,6 +248,7 @@ class _ProfilePageState extends State<ProfilePage>
               slivers: [
                 SliverToBoxAdapter(child: _buildAppBar(context)),
                 SliverToBoxAdapter(child: _buildProfileHero(user, score)),
+                const SliverToBoxAdapter(child: DailyScoreSection()),
                 SliverToBoxAdapter(child: _buildStatCards()),
                 SliverToBoxAdapter(child: _buildActivityLogSection()),
                 SliverToBoxAdapter(child: _buildAiHistorySection()),
