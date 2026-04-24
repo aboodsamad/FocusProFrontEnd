@@ -45,6 +45,10 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   late MemoryMatrixState _game;
   DateTime? _gameStartTime;
 
+  // ── 3-minute session timer (no-lives system) ───────────────────────────────
+  Timer? _sessionTimer;
+  int    _sessionSecondsLeft = 180;
+
   /// Tracks how many cells we've allocated controllers for.
   int _allocatedGridSize = 0;
 
@@ -82,6 +86,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   @override
   void dispose() {
     _inputTimer?.cancel();
+    _sessionTimer?.cancel();
     _fadeCtrl.dispose();
     _scaleCtrl.dispose();
     for (final c in _cellCtrl.values) c.dispose();
@@ -139,7 +144,26 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   void _startGame() {
     HapticFeedback.mediumImpact();
     _cancelInputTimer();
+    _sessionTimer?.cancel();
     _gameStartTime = DateTime.now();
+    _sessionSecondsLeft = 180;
+    // 3-minute session timer — game ends when time is up, not on mistakes
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final remaining = _sessionSecondsLeft - 1;
+      if (remaining <= 0) {
+        t.cancel();
+        _cancelInputTimer();
+        setState(() {
+          _sessionSecondsLeft = 0;
+          _game = _game.copyWith(phase: MemoryMatrixPhase.gameOver, highlightedCells: {});
+        });
+        _fadeCtrl.forward(from: 0.0);
+        _submitGameResult();
+      } else {
+        setState(() => _sessionSecondsLeft = remaining);
+      }
+    });
     final startLevel = widget.startLevel;
     final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
     _ensureCellControllers(gs);
@@ -283,40 +307,31 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       if (!mounted) return;
       _startRound();
     } else {
-      final newLives = _game.lives - 1;
+      // No lives system — wrong answer just restarts the round.
+      // Session timer is the only thing that ends the game.
       HapticFeedback.vibrate();
-      if (newLives <= 0) {
-        setState(
-          () => _game = _game.copyWith(
-            lives: 0,
-            mistakes: _game.mistakes + 1,
-            phase: MemoryMatrixPhase.gameOver,
-            highlightedCells: {},
-          ),
-        );
-        _fadeCtrl.forward(from: 0.0);
-        _submitGameResult();
-      } else {
-        setState(() => _game = _game.copyWith(
-          lives: newLives,
-          mistakes: _game.mistakes + 1,
-          highlightedCells: {},
-        ));
-        _startRound();
-      }
+      setState(() => _game = _game.copyWith(
+        mistakes: _game.mistakes + 1,
+        highlightedCells: {},
+      ));
+      _startRound();
     }
   }
 
   // ── Submit result to backend ───────────────────────────────────────────────
 
   Future<void> _submitGameResult() async {
+    _sessionTimer?.cancel();
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     await GameProgressService.unlockUpToLevel('memory_matrix', _game.level);
+    // Normalized score 0-1000: level contribution + accuracy
+    final double accuracyFactor = (1.0 - (_game.mistakes / 10.0).clamp(0.0, 1.0));
+    final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType: 'memory_matrix',
-      score: _game.score,
+      score: normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed: false,
+      completed: true,
       levelReached: _game.level,
       mistakes: _game.mistakes,
     );

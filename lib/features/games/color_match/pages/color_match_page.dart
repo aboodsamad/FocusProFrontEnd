@@ -175,15 +175,11 @@ class _ColorMatchPageState extends State<ColorMatchPage>
         streak:   0,
         mistakes: _game.mistakes + 1,
       ));
-      if (newLives <= 0) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) _endGame(timerExpired: false);
-        });
-      } else {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) _nextRound();
-        });
-      }
+      // No lives system — mistakes accumulate but never end the game early.
+      // The session timer is the only thing that ends the game.
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _nextRound();
+      });
     }
   }
 
@@ -199,11 +195,16 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
+    // Normalized score 0-1000: accuracy × difficulty × 333
+    final int total = _game.correct + _game.mistakes;
+    final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
+    final int diffLevel = _game.difficulty.index + 1; // 1/2/3
+    final int normalizedScore = (accuracyRate * diffLevel * 333).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType:         'color_match',
-      score:            _game.score,
+      score:            normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:        timerExpired, // completed the full timer = success
+      completed:        timerExpired,
       levelReached:     _game.difficulty.index + 1,
       mistakes:         _game.mistakes,
     );

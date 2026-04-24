@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,6 +62,10 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   bool              _correct = false;
   bool              _feedback = false; // true while showing tap result
 
+  // ── 2-minute session timer (no-lives system) ─────────────────────────────
+  Timer? _sessionTimer;
+  int    _sessionSecondsLeft = 120;
+
   // ── Animation controllers ───────────────────────────────────────────────────
   late final AnimationController _fallCtrl;   // drives equation fall 0→1
   late final AnimationController _burstCtrl;  // particle explosion 0→1
@@ -122,6 +127,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     _cdCtrl.dispose();
     _pulseCtrl.dispose();
     _levelCtrl.dispose();
+    _sessionTimer?.cancel();
     super.dispose();
   }
 
@@ -131,6 +137,19 @@ class _NumberStreamPageState extends State<NumberStreamPage>
 
   void _startGame() {
     _startTime = DateTime.now();
+    _sessionSecondsLeft = 120;
+    _sessionTimer?.cancel();
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final remaining = _sessionSecondsLeft - 1;
+      if (remaining <= 0) {
+        t.cancel();
+        setState(() => _sessionSecondsLeft = 0);
+        _endGame();
+      } else {
+        setState(() => _sessionSecondsLeft = remaining);
+      }
+    });
     resetEqCounter(); // reset equation ID counter so IDs start from 1 each game
     setState(() {
       _game    = NumberStreamState.initial()
@@ -234,26 +253,25 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   void _handleWrong() {
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
-    final newLives = _game.lives - 1;
-    setState(() => _game = _game.copyWith(lives: newLives, streak: 0, mistakes: _game.mistakes + 1));
+    // No lives system — mistakes never end the game, session timer does.
+    setState(() => _game = _game.copyWith(streak: 0, mistakes: _game.mistakes + 1));
     Future.delayed(const Duration(milliseconds: 750), () {
-      if (!mounted) return;
-      newLives <= 0 ? _endGame() : _nextEquation();
+      if (mounted) _nextEquation();
     });
   }
 
   void _handleMissed() {
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
-    final newLives = _game.lives - 1;
-    setState(() => _game = _game.copyWith(lives: newLives, streak: 0, mistakes: _game.mistakes + 1, clearEquation: true));
+    // No lives system — mistakes never end the game, session timer does.
+    setState(() => _game = _game.copyWith(streak: 0, mistakes: _game.mistakes + 1, clearEquation: true));
     Future.delayed(const Duration(milliseconds: 550), () {
-      if (!mounted) return;
-      newLives <= 0 ? _endGame() : _nextEquation();
+      if (mounted) _nextEquation();
     });
   }
 
   void _endGame() {
+    _sessionTimer?.cancel();
     setState(() => _game = _game.copyWith(phase: NumberStreamPhase.gameOver));
     _submitResult();
   }
@@ -263,11 +281,14 @@ class _NumberStreamPageState extends State<NumberStreamPage>
         ? DateTime.now().difference(_startTime!).inSeconds
         : 0;
     await GameProgressService.unlockUpToLevel('number_stream', _game.level);
+    // Normalized score 0-1000: level contribution + accuracy
+    final double accuracyFactor = (1.0 - (_game.mistakes * 0.05).clamp(0.0, 1.0));
+    final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType:          'number_stream',
-      score:             _game.score,
+      score:             normalizedScore,
       timePlayedSeconds: secs,
-      completed:         false,
+      completed:         true,
       levelReached:      _game.level,
       mistakes:          _game.mistakes,
     );

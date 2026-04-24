@@ -141,8 +141,12 @@ class _VisualNBackPageState extends State<VisualNBackPage> {
   Future<void> _submit() async {
     if (_submitting) return;
     setState(() => _submitting = true);
+    // Normalized score 0-1000: precision = hits / (hits + false alarms)
+    final int total = _hitCount + _falseAlarmCount;
+    final double precision = total > 0 ? _hitCount / total : 0.5;
+    final int normalizedScore = (precision * 1000).round().clamp(0, 1000);
     await GameService.submitResult(
-      gameType: 'visual_nback', score: _score,
+      gameType: 'visual_nback', score: normalizedScore,
       timePlayedSeconds: 60, completed: true,
       levelReached: _hitCount, mistakes: _falseAlarmCount,
     );
