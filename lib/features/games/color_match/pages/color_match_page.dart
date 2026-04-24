@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../features/home/providers/user_provider.dart';
+import '../../../../core/providers/daily_score_provider.dart';
+import '../../../../core/widgets/score_gain_toast.dart';
 import '../../services/game_service.dart';
 import '../models/color_match_model.dart';
 
@@ -209,7 +210,8 @@ class _ColorMatchPageState extends State<ColorMatchPage>
       mistakes:         _game.mistakes,
     );
     if (result != null && mounted) {
-      context.read<UserProvider>().updateFocusScore(result.newFocusScore);
+      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
+      ScoreGainToast.show(context, result.focusScoreGained, source: 'Color Match');
     }
   }
 

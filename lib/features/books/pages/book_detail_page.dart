@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'dart:convert';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/daily_score_provider.dart';
+import '../../../core/widgets/score_gain_toast.dart';
 import '../models/book_model.dart';
 import '../models/book_snippet_model.dart';
 import '../services/book_service.dart';
@@ -109,7 +112,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     final completedIdx = _currentIndex;
     final snippetId = _snippets[completedIdx].id;
     final token = await AuthService.getToken() ?? '';
-    final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
+    final passed = await showSnippetCheckSheet(
+      context,
+      snippetId: snippetId,
+      token: token,
+      onScoreGained: (gained) {
+        context.read<DailyScoreProvider>().addPoints(gained);
+        ScoreGainToast.show(context, gained, source: 'Book snippet');
+      },
+    );
     if (!mounted) return;
     if (passed) {
       _completedChapters.add(completedIdx);
@@ -445,7 +456,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     final completedIdx = _currentIndex;
     final snippetId = _current!.id;
     final token = await AuthService.getToken() ?? '';
-    final passed = await showSnippetCheckSheet(context, snippetId: snippetId, token: token);
+    final passed = await showSnippetCheckSheet(
+      context,
+      snippetId: snippetId,
+      token: token,
+      onScoreGained: (gained) {
+        context.read<DailyScoreProvider>().addPoints(gained);
+        ScoreGainToast.show(context, gained, source: 'Book snippet');
+      },
+    );
     if (!mounted) return;
     if (passed) {
       _completedChapters.add(completedIdx);

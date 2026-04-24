@@ -7,7 +7,8 @@ import 'package:capstone_front_end/core/constants/app_colors.dart';
 import '../models/number_stream_model.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
-import '../../../../features/home/providers/user_provider.dart';
+import '../../../../core/providers/daily_score_provider.dart';
+import '../../../../core/widgets/score_gain_toast.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design constants  — Deep Focus dark-canvas palette
@@ -293,7 +294,8 @@ class _NumberStreamPageState extends State<NumberStreamPage>
       mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {
-      context.read<UserProvider>().updateFocusScore(result.newFocusScore);
+      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
+      ScoreGainToast.show(context, result.focusScoreGained, source: 'Number Stream');
     }
   }
 
