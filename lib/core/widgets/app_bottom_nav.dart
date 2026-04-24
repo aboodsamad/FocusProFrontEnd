@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-enum NavTab { home, games, coach, habits, profile }
+enum NavTab { home, games, rooms, coach, habits, profile }
 
 class AppBottomNav extends StatelessWidget {
   final NavTab current;
@@ -14,6 +14,8 @@ class AppBottomNav extends StatelessWidget {
         Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
       case NavTab.games:
         Navigator.pushReplacementNamed(context, '/games');
+      case NavTab.rooms:
+        Navigator.pushReplacementNamed(context, '/rooms');
       case NavTab.coach:
         Navigator.pushReplacementNamed(context, '/coaching');
       case NavTab.habits:
@@ -39,14 +41,15 @@ class AppBottomNav extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_rounded,        label: 'Home',    selected: current == NavTab.home,    onTap: () => _go(context, NavTab.home)),
-              _NavItem(icon: Icons.extension_outlined,  label: 'Games',   selected: current == NavTab.games,   onTap: () => _go(context, NavTab.games)),
-              _NavItem(icon: Icons.psychology_outlined, label: 'Coach',   selected: current == NavTab.coach,   onTap: () => _go(context, NavTab.coach)),
-              _NavItem(icon: Icons.task_alt_outlined,   label: 'Habits',  selected: current == NavTab.habits,  onTap: () => _go(context, NavTab.habits)),
+              _NavItem(icon: Icons.home_rounded,           label: 'Home',    selected: current == NavTab.home,    onTap: () => _go(context, NavTab.home)),
+              _NavItem(icon: Icons.extension_outlined,     label: 'Games',   selected: current == NavTab.games,   onTap: () => _go(context, NavTab.games)),
+              _NavItem(icon: Icons.groups_outlined,        label: 'Rooms',   selected: current == NavTab.rooms,   onTap: () => _go(context, NavTab.rooms)),
+              _NavItem(icon: Icons.psychology_outlined,    label: 'Coach',   selected: current == NavTab.coach,   onTap: () => _go(context, NavTab.coach)),
+              _NavItem(icon: Icons.task_alt_outlined,      label: 'Habits',  selected: current == NavTab.habits,  onTap: () => _go(context, NavTab.habits)),
               _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', selected: current == NavTab.profile, onTap: () => _go(context, NavTab.profile)),
             ],
           ),
@@ -75,7 +78,7 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

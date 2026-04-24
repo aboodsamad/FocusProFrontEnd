@@ -10,6 +10,7 @@ import '../../home/providers/user_provider.dart';
 import '../models/activity_log.dart';
 import '../services/activity_log_service.dart';
 import '../widgets/daily_score_section.dart';
+import '../widgets/long_term_score_card.dart';
 
 // ── Category definition ────────────────────────────────────────────────────────
 class _Category {
@@ -233,7 +234,7 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>();
-    final score = user.focusScore > 1.0 ? user.focusScore : 0.0;
+    final score = user.longTermScore > 1.0 ? user.longTermScore : 0.0;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -248,6 +249,7 @@ class _ProfilePageState extends State<ProfilePage>
               slivers: [
                 SliverToBoxAdapter(child: _buildAppBar(context)),
                 SliverToBoxAdapter(child: _buildProfileHero(user, score)),
+                const SliverToBoxAdapter(child: LongTermScoreCard()),
                 const SliverToBoxAdapter(child: DailyScoreSection()),
                 SliverToBoxAdapter(child: _buildStatCards()),
                 SliverToBoxAdapter(child: _buildActivityLogSection()),
@@ -341,7 +343,7 @@ class _ProfilePageState extends State<ProfilePage>
                     border: Border.all(color: AppColors.surfaceContainerLowest, width: 2),
                   ),
                   child: Text(
-                    score.toStringAsFixed(0),
+                    score.toInt().toString(),
                     style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -359,7 +361,7 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           const SizedBox(height: 4),
           Text(
-            'Focus Score: ${score.toStringAsFixed(0)} / 100',
+            'Long-Term Score: ${score.toInt()} / 100',
             style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
           ),
           const SizedBox(height: 12),

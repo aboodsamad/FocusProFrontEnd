@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../models/focus_room.dart';
 import '../services/focus_room_service.dart';
@@ -621,6 +622,7 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.rooms),
       body: SafeArea(
         child: Column(children: [
           _buildAppBar(),
