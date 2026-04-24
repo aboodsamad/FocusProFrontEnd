@@ -28,66 +28,62 @@ class MemoryMatrixPage extends StatefulWidget {
   State<MemoryMatrixPage> createState() => _MemoryMatrixPageState();
 }
 
-class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProviderStateMixin {
-  // ── Colors — Deep Focus dark-green game palette ────────────────────────────
-  static const Color _bg       = AppColors.primary;           // #012D1D deep forest
-  static const Color _accent   = AppColors.secondaryContainer; // #A0F4C8 mint
-  static const Color _gold     = AppColors.primaryFixed;       // #C1ECD4 pale mint
-  static const Color _wrong    = AppColors.error;              // #BA1A1A
-  static const Color _textMuted = AppColors.onPrimaryContainer; // #86AF99
+class _MemoryMatrixPageState extends State<MemoryMatrixPage>
+    with TickerProviderStateMixin {
+  // ── Colors ─────────────────────────────────────────────────────────────────
+  static const Color _bg        = AppColors.primary;
+  static const Color _accent    = AppColors.secondaryContainer;
+  static const Color _gold      = AppColors.primaryFixed;
+  static const Color _wrong     = AppColors.error;
+  static const Color _textMuted = AppColors.onPrimaryContainer;
 
-  // ── Grid size ──────────────────────────────────────────────────────────────
+  // ── Persisted across sessions ───────────────────────────────────────────────
+  /// Level the player reached in their last game — "Play Again" resumes here.
+  static int _lastLevelReached = 1;
 
-  /// Level 1 → 9×9, level 2 → 10×10, …, level 5+ → 13×13 (max).
-  int get _currentGridSize => MemoryMatrixState.gridSizeForLevel(_game.level);
-
-  // ── State ──────────────────────────────────────────────────────────────────
-
+  // ── Game state ──────────────────────────────────────────────────────────────
   late MemoryMatrixState _game;
   DateTime? _gameStartTime;
 
-  // ── 3-minute session timer (no-lives system) ───────────────────────────────
-  Timer? _sessionTimer;
-  int    _sessionSecondsLeft = 180;
+  // ── Game-wide timer (3 minutes) ────────────────────────────────────────────
+  Timer? _gameTimer;
+  int    _gameSecondsLeft = 180;
 
-  /// Tracks how many cells we've allocated controllers for.
-  int _allocatedGridSize = 0;
-
-  /// Periodic timer that counts down during the input phase.
+  // ── Per-matrix input timer ─────────────────────────────────────────────────
   Timer? _inputTimer;
 
-  // ── Animations ─────────────────────────────────────────────────────────────
+  // ── Cell controller management ─────────────────────────────────────────────
+  int _allocatedGridSize = 0;
+  final Map<int, AnimationController> _cellCtrl = {};
+  final Map<int, Animation<double>>   _cellAnim = {};
 
+  // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _fadeCtrl;
   late AnimationController _scaleCtrl;
-  late Animation<double> _fadeAnim;
-  late Animation<double> _scaleAnim;
-
-  final Map<int, AnimationController> _cellCtrl = {};
-  final Map<int, Animation<double>> _cellAnim = {};
+  late Animation<double>   _fadeAnim;
+  late Animation<double>   _scaleAnim;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
-    final initialGridSize = MemoryMatrixState.gridSizeForLevel(widget.startLevel);
-    _game = MemoryMatrixState.initial(initialGridSize).copyWith(level: widget.startLevel);
+    final startLevel = widget.startLevel;
+    final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
+    _game = MemoryMatrixState.initial(gs).copyWith(level: startLevel);
 
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400))..forward();
-
+    _fadeCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 400))..forward();
     _scaleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _fadeAnim  = CurvedAnimation(parent: _fadeCtrl,  curve: Curves.easeOut);
     _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
 
-    _rebuildCellControllers(initialGridSize);
+    _rebuildCellControllers(gs);
   }
 
   @override
   void dispose() {
     _inputTimer?.cancel();
-    _sessionTimer?.cancel();
+    _gameTimer?.cancel();
     _fadeCtrl.dispose();
     _scaleCtrl.dispose();
     for (final c in _cellCtrl.values) c.dispose();
@@ -101,9 +97,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     _cellCtrl.clear();
     _cellAnim.clear();
     for (int i = 0; i < gridSize * gridSize; i++) {
-      final ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
+      final ctrl = AnimationController(
+          vsync: this, duration: const Duration(milliseconds: 250));
       _cellCtrl[i] = ctrl;
-      _cellAnim[i] = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+      _cellAnim[i] = Tween<double>(begin: 0.0, end: 1.0)
+          .animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
     }
     _allocatedGridSize = gridSize;
   }
@@ -112,7 +110,10 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     if (_allocatedGridSize != gridSize) _rebuildCellControllers(gridSize);
   }
 
-  // ── Input timer ────────────────────────────────────────────────────────────
+  int get _currentGridSize =>
+      MemoryMatrixState.gridSizeForLevel(_game.level);
+
+  // ── Per-matrix input timer ─────────────────────────────────────────────────
 
   void _startInputTimer() {
     _inputTimer?.cancel();
@@ -120,15 +121,12 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     setState(() => _game = _game.copyWith(timeLeft: seconds));
 
     _inputTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+      if (!mounted) { timer.cancel(); return; }
       final remaining = _game.timeLeft - 1;
       if (remaining <= 0) {
         timer.cancel();
         setState(() => _game = _game.copyWith(timeLeft: 0));
-        _submitAnswer(); // auto-submit on timeout
+        _submitAnswer(); // auto-submit (time's up = wrong)
       } else {
         setState(() => _game = _game.copyWith(timeLeft: remaining));
       }
@@ -140,38 +138,54 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     _inputTimer = null;
   }
 
-  // ── Game flow ──────────────────────────────────────────────────────────────
+  // ── Game-wide timer ────────────────────────────────────────────────────────
 
-  void _startGame() {
-    HapticFeedback.mediumImpact();
-    _cancelInputTimer();
-    _sessionTimer?.cancel();
-    _gameStartTime = DateTime.now();
-    _sessionSecondsLeft = 180;
-    // 3-minute session timer — game ends when time is up, not on mistakes
-    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+  void _startGameTimer() {
+    _gameTimer?.cancel();
+    _gameSecondsLeft = 180;
+
+    _gameTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
-      final remaining = _sessionSecondsLeft - 1;
+      final remaining = _gameSecondsLeft - 1;
       if (remaining <= 0) {
         t.cancel();
         _cancelInputTimer();
         setState(() {
-          _sessionSecondsLeft = 0;
-          _game = _game.copyWith(phase: MemoryMatrixPhase.gameOver, highlightedCells: {});
+          _gameSecondsLeft = 0;
+          _game = _game.copyWith(
+            phase:           MemoryMatrixPhase.gameOver,
+            highlightedCells: {},
+          );
         });
         _fadeCtrl.forward(from: 0.0);
+        _lastLevelReached = _game.level;
         _submitGameResult();
       } else {
-        setState(() => _sessionSecondsLeft = remaining);
+        setState(() => _gameSecondsLeft = remaining);
       }
     });
-    final startLevel = widget.startLevel;
+  }
+
+  // ── Game flow ──────────────────────────────────────────────────────────────
+
+  void _startGame({int? fromLevel}) {
+    HapticFeedback.mediumImpact();
+    _cancelInputTimer();
+    _gameTimer?.cancel();
+    _gameStartTime = DateTime.now();
+
+    final startLevel = fromLevel ?? 1;
     final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
     _ensureCellControllers(gs);
+
     setState(() {
-      _game = MemoryMatrixState.initial(gs)
-          .copyWith(level: startLevel, phase: MemoryMatrixPhase.countdown);
+      _game = MemoryMatrixState.initial(gs).copyWith(
+        level: startLevel,
+        phase: MemoryMatrixPhase.countdown,
+      );
     });
+
+    _startGameTimer();
     _runCountdown();
   }
 
@@ -189,20 +203,21 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     _ensureCellControllers(gs);
     final pattern = _buildPattern(gs);
     final inputSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
+
     setState(() {
       _game = _game.copyWith(
-        phase: MemoryMatrixPhase.showing,
-        pattern: pattern,
-        playerInput: List.generate(gs, (_) => List.filled(gs, false)),
+        phase:           MemoryMatrixPhase.showing,
+        pattern:         pattern,
+        playerInput:     List.generate(gs, (_) => List.filled(gs, false)),
         highlightedCells: {},
-        timeLeft: inputSecs,
+        timeLeft:        inputSecs,
       );
     });
     _showPattern(gs);
   }
 
   List<List<bool>> _buildPattern(int gs) {
-    final count = _game.cellsToRemember(gs);
+    final count   = _game.cellsToRemember(gs);
     final indices = List.generate(gs * gs, (i) => i)..shuffle(Random());
     final pattern = List.generate(gs, (_) => List.filled(gs, false));
     for (int i = 0; i < count; i++) {
@@ -218,17 +233,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         if (_game.pattern[r][c]) patternIndices.add(r * gs + c);
       }
     }
-    // Randomise reveal order for unpredictability
     patternIndices.shuffle(Random());
 
-    // Reveal delay shortens on bigger grids so total reveal time stays reasonable
-    final revealDelayMs = gs >= 12
-        ? 90
-        : gs >= 10
-        ? 110
-        : 130;
+    final revealDelayMs = gs >= 9 ? 90 : gs >= 7 ? 110 : 130;
+    final highlighted   = <int>{};
 
-    final highlighted = <int>{};
     for (final idx in patternIndices) {
       if (!mounted) return;
       highlighted.add(idx);
@@ -238,8 +247,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       await Future.delayed(Duration(milliseconds: revealDelayMs));
     }
 
-    // Hold: shorter at higher levels to increase difficulty
-    final holdMs = max(400, 1800 - (_game.level * 120));
+    final holdMs = max(400, 1600 - (_game.level * 100));
     await Future.delayed(Duration(milliseconds: holdMs));
     if (!mounted) return;
 
@@ -247,7 +255,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     await Future.delayed(const Duration(milliseconds: 280));
     if (!mounted) return;
 
-    setState(() => _game = _game.copyWith(highlightedCells: {}, phase: MemoryMatrixPhase.input));
+    setState(() =>
+        _game = _game.copyWith(highlightedCells: {}, phase: MemoryMatrixPhase.input));
     _startInputTimer();
   }
 
@@ -256,7 +265,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     HapticFeedback.selectionClick();
     final gs = _currentGridSize;
 
-    final updated = List.generate(gs, (r) => List.generate(gs, (c) => _game.playerInput[r][c]));
+    final updated = List.generate(
+        gs, (r) => List.generate(gs, (c) => _game.playerInput[r][c]));
     updated[row][col] = !updated[row][col];
     setState(() => _game = _game.copyWith(playerInput: updated));
 
@@ -273,72 +283,96 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     _cancelInputTimer();
     HapticFeedback.mediumImpact();
 
-    final gs = _currentGridSize;
+    final gs       = _currentGridSize;
     final revealSet = <int>{};
     bool allCorrect = true;
+
     for (int r = 0; r < gs; r++) {
       for (int c = 0; c < gs; c++) {
         if (_game.pattern[r][c]) revealSet.add(r * gs + c);
         if (_game.pattern[r][c] != _game.playerInput[r][c]) allCorrect = false;
       }
     }
-    setState(() => _game = _game.copyWith(phase: MemoryMatrixPhase.checking, highlightedCells: revealSet));
 
-    await Future.delayed(const Duration(milliseconds: 1400));
+    setState(() => _game = _game.copyWith(
+        phase: MemoryMatrixPhase.checking, highlightedCells: revealSet));
+
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
     for (final ctrl in _cellCtrl.values) ctrl.reset();
 
+    // ── Award points if correct ───────────────────────────────────────────────
+    int newScore    = _game.score;
+    int newMistakes = _game.mistakes;
     if (allCorrect) {
-      final newScore = _game.score + _game.roundPoints(gs);
-      final newLevel = _game.level + 1;
-      final newGs = MemoryMatrixState.gridSizeForLevel(newLevel);
-      _ensureCellControllers(newGs);
-      setState(
-        () => _game = _game.copyWith(
-          score: newScore,
-          level: newLevel,
-          phase: MemoryMatrixPhase.levelUp,
-          highlightedCells: {},
-        ),
-      );
-      _scaleCtrl.forward(from: 0.0);
+      newScore += _game.roundPoints(gs);
       HapticFeedback.heavyImpact();
+    } else {
+      newMistakes++;
+      HapticFeedback.vibrate();
+    }
+
+    // ── Advance matrix counter ────────────────────────────────────────────────
+    final newMatricesInLevel = _game.matricesInLevel + 1;
+    final levelComplete      = newMatricesInLevel >= MemoryMatrixState.matricesPerLevel;
+
+    if (levelComplete) {
+      // Level up: advance to next level, reset matrix counter
+      final newLevel = _game.level + 1;
+      final newGs    = MemoryMatrixState.gridSizeForLevel(newLevel);
+      _ensureCellControllers(newGs);
+
+      setState(() => _game = _game.copyWith(
+        score:            newScore,
+        mistakes:         newMistakes,
+        level:            newLevel,
+        matricesInLevel:  0,
+        phase:            MemoryMatrixPhase.levelUp,
+        highlightedCells: {},
+      ));
+      _scaleCtrl.forward(from: 0.0);
+      _lastLevelReached = newLevel;
+
       await Future.delayed(const Duration(milliseconds: 1600));
       if (!mounted) return;
       _startRound();
     } else {
-      // No lives system — wrong answer just restarts the round.
-      // Session timer is the only thing that ends the game.
-      HapticFeedback.vibrate();
+      // Same level, next matrix
       setState(() => _game = _game.copyWith(
-        mistakes: _game.mistakes + 1,
+        score:           newScore,
+        mistakes:        newMistakes,
+        matricesInLevel: newMatricesInLevel,
         highlightedCells: {},
       ));
       _startRound();
     }
   }
 
-  // ── Submit result to backend ───────────────────────────────────────────────
-
   Future<void> _submitGameResult() async {
-    _sessionTimer?.cancel();
-    final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
+    _gameTimer?.cancel();
+    final timePlayed = _gameStartTime != null
+        ? DateTime.now().difference(_gameStartTime!).inSeconds
+        : 0;
     await GameProgressService.unlockUpToLevel('memory_matrix', _game.level);
-    // Normalized score 0-1000: level contribution + accuracy
-    final double accuracyFactor = (1.0 - (_game.mistakes / 10.0).clamp(0.0, 1.0));
-    final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
+
+    final double accuracyFactor =
+        (1.0 - (_game.mistakes / 10.0).clamp(0.0, 1.0));
+    final int normalizedScore =
+        (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
+
     final result = await GameService.submitResult(
-      gameType: 'memory_matrix',
-      score: normalizedScore,
+      gameType:          'memory_matrix',
+      score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed: true,
-      levelReached: _game.level,
-      mistakes: _game.mistakes,
+      completed:         true,
+      levelReached:      _game.level,
+      mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {
       context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Memory Matrix');
+      ScoreGainToast.show(context, result.focusScoreGained,
+          source: 'Memory Matrix');
     }
   }
 
@@ -350,16 +384,18 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final isPlaying =
-            _game.phase != MemoryMatrixPhase.idle && _game.phase != MemoryMatrixPhase.gameOver;
+        final isPlaying = _game.phase != MemoryMatrixPhase.idle &&
+            _game.phase != MemoryMatrixPhase.gameOver;
         if (isPlaying) {
           _cancelInputTimer();
+          _gameTimer?.cancel();
+          _lastLevelReached = _game.level;
           await _submitGameResult();
         }
         if (mounted) Navigator.pop(context);
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light, // light icons on dark bg
+        value: SystemUiOverlayStyle.light,
         child: Scaffold(
           backgroundColor: _bg,
           body: SafeArea(
@@ -378,7 +414,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   // ── App bar ────────────────────────────────────────────────────────────────
 
   Widget _buildAppBar() {
-    final showStats = _game.phase != MemoryMatrixPhase.idle && _game.phase != MemoryMatrixPhase.gameOver;
+    final showStats = _game.phase != MemoryMatrixPhase.idle &&
+        _game.phase != MemoryMatrixPhase.gameOver;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -388,7 +425,10 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
           const Spacer(),
           if (showStats) MemoryMatrixScoreChip(score: _game.score, level: _game.level),
           const Spacer(),
-          if (showStats) MemoryMatrixLivesRow(lives: _game.lives) else const SizedBox(width: 40),
+          if (showStats)
+            _GameTimerChip(secondsLeft: _gameSecondsLeft)
+          else
+            const SizedBox(width: 40),
         ],
       ),
     );
@@ -401,18 +441,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       case MemoryMatrixPhase.idle:
         return FadeTransition(
           opacity: _fadeAnim,
-          child: MemoryMatrixIdleScreen(onStart: _startGame),
+          child: MemoryMatrixIdleScreen(onStart: () => _startGame(fromLevel: 1)),
         );
-
       case MemoryMatrixPhase.countdown:
         return _buildCountdownScreen();
-
       case MemoryMatrixPhase.levelUp:
         return _buildLevelUpScreen();
-
       case MemoryMatrixPhase.gameOver:
         return FadeTransition(opacity: _fadeAnim, child: _buildGameOverScreen());
-
       default:
         return _buildGameScreen();
     }
@@ -427,7 +463,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
         children: [
           Text(
             '${_game.countdownValue}',
-            style: const TextStyle(color: _accent, fontSize: 96, fontWeight: FontWeight.w800, letterSpacing: -4),
+            style: const TextStyle(
+                color: _accent, fontSize: 96,
+                fontWeight: FontWeight.w800, letterSpacing: -4),
           ),
           const SizedBox(height: 8),
           Text('Get ready...', style: TextStyle(color: _textMuted, fontSize: 16)),
@@ -436,16 +474,17 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     );
   }
 
-  // ── Active game (showing / input / checking) ───────────────────────────────
+  // ── Active game screen ─────────────────────────────────────────────────────
 
   Widget _buildGameScreen() {
-    final gs = _currentGridSize;
+    final gs     = _currentGridSize;
     final needed = _game.cellsToRemember(gs);
     final totalSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
+    final matrixNum  = _game.matricesInLevel + 1; // 1-based display
 
     final label = switch (_game.phase) {
-      MemoryMatrixPhase.showing => 'Watch carefully...',
-      MemoryMatrixPhase.input => 'Select $needed cells',
+      MemoryMatrixPhase.showing  => 'Watch carefully...',
+      MemoryMatrixPhase.input    => 'Select $needed cells',
       MemoryMatrixPhase.checking => 'Checking...',
       _ => '',
     };
@@ -453,6 +492,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
     return Column(
       children: [
         const SizedBox(height: 12),
+
+        // Status row: label + matrix progress + timer ring
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: SizedBox(
@@ -461,19 +502,37 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Matrix progress e.g. "2 / 5"
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$matrixNum / ${MemoryMatrixState.matricesPerLevel}',
+                    style: TextStyle(
+                        color: _gold, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: MemoryMatrixStatusLabel(key: ValueKey(label), text: label),
                 ),
                 if (_game.phase == MemoryMatrixPhase.input) ...[
-                  const SizedBox(width: 16),
-                  MemoryMatrixTimerRing(timeLeft: _game.timeLeft, totalTime: totalSecs),
+                  const SizedBox(width: 12),
+                  MemoryMatrixTimerRing(
+                      timeLeft: _game.timeLeft, totalTime: totalSecs),
                 ],
               ],
             ),
           ),
         ),
+
         const SizedBox(height: 16),
+
+        // Grid
         Expanded(
           child: Center(
             child: Padding(
@@ -481,18 +540,19 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
               child: AspectRatio(
                 aspectRatio: 1,
                 child: MemoryMatrixGrid(
-                  gridSize: gs,
-                  phase: _game.phase,
-                  pattern: _game.pattern,
-                  playerInput: _game.playerInput,
+                  gridSize:        gs,
+                  phase:           _game.phase,
+                  pattern:         _game.pattern,
+                  playerInput:     _game.playerInput,
                   highlightedCells: _game.highlightedCells,
-                  cellAnimations: _cellAnim,
-                  onCellTap: _onCellTap,
+                  cellAnimations:  _cellAnim,
+                  onCellTap:       _onCellTap,
                 ),
               ),
             ),
           ),
         ),
+
         SizedBox(
           height: 72,
           child: _game.phase == MemoryMatrixPhase.input
@@ -513,7 +573,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   // ── Level up ───────────────────────────────────────────────────────────────
 
   Widget _buildLevelUpScreen() {
-    final prevGs = MemoryMatrixState.gridSizeForLevel(_game.level - 1);
+    final prevGs    = MemoryMatrixState.gridSizeForLevel(_game.level - 1);
+    final currentGs = MemoryMatrixState.gridSizeForLevel(_game.level);
+
     return Center(
       child: ScaleTransition(
         scale: _scaleAnim,
@@ -521,34 +583,40 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 90,
-              height: 90,
+              width: 90, height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.secondaryContainer,
-                boxShadow: [BoxShadow(color: _accent.withOpacity(0.4), blurRadius: 32, spreadRadius: 4)],
+                boxShadow: [
+                  BoxShadow(
+                      color: _accent.withOpacity(0.4),
+                      blurRadius: 32,
+                      spreadRadius: 4),
+                ],
               ),
-              child: const Icon(Icons.star_rounded, color: AppColors.primary, size: 48),
+              child: const Icon(Icons.star_rounded,
+                  color: AppColors.primary, size: 48),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Level Up!',
-              style: TextStyle(color: AppColors.onPrimary, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-            ),
+            Text('Level Up!',
+                style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5)),
             const SizedBox(height: 8),
-            Text('Now on level ${_game.level}', style: TextStyle(color: _textMuted, fontSize: 16)),
-            if (_currentGridSize > prevGs) ...[
+            Text('Now on level ${_game.level}',
+                style: TextStyle(color: _textMuted, fontSize: 16)),
+            if (currentGs > prevGs) ...[
               const SizedBox(height: 6),
               Text(
-                'Grid grew to ${_currentGridSize}×${_currentGridSize}!',
-                style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
+                'Grid grew to ${currentGs}×${currentGs}!',
+                style: TextStyle(
+                    color: _accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
               ),
             ],
-            const SizedBox(height: 6),
-            Text(
-              '+${_game.roundPoints(prevGs)} pts',
-              style: TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
           ],
         ),
       ),
@@ -565,29 +633,54 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 88,
-              height: 88,
+              width: 88, height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _wrong.withOpacity(0.15),
               ),
-              child: Icon(Icons.close_rounded, color: _wrong, size: 44),
+              child: Icon(Icons.timer_off_rounded, color: _wrong, size: 44),
             ),
             const SizedBox(height: 24),
+            Text('Time\'s Up!',
+                style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5)),
+            const SizedBox(height: 6),
             Text(
-              'Game Over',
-              style: TextStyle(color: AppColors.onPrimary, fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+              'You reached level ${_game.level}',
+              style: TextStyle(color: _textMuted, fontSize: 14),
             ),
             const SizedBox(height: 28),
-            MemoryMatrixStatRow(label: 'Final Score', value: '${_game.score} pts', valueColor: _accent),
+            MemoryMatrixStatRow(
+                label: 'Final Score',
+                value: '${_game.score} pts',
+                valueColor: _accent),
             const SizedBox(height: 8),
-            MemoryMatrixStatRow(label: 'Level Reached', value: '${_game.level}', valueColor: _gold),
+            MemoryMatrixStatRow(
+                label: 'Level Reached',
+                value: '${_game.level}',
+                valueColor: _gold),
             const SizedBox(height: 8),
-            MemoryMatrixStatRow(label: 'Mistakes', value: '${_game.mistakes}', valueColor: _wrong),
-            const SizedBox(height: 48),
-            _PrimaryButton(label: 'Play Again', onTap: _startGame),
+            MemoryMatrixStatRow(
+                label: 'Mistakes',
+                value: '${_game.mistakes}',
+                valueColor: _wrong),
+            const SizedBox(height: 36),
+            // Play Again resumes from the level the player reached
+            _PrimaryButton(
+              label: 'Play Again (Level ${_lastLevelReached})',
+              onTap: () => _startGame(fromLevel: _lastLevelReached),
+            ),
             const SizedBox(height: 12),
-            _SecondaryButton(label: 'Exit', onTap: () => Navigator.pop(context)),
+            _SecondaryButton(
+              label: 'Start from Level 1',
+              onTap: () => _startGame(fromLevel: 1),
+            ),
+            const SizedBox(height: 12),
+            _SecondaryButton(
+                label: 'Exit', onTap: () => Navigator.pop(context)),
           ],
         ),
       ),
@@ -596,7 +689,47 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Small private widgets  (page-specific — not reused elsewhere)
+// Game timer chip  (top-right in app bar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GameTimerChip extends StatelessWidget {
+  final int secondsLeft;
+  const _GameTimerChip({required this.secondsLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = (secondsLeft / 180).clamp(0.0, 1.0);
+    final color    = fraction > 0.4
+        ? AppColors.secondaryContainer
+        : fraction > 0.2
+            ? AppColors.primaryFixed
+            : AppColors.error;
+
+    final mins = secondsLeft ~/ 60;
+    final secs = (secondsLeft % 60).toString().padLeft(2, '0');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.timer_rounded, color: color, size: 14),
+        const SizedBox(width: 5),
+        Text(
+          '$mins:$secs',
+          style: TextStyle(
+              color: color, fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small private widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BackButton extends StatelessWidget {
@@ -605,18 +738,17 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(Icons.arrow_back_ios_new_rounded,
-          color: AppColors.onPrimary, size: 16),
-    ),
-  );
+        onTap: onTap,
+        child: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: AppColors.onPrimary, size: 16),
+        ),
+      );
 }
 
 class _SubmitButton extends StatelessWidget {
@@ -624,7 +756,8 @@ class _SubmitButton extends StatelessWidget {
   final int required;
   final VoidCallback? onTap;
 
-  const _SubmitButton({required this.selected, required this.required, required this.onTap});
+  const _SubmitButton(
+      {required this.selected, required this.required, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -636,14 +769,20 @@ class _SubmitButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: ready ? AppColors.secondaryContainer : AppColors.primaryContainer,
+          color: ready
+              ? AppColors.secondaryContainer
+              : AppColors.primaryContainer,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Center(
           child: Text(
-            ready ? 'Submit Answer' : 'Select $selected / $required cells',
+            ready
+                ? 'Submit Answer'
+                : 'Select $selected / $required cells',
             style: TextStyle(
-              color: ready ? AppColors.primary : AppColors.onPrimaryContainer,
+              color: ready
+                  ? AppColors.primary
+                  : AppColors.onPrimaryContainer,
               fontWeight: FontWeight.w700,
               fontSize: 16,
               letterSpacing: 0.2,
@@ -662,22 +801,23 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.secondaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 16),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.secondaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Center(
+            child: Text(label,
+                style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16)),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _SecondaryButton extends StatelessWidget {
@@ -687,20 +827,21 @@ class _SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: const TextStyle(color: AppColors.onPrimaryContainer, fontWeight: FontWeight.w600, fontSize: 15),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Center(
+            child: Text(label,
+                style: const TextStyle(
+                    color: AppColors.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15)),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }

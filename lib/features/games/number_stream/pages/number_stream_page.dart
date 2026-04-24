@@ -428,28 +428,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                   color: _kText, size: 16),
             ),
           ),
-          const SizedBox(width: 12),
-          // Lives
-          Row(
-            children: List.generate(3, (i) {
-              final alive = i < _game.lives;
-              return Padding(
-                padding: const EdgeInsets.only(right: 5),
-                child: AnimatedScale(
-                  scale: alive ? 1.0 : 0.65,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.elasticOut,
-                  child: Icon(
-                    alive
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_outline_rounded,
-                    color: alive ? _kWrong : _kBorder,
-                    size: 22,
-                  ),
-                ),
-              );
-            }),
-          ),
+
           const Spacer(),
           // Level badge
           Container(

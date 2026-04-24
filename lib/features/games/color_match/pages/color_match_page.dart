@@ -263,10 +263,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
             _ScoreChip(score: _game.score, streak: _game.streak),
             const SizedBox(width: 10),
           ],
-          if (isPlaying)
-            _LivesRow(lives: _game.lives)
-          else
-            const SizedBox(width: 40),
+          const SizedBox(width: 40),
         ],
       ),
     );
