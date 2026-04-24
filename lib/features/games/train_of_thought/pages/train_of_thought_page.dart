@@ -299,9 +299,14 @@ class _TOTState extends State<TrainOfThoughtPage>
     // Completing a level unlocks the next one; failing keeps the current level unlocked.
     final unlockLevel = completed ? _level + 1 : _level;
     await GameProgressService.unlockUpToLevel('train_of_thought', unlockLevel);
+    // Normalized score 0-1000: level + accuracy + completion bonus
+    final int total = _correct + _wrong;
+    final double accuracyRate = total > 0 ? _correct / total : 0.5;
+    final int completionBonus = completed ? 100 : 0;
+    final int normalizedScore = (_level * 150 + accuracyRate * 250 + completionBonus).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType: 'train_of_thought',
-      score: _correct * 100,
+      score: normalizedScore,
       timePlayedSeconds: elapsed,
       completed: completed,
       levelReached: _level,

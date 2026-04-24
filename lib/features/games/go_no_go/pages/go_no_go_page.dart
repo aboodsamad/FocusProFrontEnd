@@ -156,8 +156,12 @@ class _GoNoGoPageState extends State<GoNoGoPage> with SingleTickerProviderStateM
   Future<void> _submit() async {
     if (_submitting) return;
     setState(() => _submitting = true);
+    // Normalized score 0-1000: inhibition rate = correct holds / total hold attempts
+    final int total = _correctInhibitions + _commissionErrors;
+    final double inhibitionRate = total > 0 ? _correctInhibitions / total : 0.5;
+    final int normalizedScore = (inhibitionRate * 1000).round().clamp(0, 1000);
     await GameService.submitResult(
-      gameType: 'go_no_go', score: _score,
+      gameType: 'go_no_go', score: normalizedScore,
       timePlayedSeconds: 60, completed: true,
       levelReached: _correctInhibitions, mistakes: _commissionErrors,
     );

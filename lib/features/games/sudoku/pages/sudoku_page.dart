@@ -206,12 +206,18 @@ class _SudokuHomePageState extends State<SudokuHomePage>
     return true;
   }
 
-  /// Score = base points minus time penalty and mistake penalty, scaled by difficulty.
-  /// Floors at 100 so a completed puzzle always rewards something.
-  int _calculateScore() {
-    final base        = (1000 - mistakes * 40 - (seconds ~/ 2)).clamp(100, 1000);
-    final multiplier  = difficulty == 'Easy' ? 1.0 : difficulty == 'Medium' ? 1.5 : 2.0;
-    return (base * multiplier).round();
+  /// Normalized score 0-1000: accuracy × time efficiency × difficulty.
+  /// Not completed → small partial score based on difficulty only.
+  int _calculateNormalizedScore() {
+    if (!gameWon) {
+      // Partial credit for attempting: 0 / 100 / 150 for easy/medium/hard
+      final partial = difficulty == 'Easy' ? 0 : difficulty == 'Medium' ? 100 : 150;
+      return partial;
+    }
+    final diffMult     = difficulty == 'Easy' ? 1.0 : difficulty == 'Medium' ? 1.5 : 2.0;
+    final accuracyFact = (1.0 - mistakes * 0.1).clamp(0.2, 1.0);
+    final timeEff      = (1.0 - seconds / 1200.0).clamp(0.3, 1.0);
+    return (accuracyFact * timeEff * diffMult * 600).round().clamp(0, 1000);
   }
 
   void _onWin() {
@@ -224,7 +230,7 @@ class _SudokuHomePageState extends State<SudokuHomePage>
   Future<void> _submitResult() async {
     final result = await GameService.submitResult(
       gameType:          'sudoku',
-      score:             _calculateScore(),
+      score:             _calculateNormalizedScore(),
       timePlayedSeconds: seconds,
       completed:         gameWon,
       mistakes:          mistakes,

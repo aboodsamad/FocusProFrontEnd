@@ -168,6 +168,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   static int _bestScore = 0;
 
+  // ── 60-second session timer (no-lives system) ────────────────────────────
+  Timer?  _sessionTimer;
+  int     _sessionSecondsLeft = 60;
+
   // ── Per-card shrinking timer ─────────────────────────────────────────────
   late AnimationController _cardTimerCtrl;
   Timer?                   _cardTimeoutTimer;
@@ -217,6 +221,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     _gameOverCtrl.dispose();
     _cdCtrl.dispose();
     _cardTimeoutTimer?.cancel();
+    _sessionTimer?.cancel();
     super.dispose();
   }
 
@@ -261,6 +266,20 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   void _beginPlaying() {
     _gameStartTime = DateTime.now();
+    _sessionSecondsLeft = 60;
+    // Session timer — game ends after 60 s regardless of mistakes
+    _sessionTimer?.cancel();
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final remaining = _sessionSecondsLeft - 1;
+      if (remaining <= 0) {
+        t.cancel();
+        setState(() => _sessionSecondsLeft = 0);
+        _endGame();
+      } else {
+        setState(() => _sessionSecondsLeft = remaining);
+      }
+    });
     final firstCard = _randomCard();
     setState(() {
       _game = _game.copyWith(
@@ -335,15 +354,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
         streak:   0,
         mistakes: _game.mistakes + 1,
       ));
-      if (newLives <= 0) {
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted) _endGame();
-        });
-      } else {
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted) _nextCard();
-        });
-      }
+      // No lives system — mistakes never end the game. Session timer does.
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) _nextCard();
+      });
     }
   }
 
@@ -360,6 +374,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   }
 
   void _endGame() {
+    _sessionTimer?.cancel();
     _cardTimeoutTimer?.cancel();
     _cardTimerCtrl.stop();
     if (_game.score > _bestScore) _bestScore = _game.score;
@@ -372,11 +387,16 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
+    // Normalized score 0-1000: accuracy × difficulty × 333
+    final int total = _game.correct + _game.mistakes;
+    final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
+    final int diffLevel = _game.difficulty.index + 1; // 1/2/3
+    final int normalizedScore = (accuracyRate * diffLevel * 333).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType:          'speed_match',
-      score:             _game.score,
+      score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         false,
+      completed:         true, // session always runs to completion
       levelReached:      _game.difficulty.index + 1,
       mistakes:          _game.mistakes,
     );
