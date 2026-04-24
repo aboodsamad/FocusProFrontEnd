@@ -1278,13 +1278,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         height: 28,
                         decoration: BoxDecoration(
                           color: filled
-                              ? AppColors.secondaryFixed
+                              ? AppColors.primary
                               : AppColors.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(6),
-                          border: isToday
+                          border: isToday && !filled
                               ? Border.all(color: AppColors.secondary, width: 1.5)
                               : null,
                         ),
+                        child: filled
+                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                            : null,
                       ),
                       const SizedBox(height: 4),
                       Text(dayLabels[i], style: const TextStyle(
@@ -1358,17 +1361,15 @@ class _NavItem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          Container(
+            width: 50, height: 50,
             decoration: BoxDecoration(
               color: selected ? AppColors.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
+              shape: BoxShape.circle,
             ),
             child: Icon(icon,
                 color: selected ? Colors.white : AppColors.onSurfaceVariant,
-                size: 22),
+                size: 24),
           ),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(
