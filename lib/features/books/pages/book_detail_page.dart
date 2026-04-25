@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Directory, File;
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:capstone_front_end/core/services/auth_service.dart';
@@ -39,6 +40,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   // ── TTS ───────────────────────────────────────────────────────────────────
   AudioPlayer? _audioPlayer;
+  File? _tempAudioFile;          // temp file used on native; deleted on dispose/replace
   StreamSubscription? _durationSub;
   StreamSubscription? _positionSub;
   StreamSubscription? _playingSub;
@@ -104,6 +106,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _audioPlayer?.stop();
     _audioPlayer?.dispose();
     _audioPlayer = null;
+    // Clean up any temp file written for native playback
+    try { _tempAudioFile?.deleteSync(); } catch (_) {}
+    _tempAudioFile = null;
   }
 
   Future<void> _onAudioEnded() async {
@@ -205,12 +210,21 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     try {
       if (kIsWeb) {
-        // On Flutter Web, StreamAudioSource doesn't report duration correctly.
-        // Use a base64 data URI which the browser's audio element handles natively.
+        // Flutter Web: use base64 data URI — the browser handles it natively
+        // and correctly reports duration, unlike StreamAudioSource on web.
         final base64Audio = base64Encode(bytes);
-        await player.setUrl('data:audio/mpeg;base64,\$base64Audio');
+        await player.setUrl('data:audio/mpeg;base64,$base64Audio');
       } else {
-        await player.setAudioSource(_BytesAudioSource(bytes));
+        // Android / iOS: write bytes to a real temp file so that ExoPlayer /
+        // AVPlayer can seek the file and report the correct duration.
+        // StreamAudioSource is served over a local HTTP stream which often
+        // causes ExoPlayer to report duration = null (shows as 0:00).
+        final tempDir  = Directory.systemTemp;
+        final tempFile = File(
+            '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3');
+        await tempFile.writeAsBytes(bytes, flush: true);
+        _tempAudioFile = tempFile;
+        await player.setAudioSource(AudioSource.uri(Uri.file(tempFile.path)));
       }
       await player.setSpeed(_ttsSpeed);
       await player.play();

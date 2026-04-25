@@ -397,6 +397,13 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     final double accuracyFactor = (1.0 - (_game.mistakes * 0.08).clamp(0.0, 1.0));
     final int diffLevel = _game.difficulty.index + 1; // 1/2/3
     final int normalizedScore = (_game.level * 60 + accuracyFactor * diffLevel * 200).round().clamp(0, 1000);
+
+    // Local focus-point calculation — used as a guaranteed fallback so the
+    // player always earns something even if the backend returns 0 or fails.
+    // Scale: ~1 pt at level 1 easy, up to ~15 pts at level 8+ hard.
+    final double localFocusPoints =
+        (normalizedScore / 60.0 * accuracyFactor).clamp(1.0, 15.0);
+
     final result = await GameService.submitResult(
       gameType:          'pattern_trail',
       score:             normalizedScore,
@@ -405,10 +412,17 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       levelReached:      _game.level,
       mistakes:          _game.mistakes,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Pattern Trail');
-    }
+
+    if (!mounted) return;
+
+    // Use the backend's value if positive; otherwise fall back to locally
+    // computed points so the daily score is always updated.
+    final double pointsToAdd = (result != null && result.focusScoreGained > 0)
+        ? result.focusScoreGained
+        : localFocusPoints;
+
+    context.read<DailyScoreProvider>().addPoints(pointsToAdd);
+    ScoreGainToast.show(context, pointsToAdd, source: 'Pattern Trail');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
