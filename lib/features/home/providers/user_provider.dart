@@ -88,7 +88,7 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();       // widgets rebuild with fresh data
       // Sync level progress from backend (merge – local values are never overwritten
       // by lower remote values, so this is safe to call anytime).
-      GameProgressService.syncFromBackend();
+      await GameProgressService.syncFromBackend();
     } else if (status == 401 || status == 403) {
       // Token is expired or invalid — log out so routing sends user to login
       await logout();
