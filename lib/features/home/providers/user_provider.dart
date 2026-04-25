@@ -123,7 +123,20 @@ class UserProvider extends ChangeNotifier {
   /// Clear everything on logout.
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    // Preserve game-level progress so the roadmap survives logout/login.
+    // syncFromBackend() on login will merge-in backend values (taking max),
+    // so if the backend has a higher level it will still win.
+    final Map<String, int> savedLevels = {};
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith('game_level_')) {
+        final val = prefs.getInt(key);
+        if (val != null) savedLevels[key] = val;
+      }
+    }
     await prefs.clear();
+    for (final entry in savedLevels.entries) {
+      await prefs.setInt(entry.key, entry.value);
+    }
     _isLoggedIn = false;
     _name = '';
     _username = '';
