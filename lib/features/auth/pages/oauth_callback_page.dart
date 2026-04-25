@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../features/home/services/user_service.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../../../features/home/pages/home_page.dart';
+import '../../../core/providers/daily_score_provider.dart';
 import '../../../features/diagnostic/pages/diagnostic_page.dart';
 import '../widgets/complete_profile_dialog.dart';
 
@@ -106,6 +107,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       // Notify the provider so the rest of the app sees the user as logged in.
       await Provider.of<UserProvider>(context, listen: false).reloadAfterLogin();
       print('[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}');
+      await Provider.of<DailyScoreProvider>(context, listen: false).init();
 
       if (!mounted) return;
 
