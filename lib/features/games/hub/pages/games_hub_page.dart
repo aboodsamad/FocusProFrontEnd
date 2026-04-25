@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
@@ -65,7 +66,13 @@ class _GamesHubPageState extends State<GamesHubPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: const AppBottomNav(current: NavTab.games),
       body: Column(
@@ -89,7 +96,7 @@ class _GamesHubPageState extends State<GamesHubPage>
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildHeader() {

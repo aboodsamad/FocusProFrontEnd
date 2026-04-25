@@ -620,7 +620,13 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: const AppBottomNav(current: NavTab.rooms),
       body: SafeArea(
@@ -697,7 +703,7 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
           ),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _buildAppBar() {
