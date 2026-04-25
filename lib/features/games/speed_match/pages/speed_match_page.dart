@@ -403,7 +403,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
       score:             normalizedScore,
       timePlayedSeconds: timePlayed,
       completed:         true,
-      levelReached:      widget.startLevel,
+      levelReached:      widget.startLevel + 1,
       mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {

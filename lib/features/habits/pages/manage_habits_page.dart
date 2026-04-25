@@ -89,7 +89,13 @@ class ManageHabitsPage extends StatelessWidget {
   // ── build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: const AppBottomNav(current: NavTab.habits),
       body: Consumer<HabitProvider>(
@@ -189,7 +195,7 @@ class ManageHabitsPage extends StatelessWidget {
           );
         },
       ),
-    );
+    ));
   }
 }
 

@@ -207,20 +207,27 @@ class _ColorMatchPageState extends State<ColorMatchPage>
         : 0;
     final int total = _game.correct + _game.mistakes;
     final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
+    // Higher base score so the backend returns meaningful focus points.
+    // Formula: level bonus + accuracy bonus, scaled to 100-1000 range.
     final int normalizedScore =
-        (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
+        (widget.startLevel * 80 + accuracyRate * 500).round().clamp(100, 1000);
+    // Local fallback in case the backend is unreachable or returns 0.
+    final double localFocusPoints =
+        (widget.startLevel * 0.3 + accuracyRate * 2.5).clamp(1.0, 8.0);
     final result = await GameService.submitResult(
       gameType:          'color_match',
       score:             normalizedScore,
       timePlayedSeconds: timePlayed,
       completed:         true,
-      levelReached:      widget.startLevel,
+      levelReached:      widget.startLevel + 1,
       mistakes:          _game.mistakes,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Color Match');
-    }
+    if (!mounted) return;
+    final double pointsToAdd = (result != null && result.focusScoreGained > 0)
+        ? result.focusScoreGained
+        : localFocusPoints;
+    context.read<DailyScoreProvider>().addPoints(pointsToAdd);
+    ScoreGainToast.show(context, pointsToAdd, source: 'Color Match');
   }
 
   // ─────────────────────────────────────────────────────────────────────────

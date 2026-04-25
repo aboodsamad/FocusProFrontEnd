@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -236,7 +237,13 @@ class _ProfilePageState extends State<ProfilePage>
     final user = context.watch<UserProvider>();
     final score = user.longTermScore > 1.0 ? user.longTermScore : 0.0;
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.surface,
       bottomNavigationBar: const AppBottomNav(current: NavTab.profile),
       body: SafeArea(
@@ -260,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage>
           ),
         ),
       ),
-    );
+    ));
   }
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
