@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/providers/daily_score_provider.dart';
 import '../../../../core/widgets/score_gain_toast.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 import '../models/color_match_model.dart';
 
@@ -28,7 +28,8 @@ const _kMuted  = AppColors.onSurfaceVariant;
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ColorMatchPage extends StatefulWidget {
-  const ColorMatchPage({super.key});
+  final int startLevel;
+  const ColorMatchPage({super.key, this.startLevel = 1});
 
   @override
   State<ColorMatchPage> createState() => _ColorMatchPageState();
@@ -44,40 +45,40 @@ class _ColorMatchPageState extends State<ColorMatchPage>
   bool _feedbackShowing = false;
   int? _tappedIndex;
   bool _lastTapCorrect = false;
+  bool _resultSubmitted = false;
 
-  // In-session best score (persists while app is running)
   static int _bestScore = 0;
 
   // ── Animation controllers ───────────────────────────────────────────────────
-  late AnimationController _cdCtrl;        // countdown digit pulse
-  late AnimationController _gameOverCtrl;  // game over fade-in
-  late AnimationController _wordCtrl;      // word entrance (unused directly — AnimatedSwitcher handles it)
+  late AnimationController _cdCtrl;
+  late AnimationController _levelCompleteCtrl;
+  late AnimationController _wordCtrl;
   late Animation<double>   _cdScale;
-  late Animation<double>   _gameOverFade;
+  late Animation<double>   _levelCompleteFade;
 
   @override
   void initState() {
     super.initState();
-    _game = ColorMatchState.initial(ColorMatchDifficulty.medium);
+    _game = ColorMatchState.initial(widget.startLevel);
 
     _cdCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 700));
-    _gameOverCtrl = AnimationController(
+    _levelCompleteCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 450));
     _wordCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 300));
 
     _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(
         CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
-    _gameOverFade = CurvedAnimation(
-        parent: _gameOverCtrl, curve: Curves.easeOut);
+    _levelCompleteFade = CurvedAnimation(
+        parent: _levelCompleteCtrl, curve: Curves.easeOut);
   }
 
   @override
   void dispose() {
     _gameTimer?.cancel();
     _cdCtrl.dispose();
-    _gameOverCtrl.dispose();
+    _levelCompleteCtrl.dispose();
     _wordCtrl.dispose();
     super.dispose();
   }
@@ -89,8 +90,9 @@ class _ColorMatchPageState extends State<ColorMatchPage>
   void _startGame() {
     HapticFeedback.mediumImpact();
     _gameTimer?.cancel();
+    _resultSubmitted = false;
     setState(() {
-      _game = ColorMatchState.initial(_game.difficulty)
+      _game = ColorMatchState.initial(widget.startLevel)
           .copyWith(phase: ColorMatchPhase.countdown, countdown: 3);
       _feedbackShowing = false;
       _tappedIndex = null;
@@ -121,7 +123,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     if (remaining <= 0) {
       t.cancel();
       setState(() => _game = _game.copyWith(timeLeft: 0));
-      _endGame(timerExpired: true);
+      _endGame();
     } else {
       setState(() => _game = _game.copyWith(timeLeft: remaining));
     }
@@ -132,7 +134,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     setState(() {
       _game = _game.copyWith(
         phase: ColorMatchPhase.playing,
-        round: generateRound(_game.difficulty),
+        round: generateRound(_game.level),
       );
       _feedbackShowing = false;
       _tappedIndex = null;
@@ -156,7 +158,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
 
     if (correct) {
       final newStreak = _game.streak + 1;
-      final points    = 100 + (newStreak - 1) * 15; // streak bonus
+      final points    = 100 + (newStreak - 1) * 15;
       setState(() {
         _game = _game.copyWith(
           score:      _game.score + points,
@@ -170,44 +172,50 @@ class _ColorMatchPageState extends State<ColorMatchPage>
       });
     } else {
       HapticFeedback.heavyImpact();
-      final newLives = _game.lives - 1;
       setState(() => _game = _game.copyWith(
-        lives:    newLives,
         streak:   0,
         mistakes: _game.mistakes + 1,
       ));
-      // No lives system — mistakes accumulate but never end the game early.
-      // The session timer is the only thing that ends the game.
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _nextRound();
       });
     }
   }
 
-  void _endGame({required bool timerExpired}) {
+  void _endGame() {
     _gameTimer?.cancel();
     if (_game.score > _bestScore) _bestScore = _game.score;
-    setState(() => _game = _game.copyWith(phase: ColorMatchPhase.gameOver));
-    _gameOverCtrl.forward(from: 0);
-    _submitResult(timerExpired: timerExpired);
+    setState(() => _game = _game.copyWith(phase: ColorMatchPhase.levelComplete));
+    _levelCompleteCtrl.forward(from: 0);
+    _doLevelComplete();
   }
 
-  Future<void> _submitResult({bool timerExpired = false}) async {
+  Future<void> _doLevelComplete() async {
+    if (!_resultSubmitted) {
+      _resultSubmitted = true;
+      final nextLevel = widget.startLevel + 1;
+      await GameProgressService.unlockUpToLevel('color_match', nextLevel);
+      await _submitResult();
+    }
+    await Future.delayed(const Duration(milliseconds: 2400));
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _submitResult() async {
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
-    // Normalized score 0-1000: accuracy × difficulty × 333
     final int total = _game.correct + _game.mistakes;
     final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
-    final int diffLevel = _game.difficulty.index + 1; // 1/2/3
-    final int normalizedScore = (accuracyRate * diffLevel * 333).round().clamp(0, 1000);
+    final int normalizedScore =
+        (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
     final result = await GameService.submitResult(
-      gameType:         'color_match',
-      score:            normalizedScore,
+      gameType:          'color_match',
+      score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:        timerExpired,
-      levelReached:     _game.difficulty.index + 1,
-      mistakes:         _game.mistakes,
+      completed:         true,
+      levelReached:      widget.startLevel,
+      mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {
       context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
@@ -225,8 +233,9 @@ class _ColorMatchPageState extends State<ColorMatchPage>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (_game.phase == ColorMatchPhase.playing) {
+        if (_game.phase == ColorMatchPhase.playing && !_resultSubmitted) {
           _gameTimer?.cancel();
+          _resultSubmitted = true;
           await _submitResult();
         }
         if (mounted) Navigator.pop(context);
@@ -257,7 +266,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Row(
         children: [
-          _BackButton(onTap: () => Navigator.pop(context)),
+          _BackButton(onTap: () => Navigator.maybePop(context)),
           const Spacer(),
           if (isPlaying) ...[
             _ScoreChip(score: _game.score, streak: _game.streak),
@@ -284,7 +293,8 @@ class _ColorMatchPageState extends State<ColorMatchPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${_game.timeLeft}s',
-                  style: TextStyle(color: barColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: barColor, fontSize: 12,
+                      fontWeight: FontWeight.w600)),
               Text('${_game.totalTimer}s',
                   style: const TextStyle(color: _kMuted, fontSize: 12)),
             ],
@@ -318,19 +328,20 @@ class _ColorMatchPageState extends State<ColorMatchPage>
         return _buildCountdownScreen();
       case ColorMatchPhase.playing:
         return _buildPlayScreen();
-      case ColorMatchPhase.gameOver:
-        return FadeTransition(opacity: _gameOverFade, child: _buildGameOverScreen());
+      case ColorMatchPhase.levelComplete:
+        return FadeTransition(
+            opacity: _levelCompleteFade, child: _buildLevelCompleteScreen());
     }
   }
 
   // ── Idle screen ─────────────────────────────────────────────────────────────
 
   Widget _buildIdleScreen() {
+    final timer = ColorMatchState.timerForLevel(widget.startLevel);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
-          // Icon glow
           Container(
             width: 90, height: 90,
             decoration: BoxDecoration(
@@ -374,7 +385,8 @@ class _ColorMatchPageState extends State<ColorMatchPage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('→ tap', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
+                    Text('→ tap',
+                        style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -391,7 +403,7 @@ class _ColorMatchPageState extends State<ColorMatchPage>
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           // Best score badge
           if (_bestScore > 0) ...[
@@ -402,70 +414,27 @@ class _ColorMatchPageState extends State<ColorMatchPage>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _kGold.withOpacity(0.3)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
-                  const SizedBox(width: 6),
-                  Text('Best: $_bestScore pts',
-                      style: const TextStyle(color: _kGold, fontSize: 13,
-                          fontWeight: FontWeight.w600)),
-                ],
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
+                const SizedBox(width: 6),
+                Text('Best: $_bestScore pts',
+                    style: const TextStyle(color: _kGold, fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ]),
             ),
             const SizedBox(height: 20),
           ] else
             const SizedBox(height: 4),
 
-          // Difficulty selector
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Difficulty',
-                style: TextStyle(color: AppColors.onSurface, fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 10),
+          // Level info chips
           Row(
-            children: ColorMatchDifficulty.values.map((d) {
-              final active = _game.difficulty == d;
-              final label  = d == ColorMatchDifficulty.easy   ? 'Easy'
-                           : d == ColorMatchDifficulty.medium ? 'Medium'
-                           : 'Hard';
-              final timer  = '${ColorMatchState.timerForDifficulty(d)}s';
-              final col    = d == ColorMatchDifficulty.easy   ? _kAccent
-                           : d == ColorMatchDifficulty.medium ? _kGold
-                           : _kWrong;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                      right: d != ColorMatchDifficulty.hard ? 8 : 0),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _game = _game.copyWith(
-                      difficulty: d,
-                      timeLeft: ColorMatchState.timerForDifficulty(d),
-                    )),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: active ? col.withOpacity(0.1) : AppColors.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(children: [
-                        Text(label, style: TextStyle(
-                            color: active ? col : AppColors.onSurfaceVariant,
-                            fontWeight: FontWeight.w700, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text(timer, style: TextStyle(
-                            color: active ? col.withOpacity(0.65)
-                                         : AppColors.onSurfaceVariant.withOpacity(0.5),
-                            fontSize: 10)),
-                      ]),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _InfoChip(icon: Icons.bar_chart_rounded,
+                  label: 'Level ${widget.startLevel}'),
+              const SizedBox(width: 10),
+              _InfoChip(icon: Icons.timer_rounded, label: '${timer}s'),
+            ],
           ),
           const SizedBox(height: 30),
 
@@ -481,7 +450,8 @@ class _ColorMatchPageState extends State<ColorMatchPage>
               ),
               child: const Center(
                 child: Text('Start',
-                    style: TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.w700,
+                    style: TextStyle(color: AppColors.onPrimary,
+                        fontWeight: FontWeight.w700,
                         fontSize: 17, letterSpacing: 0.6)),
               ),
             ),
@@ -523,15 +493,11 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     return Column(
       children: [
         const SizedBox(height: 16),
-
-        // Subtle instruction
         Text(
           'Tap the INK color',
           style: TextStyle(color: _kMuted, fontSize: 13,
               fontWeight: FontWeight.w500, letterSpacing: 0.3),
         ),
-
-        // ── Word display ──────────────────────────────────────────────────────
         Expanded(
           child: Center(
             child: AnimatedSwitcher(
@@ -561,8 +527,6 @@ class _ColorMatchPageState extends State<ColorMatchPage>
             ),
           ),
         ),
-
-        // ── Color buttons (2 × 2) ─────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
           child: Column(
@@ -590,11 +554,10 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     final isTapped       = _feedbackShowing && _tappedIndex == index;
     final isCorrectEntry = entry.name == round.inkColor.name;
 
-    // Buttons are always neutral — no color hint. Only feedback reveals state.
-    Color bgColor       = AppColors.surfaceContainerLow;
-    Color borderColor   = AppColors.outlineVariant;
-    Color labelColor    = AppColors.onSurface;
-    double borderWidth  = 1.5;
+    Color bgColor      = AppColors.surfaceContainerLow;
+    Color borderColor  = AppColors.outlineVariant;
+    Color labelColor   = AppColors.onSurface;
+    double borderWidth = 1.5;
 
     if (_feedbackShowing) {
       if (isTapped && _lastTapCorrect) {
@@ -608,7 +571,6 @@ class _ColorMatchPageState extends State<ColorMatchPage>
         labelColor  = _kWrong;
         borderWidth = 2.5;
       } else if (!_lastTapCorrect && isCorrectEntry) {
-        // Hint: reveal the correct answer after a wrong tap
         bgColor     = _kAccent.withOpacity(0.12);
         borderColor = _kAccent.withOpacity(0.70);
         labelColor  = _kAccent;
@@ -643,10 +605,10 @@ class _ColorMatchPageState extends State<ColorMatchPage>
     );
   }
 
-  // ── Game over screen ─────────────────────────────────────────────────────────
+  // ── Level complete screen ────────────────────────────────────────────────────
 
-  Widget _buildGameOverScreen() {
-    final isNewBest = _game.score > 0 && _game.score >= _bestScore;
+  Widget _buildLevelCompleteScreen() {
+    final nextLevel = widget.startLevel + 1;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -657,44 +619,37 @@ class _ColorMatchPageState extends State<ColorMatchPage>
               width: 90, height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _kWrong.withOpacity(0.1),
-                border: Border.all(color: _kWrong.withOpacity(0.3), width: 1.5),
+                color: _kAccent.withOpacity(0.12),
+                border: Border.all(color: _kAccent.withOpacity(0.4), width: 1.5),
               ),
-              child: const Icon(Icons.palette_outlined, color: _kWrong, size: 42),
+              child: const Icon(Icons.check_rounded, color: _kAccent, size: 44),
             ),
             const SizedBox(height: 20),
-            const Text('Game Over',
-                style: TextStyle(color: AppColors.onSurface, fontSize: 32,
+            const Text('Level Complete!',
+                style: TextStyle(color: AppColors.onSurface, fontSize: 30,
                     fontWeight: FontWeight.w700, letterSpacing: -0.5)),
-            if (isNewBest) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _kGold.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _kGold.withOpacity(0.4)),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.emoji_events_rounded, color: _kGold, size: 14),
-                  SizedBox(width: 5),
-                  Text('New Best!', style: TextStyle(
-                      color: _kGold, fontSize: 12, fontWeight: FontWeight.w700)),
-                ]),
-              ),
+            const SizedBox(height: 8),
+            Text('Level ${widget.startLevel} cleared',
+                style: const TextStyle(color: _kMuted, fontSize: 15)),
+            if (nextLevel <= 10) ...[
+              const SizedBox(height: 4),
+              Text('Unlocked Level $nextLevel!',
+                  style: const TextStyle(color: _kAccent, fontSize: 15,
+                      fontWeight: FontWeight.w600)),
             ],
-            const SizedBox(height: 28),
-            _StatRow(label: 'Final Score',  value: '${_game.score} pts',  valueColor: _kAccent),
+            const SizedBox(height: 32),
+            _StatRow(label: 'Score',
+                value: '${_game.score} pts', valueColor: _kAccent),
             const SizedBox(height: 8),
-            _StatRow(label: 'Best Streak',  value: '×${_game.bestStreak}', valueColor: _kGold),
+            _StatRow(label: 'Best Streak',
+                value: '×${_game.bestStreak}', valueColor: _kGold),
             const SizedBox(height: 8),
-            _StatRow(label: 'Accuracy',     value: '${_game.accuracy}%',  valueColor: const Color(0xFF818CF8)),
+            _StatRow(label: 'Accuracy',
+                value: '${_game.accuracy}%',
+                valueColor: const Color(0xFF818CF8)),
             const SizedBox(height: 8),
-            _StatRow(label: 'Mistakes',     value: '${_game.mistakes}',   valueColor: _kWrong),
-            const SizedBox(height: 44),
-            _PrimaryButton(label: 'Play Again', onTap: _startGame),
-            const SizedBox(height: 12),
-            _SecondaryButton(label: 'Exit', onTap: () => Navigator.pop(context)),
+            _StatRow(label: 'Mistakes',
+                value: '${_game.mistakes}', valueColor: _kWrong),
           ],
         ),
       ),
@@ -762,21 +717,26 @@ class _ScoreChip extends StatelessWidget {
       );
 }
 
-class _LivesRow extends StatelessWidget {
-  final int lives;
-  const _LivesRow({required this.lives});
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  const _InfoChip({required this.icon, required this.label});
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(3, (i) => Padding(
-              padding: const EdgeInsets.only(left: 3),
-              child: Icon(
-                i < lives ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: i < lives ? _kWrong : AppColors.outlineVariant,
-                size: 18,
-              ),
-            )),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: _kAccent, size: 14),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(color: AppColors.onSurface,
+                  fontSize: 13, fontWeight: FontWeight.w600)),
+        ]),
       );
 }
 
@@ -784,7 +744,8 @@ class _StatRow extends StatelessWidget {
   final String label;
   final String value;
   final Color  valueColor;
-  const _StatRow({required this.label, required this.value, required this.valueColor});
+  const _StatRow(
+      {required this.label, required this.value, required this.valueColor});
 
   @override
   Widget build(BuildContext context) => Row(
@@ -796,49 +757,5 @@ class _StatRow extends StatelessWidget {
               style: TextStyle(color: valueColor,
                   fontSize: 14, fontWeight: FontWeight.w700)),
         ],
-      );
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _PrimaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Center(child: Text(label,
-              style: const TextStyle(color: AppColors.onPrimary,
-                  fontWeight: FontWeight.w700, fontSize: 16))),
-        ),
-      );
-}
-
-class _SecondaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _SecondaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Center(child: Text(label,
-              style: const TextStyle(color: AppColors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600, fontSize: 15))),
-        ),
       );
 }

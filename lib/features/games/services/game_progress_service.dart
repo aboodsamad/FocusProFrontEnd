@@ -21,7 +21,9 @@ class GameProgressService {
     'memory_matrix': 10,
     'number_stream': 10,
     'pattern_trail': 10,
-    'train_of_thought': 5,
+    'train_of_thought': 10,
+    'color_match': 10,
+    'speed_match': 10,
   };
 
   static bool hasRoadmap(String gameId) => _totalLevels.containsKey(gameId);

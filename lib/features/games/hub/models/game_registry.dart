@@ -190,9 +190,9 @@ class GameRegistry {
       case 'train_of_thought':
         return const TrainOfThoughtPage();
       case 'color_match':
-        return const ColorMatchPage();
+        return const ColorMatchPage(startLevel: 1);
       case 'speed_match':
-        return const SpeedMatchPage();
+        return const SpeedMatchPage(startLevel: 1);
       case 'pattern_trail':
         return const PatternTrailPage();
       case 'visual_nback':
@@ -218,6 +218,10 @@ class GameRegistry {
         return TrainOfThoughtPage(startLevel: startLevel);
       case 'pattern_trail':
         return PatternTrailPage(startLevel: startLevel);
+      case 'color_match':
+        return ColorMatchPage(startLevel: startLevel);
+      case 'speed_match':
+        return SpeedMatchPage(startLevel: startLevel);
       default:
         return null;
     }

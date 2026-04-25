@@ -8,9 +8,7 @@ import 'package:flutter/material.dart';
 // Enums
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum ColorMatchPhase { idle, countdown, playing, gameOver }
-
-enum ColorMatchDifficulty { easy, medium, hard }
+enum ColorMatchPhase { idle, countdown, playing, levelComplete }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Color entry
@@ -36,7 +34,6 @@ const kColorEntries = [
 // Round
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// One question the player must answer.
 class ColorMatchRound {
   /// The text rendered on screen (e.g. "RED").
   final String word;
@@ -53,7 +50,6 @@ class ColorMatchRound {
     required this.choices,
   });
 
-  /// True when the word text and ink colour are the same — easier to answer.
   bool get isCongruent => word == inkColor.name;
 }
 
@@ -63,22 +59,20 @@ class ColorMatchRound {
 
 class ColorMatchState {
   final ColorMatchPhase phase;
-  final ColorMatchDifficulty difficulty;
+  final int level;
   final int score;
-  final int lives;
   final int streak;
   final int bestStreak;
-  final int timeLeft;   // seconds remaining this game
-  final int countdown;  // 3-2-1 before game starts
+  final int timeLeft;
+  final int countdown;
   final int mistakes;
-  final int correct;    // total correct answers this game
+  final int correct;
   final ColorMatchRound? round;
 
   const ColorMatchState({
     required this.phase,
-    required this.difficulty,
+    required this.level,
     required this.score,
-    required this.lives,
     required this.streak,
     required this.bestStreak,
     required this.timeLeft,
@@ -88,34 +82,31 @@ class ColorMatchState {
     this.round,
   });
 
-  factory ColorMatchState.initial(ColorMatchDifficulty difficulty) =>
-      ColorMatchState(
-        phase:      ColorMatchPhase.idle,
-        difficulty: difficulty,
-        score:      0,
-        lives:      3,
-        streak:     0,
-        bestStreak: 0,
-        timeLeft:   timerForDifficulty(difficulty),
-        countdown:  3,
-        mistakes:   0,
-        correct:    0,
-      );
+  factory ColorMatchState.initial(int level) => ColorMatchState(
+    phase:      ColorMatchPhase.idle,
+    level:      level,
+    score:      0,
+    streak:     0,
+    bestStreak: 0,
+    timeLeft:   timerForLevel(level),
+    countdown:  3,
+    mistakes:   0,
+    correct:    0,
+  );
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  static int timerForDifficulty(ColorMatchDifficulty d) {
-    switch (d) {
-      case ColorMatchDifficulty.easy:   return 60;
-      case ColorMatchDifficulty.medium: return 45;
-      case ColorMatchDifficulty.hard:   return 30;
-    }
-  }
+  /// Session duration in seconds: 60s at level 1, decreasing by 3s per level, min 30s.
+  static int timerForLevel(int level) =>
+      (60 - (level - 1) * 3).clamp(30, 60);
 
-  /// Total timer for this difficulty (used to compute progress bar fraction).
-  int get totalTimer => timerForDifficulty(difficulty);
+  /// Fraction of rounds that are congruent (word == ink) — easier.
+  /// Starts at 40 % at level 1 and drops to 0 % by level 11.
+  static double congruencyRateForLevel(int level) =>
+      (0.40 - (level - 1) * 0.04).clamp(0.0, 0.40);
 
-  /// Accuracy percentage [0–100].
+  int get totalTimer => timerForLevel(level);
+
   int get accuracy {
     final total = correct + mistakes;
     if (total == 0) return 0;
@@ -123,24 +114,22 @@ class ColorMatchState {
   }
 
   ColorMatchState copyWith({
-    ColorMatchPhase?     phase,
-    ColorMatchDifficulty? difficulty,
-    int?                 score,
-    int?                 lives,
-    int?                 streak,
-    int?                 bestStreak,
-    int?                 timeLeft,
-    int?                 countdown,
-    int?                 mistakes,
-    int?                 correct,
-    ColorMatchRound?     round,
-    bool                 clearRound = false,
+    ColorMatchPhase? phase,
+    int?             level,
+    int?             score,
+    int?             streak,
+    int?             bestStreak,
+    int?             timeLeft,
+    int?             countdown,
+    int?             mistakes,
+    int?             correct,
+    ColorMatchRound? round,
+    bool             clearRound = false,
   }) =>
       ColorMatchState(
         phase:      phase      ?? this.phase,
-        difficulty: difficulty ?? this.difficulty,
+        level:      level      ?? this.level,
         score:      score      ?? this.score,
-        lives:      lives      ?? this.lives,
         streak:     streak     ?? this.streak,
         bestStreak: bestStreak ?? this.bestStreak,
         timeLeft:   timeLeft   ?? this.timeLeft,
@@ -155,24 +144,20 @@ class ColorMatchState {
 // Round generator
 // ─────────────────────────────────────────────────────────────────────────────
 
-ColorMatchRound generateRound(ColorMatchDifficulty difficulty) {
+ColorMatchRound generateRound(int level) {
   final rng = Random();
 
-  // Pick the word (semantic meaning).
   final wordEntry = kColorEntries[rng.nextInt(kColorEntries.length)];
 
-  // Pick the ink colour (what the player must tap).
   late ColorEntry inkColor;
-  if (difficulty == ColorMatchDifficulty.easy && rng.nextDouble() < 0.40) {
-    // 40 % congruent on Easy — matching word and ink → easier
+  final congruencyRate = ColorMatchState.congruencyRateForLevel(level);
+  if (congruencyRate > 0 && rng.nextDouble() < congruencyRate) {
     inkColor = wordEntry;
   } else {
-    // Medium / Hard: always incongruent (the Stroop conflict).
     final others = kColorEntries.where((c) => c.name != wordEntry.name).toList();
     inkColor = others[rng.nextInt(others.length)];
   }
 
-  // Build 4 choices: the correct ink colour + 3 random distractors.
   final pool = List<ColorEntry>.from(kColorEntries)
     ..removeWhere((c) => c.name == inkColor.name)
     ..shuffle(rng);

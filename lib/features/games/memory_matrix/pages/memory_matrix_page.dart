@@ -16,7 +16,7 @@ import '../widgets/memory_matrix_header.dart';
 import '../widgets/memory_matrix_idle_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MemoryMatrixPage
+// MemoryMatrixPage  (one level per session)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MemoryMatrixPage extends StatefulWidget {
@@ -37,17 +37,14 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   static const Color _wrong     = AppColors.error;
   static const Color _textMuted = AppColors.onPrimaryContainer;
 
-  // ── Persisted across sessions ───────────────────────────────────────────────
-  /// Level the player reached in their last game — "Play Again" resumes here.
-  static int _lastLevelReached = 1;
-
   // ── Game state ──────────────────────────────────────────────────────────────
   late MemoryMatrixState _game;
   DateTime? _gameStartTime;
+  bool _resultSubmitted = false;
 
-  // ── Game-wide timer (3 minutes) ────────────────────────────────────────────
-  Timer? _gameTimer;
-  int    _gameSecondsLeft = 180;
+  // ── Per-level timer (120s at level 1, scaling down) ────────────────────────
+  Timer? _levelTimer;
+  int    _levelSecondsLeft = 120;
 
   // ── Per-matrix input timer ─────────────────────────────────────────────────
   Timer? _inputTimer;
@@ -83,7 +80,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   @override
   void dispose() {
     _inputTimer?.cancel();
-    _gameTimer?.cancel();
+    _levelTimer?.cancel();
     _fadeCtrl.dispose();
     _scaleCtrl.dispose();
     for (final c in _cellCtrl.values) c.dispose();
@@ -126,7 +123,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       if (remaining <= 0) {
         timer.cancel();
         setState(() => _game = _game.copyWith(timeLeft: 0));
-        _submitAnswer(); // auto-submit (time's up = wrong)
+        _submitAnswer();
       } else {
         setState(() => _game = _game.copyWith(timeLeft: remaining));
       }
@@ -138,54 +135,55 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     _inputTimer = null;
   }
 
-  // ── Game-wide timer ────────────────────────────────────────────────────────
+  // ── Level timer ────────────────────────────────────────────────────────────
 
-  void _startGameTimer() {
-    _gameTimer?.cancel();
-    _gameSecondsLeft = 180;
+  int _levelTimerSeconds() => (120 - (widget.startLevel - 1) * 5).clamp(60, 120);
 
-    _gameTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+  void _startLevelTimer() {
+    _levelTimer?.cancel();
+    _levelSecondsLeft = _levelTimerSeconds();
+
+    _levelTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
-      final remaining = _gameSecondsLeft - 1;
+      final remaining = _levelSecondsLeft - 1;
       if (remaining <= 0) {
         t.cancel();
         _cancelInputTimer();
         setState(() {
-          _gameSecondsLeft = 0;
+          _levelSecondsLeft = 0;
           _game = _game.copyWith(
-            phase:           MemoryMatrixPhase.gameOver,
+            phase:            MemoryMatrixPhase.gameOver,
             highlightedCells: {},
           );
         });
         _fadeCtrl.forward(from: 0.0);
-        _lastLevelReached = _game.level;
         _submitGameResult();
       } else {
-        setState(() => _gameSecondsLeft = remaining);
+        setState(() => _levelSecondsLeft = remaining);
       }
     });
   }
 
   // ── Game flow ──────────────────────────────────────────────────────────────
 
-  void _startGame({int? fromLevel}) {
+  void _startGame() {
     HapticFeedback.mediumImpact();
     _cancelInputTimer();
-    _gameTimer?.cancel();
+    _levelTimer?.cancel();
+    _resultSubmitted = false;
     _gameStartTime = DateTime.now();
 
-    final startLevel = fromLevel ?? 1;
-    final gs = MemoryMatrixState.gridSizeForLevel(startLevel);
+    final gs = MemoryMatrixState.gridSizeForLevel(widget.startLevel);
     _ensureCellControllers(gs);
 
     setState(() {
       _game = MemoryMatrixState.initial(gs).copyWith(
-        level: startLevel,
+        level: widget.startLevel,
         phase: MemoryMatrixPhase.countdown,
       );
     });
 
-    _startGameTimer();
+    _startLevelTimer();
     _runCountdown();
   }
 
@@ -206,11 +204,11 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
     setState(() {
       _game = _game.copyWith(
-        phase:           MemoryMatrixPhase.showing,
-        pattern:         pattern,
-        playerInput:     List.generate(gs, (_) => List.filled(gs, false)),
+        phase:            MemoryMatrixPhase.showing,
+        pattern:          pattern,
+        playerInput:      List.generate(gs, (_) => List.filled(gs, false)),
         highlightedCells: {},
-        timeLeft:        inputSecs,
+        timeLeft:         inputSecs,
       );
     });
     _showPattern(gs);
@@ -283,7 +281,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     _cancelInputTimer();
     HapticFeedback.mediumImpact();
 
-    final gs       = _currentGridSize;
+    final gs        = _currentGridSize;
     final revealSet = <int>{};
     bool allCorrect = true;
 
@@ -302,7 +300,6 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
     for (final ctrl in _cellCtrl.values) ctrl.reset();
 
-    // ── Award points if correct ───────────────────────────────────────────────
     int newScore    = _game.score;
     int newMistakes = _game.mistakes;
     if (allCorrect) {
@@ -313,36 +310,37 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       HapticFeedback.vibrate();
     }
 
-    // ── Advance matrix counter ────────────────────────────────────────────────
     final newMatricesInLevel = _game.matricesInLevel + 1;
     final levelComplete      = newMatricesInLevel >= MemoryMatrixState.matricesPerLevel;
 
     if (levelComplete) {
-      // Level up: advance to next level, reset matrix counter
-      final newLevel = _game.level + 1;
-      final newGs    = MemoryMatrixState.gridSizeForLevel(newLevel);
-      _ensureCellControllers(newGs);
+      // Level complete — unlock next level, submit, return to roadmap
+      _levelTimer?.cancel();
+      final nextLevel = _game.level + 1;
 
       setState(() => _game = _game.copyWith(
         score:            newScore,
         mistakes:         newMistakes,
-        level:            newLevel,
+        level:            nextLevel,
         matricesInLevel:  0,
         phase:            MemoryMatrixPhase.levelUp,
         highlightedCells: {},
       ));
       _scaleCtrl.forward(from: 0.0);
-      _lastLevelReached = newLevel;
 
-      await Future.delayed(const Duration(milliseconds: 1600));
-      if (!mounted) return;
-      _startRound();
+      if (!_resultSubmitted) {
+        _resultSubmitted = true;
+        await GameProgressService.unlockUpToLevel('memory_matrix', nextLevel);
+        await _submitGameResult();
+      }
+
+      await Future.delayed(const Duration(milliseconds: 1800));
+      if (mounted) Navigator.pop(context);
     } else {
-      // Same level, next matrix
       setState(() => _game = _game.copyWith(
-        score:           newScore,
-        mistakes:        newMistakes,
-        matricesInLevel: newMatricesInLevel,
+        score:            newScore,
+        mistakes:         newMistakes,
+        matricesInLevel:  newMatricesInLevel,
         highlightedCells: {},
       ));
       _startRound();
@@ -350,11 +348,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
   }
 
   Future<void> _submitGameResult() async {
-    _gameTimer?.cancel();
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
-    await GameProgressService.unlockUpToLevel('memory_matrix', _game.level);
 
     final double accuracyFactor =
         (1.0 - (_game.mistakes / 10.0).clamp(0.0, 1.0));
@@ -385,11 +381,12 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final isPlaying = _game.phase != MemoryMatrixPhase.idle &&
-            _game.phase != MemoryMatrixPhase.gameOver;
-        if (isPlaying) {
+            _game.phase != MemoryMatrixPhase.gameOver &&
+            _game.phase != MemoryMatrixPhase.levelUp;
+        if (isPlaying && !_resultSubmitted) {
+          _resultSubmitted = true;
           _cancelInputTimer();
-          _gameTimer?.cancel();
-          _lastLevelReached = _game.level;
+          _levelTimer?.cancel();
           await _submitGameResult();
         }
         if (mounted) Navigator.pop(context);
@@ -426,7 +423,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
           if (showStats) MemoryMatrixScoreChip(score: _game.score, level: _game.level),
           const Spacer(),
           if (showStats)
-            _GameTimerChip(secondsLeft: _gameSecondsLeft)
+            _LevelTimerChip(secondsLeft: _levelSecondsLeft, totalSeconds: _levelTimerSeconds())
           else
             const SizedBox(width: 40),
         ],
@@ -441,12 +438,12 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       case MemoryMatrixPhase.idle:
         return FadeTransition(
           opacity: _fadeAnim,
-          child: MemoryMatrixIdleScreen(onStart: () => _startGame(fromLevel: 1)),
+          child: MemoryMatrixIdleScreen(onStart: _startGame),
         );
       case MemoryMatrixPhase.countdown:
         return _buildCountdownScreen();
       case MemoryMatrixPhase.levelUp:
-        return _buildLevelUpScreen();
+        return _buildLevelCompleteScreen();
       case MemoryMatrixPhase.gameOver:
         return FadeTransition(opacity: _fadeAnim, child: _buildGameOverScreen());
       default:
@@ -480,7 +477,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     final gs     = _currentGridSize;
     final needed = _game.cellsToRemember(gs);
     final totalSecs = MemoryMatrixState.inputSecondsForLevel(_game.level);
-    final matrixNum  = _game.matricesInLevel + 1; // 1-based display
+    final matrixNum  = _game.matricesInLevel + 1;
 
     final label = switch (_game.phase) {
       MemoryMatrixPhase.showing  => 'Watch carefully...',
@@ -493,7 +490,6 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
       children: [
         const SizedBox(height: 12),
 
-        // Status row: label + matrix progress + timer ring
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: SizedBox(
@@ -502,7 +498,6 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Matrix progress e.g. "2 / 5"
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -532,7 +527,6 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 
         const SizedBox(height: 16),
 
-        // Grid
         Expanded(
           child: Center(
             child: Padding(
@@ -570,12 +564,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     );
   }
 
-  // ── Level up ───────────────────────────────────────────────────────────────
+  // ── Level complete ─────────────────────────────────────────────────────────
 
-  Widget _buildLevelUpScreen() {
-    final prevGs    = MemoryMatrixState.gridSizeForLevel(_game.level - 1);
-    final currentGs = MemoryMatrixState.gridSizeForLevel(_game.level);
-
+  Widget _buildLevelCompleteScreen() {
     return Center(
       child: ScaleTransition(
         scale: _scaleAnim,
@@ -598,25 +589,23 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
                   color: AppColors.primary, size: 48),
             ),
             const SizedBox(height: 20),
-            Text('Level Up!',
+            Text('Level Complete!',
                 style: TextStyle(
                     color: AppColors.onPrimary,
-                    fontSize: 34,
+                    fontSize: 32,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5)),
             const SizedBox(height: 8),
-            Text('Now on level ${_game.level}',
+            Text('Level ${_game.level - 1} cleared',
                 style: TextStyle(color: _textMuted, fontSize: 16)),
-            if (currentGs > prevGs) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Grid grew to ${currentGs}×${currentGs}!',
-                style: TextStyle(
-                    color: _accent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
+            const SizedBox(height: 6),
+            Text(
+              'Unlocked Level ${_game.level}!',
+              style: TextStyle(
+                  color: _accent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -649,34 +638,23 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
                     letterSpacing: -0.5)),
             const SizedBox(height: 6),
             Text(
-              'You reached level ${_game.level}',
+              'Level ${widget.startLevel} incomplete',
               style: TextStyle(color: _textMuted, fontSize: 14),
             ),
             const SizedBox(height: 28),
             MemoryMatrixStatRow(
-                label: 'Final Score',
+                label: 'Score',
                 value: '${_game.score} pts',
                 valueColor: _accent),
-            const SizedBox(height: 8),
-            MemoryMatrixStatRow(
-                label: 'Level Reached',
-                value: '${_game.level}',
-                valueColor: _gold),
             const SizedBox(height: 8),
             MemoryMatrixStatRow(
                 label: 'Mistakes',
                 value: '${_game.mistakes}',
                 valueColor: _wrong),
             const SizedBox(height: 36),
-            // Play Again resumes from the level the player reached
             _PrimaryButton(
-              label: 'Play Again (Level ${_lastLevelReached})',
-              onTap: () => _startGame(fromLevel: _lastLevelReached),
-            ),
-            const SizedBox(height: 12),
-            _SecondaryButton(
-              label: 'Start from Level 1',
-              onTap: () => _startGame(fromLevel: 1),
+              label: 'Try Again',
+              onTap: _startGame,
             ),
             const SizedBox(height: 12),
             _SecondaryButton(
@@ -689,16 +667,17 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Game timer chip  (top-right in app bar)
+// Level timer chip  (top-right in app bar)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GameTimerChip extends StatelessWidget {
+class _LevelTimerChip extends StatelessWidget {
   final int secondsLeft;
-  const _GameTimerChip({required this.secondsLeft});
+  final int totalSeconds;
+  const _LevelTimerChip({required this.secondsLeft, required this.totalSeconds});
 
   @override
   Widget build(BuildContext context) {
-    final fraction = (secondsLeft / 180).clamp(0.0, 1.0);
+    final fraction = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
     final color    = fraction > 0.4
         ? AppColors.secondaryContainer
         : fraction > 0.2

@@ -108,7 +108,7 @@ class LevelFactory {
   }
  
   static final List<LevelConfig Function()> _tpl = [
-    _l1, _l2, _l3, _l4, _l5,
+    _l1, _l2, _l3, _l4, _l5, _l6, _l7, _l8, _l9, _l10,
   ];
 
   static Map<String, NetworkNode> _mk(
@@ -251,7 +251,7 @@ class LevelFactory {
       );
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L5 — same tree, faster + more trains
+  // L5 — same tree as L4, faster + more trains
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l5() => LevelConfig(
         nodes: _mk([
@@ -278,5 +278,165 @@ class LevelFactory {
         ],
         trainSpeed: 0.25,
         spawnInterval: 1.9,
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // L6 — L4 layout, speed 0.28, interval 1.7, 2 allowed mistakes
+  // ─────────────────────────────────────────────────────────────────────────
+  static LevelConfig _l6() => LevelConfig(
+        nodes: _mk([
+          ('tunnel',    0.04, 0.50, NodeType.tunnel,  null,               ['fork0']),
+          ('fork0',     0.36, 0.50, NodeType.fork,    null,               ['fork1', 'fork2']),
+          ('fork1',     0.58, 0.27, NodeType.fork,    null,               ['fork3', 'st_pink']),
+          ('fork2',     0.58, 0.73, NodeType.fork,    null,               ['st_green', 'fork4']),
+          ('fork3',     0.78, 0.13, NodeType.fork,    null,               ['st_blue', 'st_red']),
+          ('fork4',     0.78, 0.87, NodeType.fork,    null,               ['st_yellow', 'st_white']),
+          ('st_blue',   0.95, 0.04, NodeType.station, TrainColor.blue,    []),
+          ('st_red',    0.95, 0.22, NodeType.station, TrainColor.red,     []),
+          ('st_pink',   0.94, 0.41, NodeType.station, TrainColor.pink,    []),
+          ('st_green',  0.94, 0.59, NodeType.station, TrainColor.green,   []),
+          ('st_yellow', 0.94, 0.78, NodeType.station, TrainColor.yellow,  []),
+          ('st_white',  0.94, 0.96, NodeType.station, TrainColor.white,   []),
+        ]),
+        tunnelId: 'tunnel',
+        spawnPool: [
+          TrainColor.blue,   TrainColor.white,  TrainColor.pink,
+          TrainColor.green,  TrainColor.red,    TrainColor.yellow,
+          TrainColor.white,  TrainColor.blue,   TrainColor.red,
+          TrainColor.pink,   TrainColor.green,  TrainColor.yellow,
+          TrainColor.red,    TrainColor.white,  TrainColor.blue,
+        ],
+        trainSpeed: 0.28,
+        spawnInterval: 1.7,
+        allowedMistakes: 2,
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // L7 — L5 layout, speed 0.30, interval 1.55, 2 allowed mistakes
+  // ─────────────────────────────────────────────────────────────────────────
+  static LevelConfig _l7() => LevelConfig(
+        nodes: _mk([
+          ('tunnel',    0.04, 0.50, NodeType.tunnel,  null,               ['fork0']),
+          ('fork0',     0.36, 0.50, NodeType.fork,    null,               ['fork1', 'fork2']),
+          ('fork1',     0.58, 0.27, NodeType.fork,    null,               ['fork3', 'st_pink']),
+          ('fork2',     0.58, 0.73, NodeType.fork,    null,               ['st_green', 'fork4']),
+          ('fork3',     0.78, 0.13, NodeType.fork,    null,               ['st_blue', 'st_red']),
+          ('fork4',     0.78, 0.87, NodeType.fork,    null,               ['st_yellow', 'st_white']),
+          ('st_blue',   0.95, 0.04, NodeType.station, TrainColor.blue,    []),
+          ('st_red',    0.95, 0.22, NodeType.station, TrainColor.red,     []),
+          ('st_pink',   0.94, 0.41, NodeType.station, TrainColor.pink,    []),
+          ('st_green',  0.94, 0.59, NodeType.station, TrainColor.green,   []),
+          ('st_yellow', 0.94, 0.78, NodeType.station, TrainColor.yellow,  []),
+          ('st_white',  0.94, 0.96, NodeType.station, TrainColor.white,   []),
+        ]),
+        tunnelId: 'tunnel',
+        spawnPool: [
+          TrainColor.blue,   TrainColor.red,    TrainColor.white,
+          TrainColor.pink,   TrainColor.green,  TrainColor.yellow,
+          TrainColor.red,    TrainColor.blue,   TrainColor.white,
+          TrainColor.green,  TrainColor.pink,   TrainColor.yellow,
+          TrainColor.blue,   TrainColor.white,  TrainColor.red,
+          TrainColor.yellow,
+        ],
+        trainSpeed: 0.30,
+        spawnInterval: 1.55,
+        allowedMistakes: 2,
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // L8 — L5 layout, speed 0.32, interval 1.45, 2 allowed mistakes
+  // ─────────────────────────────────────────────────────────────────────────
+  static LevelConfig _l8() => LevelConfig(
+        nodes: _mk([
+          ('tunnel',    0.04, 0.50, NodeType.tunnel,  null,               ['fork0']),
+          ('fork0',     0.36, 0.50, NodeType.fork,    null,               ['fork1', 'fork2']),
+          ('fork1',     0.58, 0.27, NodeType.fork,    null,               ['fork3', 'st_pink']),
+          ('fork2',     0.58, 0.73, NodeType.fork,    null,               ['st_green', 'fork4']),
+          ('fork3',     0.78, 0.13, NodeType.fork,    null,               ['st_blue', 'st_red']),
+          ('fork4',     0.78, 0.87, NodeType.fork,    null,               ['st_yellow', 'st_white']),
+          ('st_blue',   0.95, 0.04, NodeType.station, TrainColor.blue,    []),
+          ('st_red',    0.95, 0.22, NodeType.station, TrainColor.red,     []),
+          ('st_pink',   0.94, 0.41, NodeType.station, TrainColor.pink,    []),
+          ('st_green',  0.94, 0.59, NodeType.station, TrainColor.green,   []),
+          ('st_yellow', 0.94, 0.78, NodeType.station, TrainColor.yellow,  []),
+          ('st_white',  0.94, 0.96, NodeType.station, TrainColor.white,   []),
+        ]),
+        tunnelId: 'tunnel',
+        spawnPool: [
+          TrainColor.white,  TrainColor.red,    TrainColor.blue,
+          TrainColor.yellow, TrainColor.pink,   TrainColor.green,
+          TrainColor.red,    TrainColor.white,  TrainColor.yellow,
+          TrainColor.blue,   TrainColor.green,  TrainColor.pink,
+          TrainColor.white,  TrainColor.red,    TrainColor.blue,
+          TrainColor.yellow, TrainColor.green,
+        ],
+        trainSpeed: 0.32,
+        spawnInterval: 1.45,
+        allowedMistakes: 2,
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // L9 — L5 layout, speed 0.34, interval 1.35, 1 allowed mistake
+  // ─────────────────────────────────────────────────────────────────────────
+  static LevelConfig _l9() => LevelConfig(
+        nodes: _mk([
+          ('tunnel',    0.04, 0.50, NodeType.tunnel,  null,               ['fork0']),
+          ('fork0',     0.36, 0.50, NodeType.fork,    null,               ['fork1', 'fork2']),
+          ('fork1',     0.58, 0.27, NodeType.fork,    null,               ['fork3', 'st_pink']),
+          ('fork2',     0.58, 0.73, NodeType.fork,    null,               ['st_green', 'fork4']),
+          ('fork3',     0.78, 0.13, NodeType.fork,    null,               ['st_blue', 'st_red']),
+          ('fork4',     0.78, 0.87, NodeType.fork,    null,               ['st_yellow', 'st_white']),
+          ('st_blue',   0.95, 0.04, NodeType.station, TrainColor.blue,    []),
+          ('st_red',    0.95, 0.22, NodeType.station, TrainColor.red,     []),
+          ('st_pink',   0.94, 0.41, NodeType.station, TrainColor.pink,    []),
+          ('st_green',  0.94, 0.59, NodeType.station, TrainColor.green,   []),
+          ('st_yellow', 0.94, 0.78, NodeType.station, TrainColor.yellow,  []),
+          ('st_white',  0.94, 0.96, NodeType.station, TrainColor.white,   []),
+        ]),
+        tunnelId: 'tunnel',
+        spawnPool: [
+          TrainColor.pink,   TrainColor.blue,   TrainColor.white,
+          TrainColor.red,    TrainColor.green,  TrainColor.yellow,
+          TrainColor.white,  TrainColor.pink,   TrainColor.blue,
+          TrainColor.yellow, TrainColor.red,    TrainColor.green,
+          TrainColor.pink,   TrainColor.white,  TrainColor.blue,
+          TrainColor.red,    TrainColor.yellow, TrainColor.green,
+        ],
+        trainSpeed: 0.34,
+        spawnInterval: 1.35,
+        allowedMistakes: 1,
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // L10 — maximum intensity: speed 0.36, interval 1.30, 1 allowed mistake
+  // ─────────────────────────────────────────────────────────────────────────
+  static LevelConfig _l10() => LevelConfig(
+        nodes: _mk([
+          ('tunnel',    0.04, 0.50, NodeType.tunnel,  null,               ['fork0']),
+          ('fork0',     0.36, 0.50, NodeType.fork,    null,               ['fork1', 'fork2']),
+          ('fork1',     0.58, 0.27, NodeType.fork,    null,               ['fork3', 'st_pink']),
+          ('fork2',     0.58, 0.73, NodeType.fork,    null,               ['st_green', 'fork4']),
+          ('fork3',     0.78, 0.13, NodeType.fork,    null,               ['st_blue', 'st_red']),
+          ('fork4',     0.78, 0.87, NodeType.fork,    null,               ['st_yellow', 'st_white']),
+          ('st_blue',   0.95, 0.04, NodeType.station, TrainColor.blue,    []),
+          ('st_red',    0.95, 0.22, NodeType.station, TrainColor.red,     []),
+          ('st_pink',   0.94, 0.41, NodeType.station, TrainColor.pink,    []),
+          ('st_green',  0.94, 0.59, NodeType.station, TrainColor.green,   []),
+          ('st_yellow', 0.94, 0.78, NodeType.station, TrainColor.yellow,  []),
+          ('st_white',  0.94, 0.96, NodeType.station, TrainColor.white,   []),
+        ]),
+        tunnelId: 'tunnel',
+        spawnPool: [
+          TrainColor.red,    TrainColor.blue,   TrainColor.green,
+          TrainColor.white,  TrainColor.yellow, TrainColor.pink,
+          TrainColor.blue,   TrainColor.red,    TrainColor.white,
+          TrainColor.green,  TrainColor.pink,   TrainColor.yellow,
+          TrainColor.red,    TrainColor.blue,   TrainColor.white,
+          TrainColor.yellow, TrainColor.green,  TrainColor.pink,
+          TrainColor.red,    TrainColor.blue,
+        ],
+        trainSpeed: 0.36,
+        spawnInterval: 1.30,
+        allowedMistakes: 1,
       );
 }
