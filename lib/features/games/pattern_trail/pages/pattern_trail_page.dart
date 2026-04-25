@@ -16,37 +16,46 @@ import '../../services/game_service.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kBg      = AppColors.surface;
-const _kCard    = AppColors.primaryContainer;   // dark card for game area
+const _kCard    = AppColors.primaryContainer;
 const _kBorder  = AppColors.outlineVariant;
-const _kAccent  = AppColors.secondaryContainer; // mint for active dots
+const _kAccent  = AppColors.secondaryContainer;
 const _kGold    = AppColors.primaryFixed;
 const _kWrong   = AppColors.error;
 const _kCorrect = AppColors.secondaryContainer;
 const _kMuted   = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Level-based difficulty helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// 3×3 grid for levels 1–5, 4×4 for levels 6–10.
+int _gridSizeForLevel(int level) => level <= 5 ? 3 : 4;
+
+/// Sequence length: starts at 3 for level 1, +1 each level.
+int _seqLenForLevel(int level) => level + 2;
+
+/// Dot-on duration (ms): starts at 800 ms, decreases 40 ms per level, min 300 ms.
+int _dotOnMsForLevel(int level) => (800 - (level - 1) * 40).clamp(300, 800);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Model
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum _Phase { idle, countdown, showing, input, levelUp, gameOver }
-
-enum PatternTrailDifficulty { easy, medium, hard }
+enum _Phase { idle, countdown, showing, input, levelComplete, gameOver }
 
 class _GameState {
-  final _Phase                  phase;
-  final PatternTrailDifficulty  difficulty;
-  final int                     level;
-  final int                     sequenceLength;
-  final List<int>               sequence;     // dot indices in playback order
-  final int                     playerProgress; // correct taps so far
-  final int                     score;
-  final int                     lives;
-  final int                     mistakes;
-  final int                     countdown;
+  final _Phase phase;
+  final int    level;
+  final int    sequenceLength;
+  final List<int> sequence;
+  final int    playerProgress;
+  final int    score;
+  final int    lives;
+  final int    mistakes;
+  final int    countdown;
 
   const _GameState({
     required this.phase,
-    required this.difficulty,
     required this.level,
     required this.sequenceLength,
     required this.sequence,
@@ -57,11 +66,10 @@ class _GameState {
     required this.countdown,
   });
 
-  factory _GameState.initial(PatternTrailDifficulty d) => _GameState(
+  factory _GameState.initial(int level) => _GameState(
         phase:          _Phase.idle,
-        difficulty:     d,
-        level:          1,
-        sequenceLength: d == PatternTrailDifficulty.hard ? 4 : 3,
+        level:          level,
+        sequenceLength: _seqLenForLevel(level),
         sequence:       const [],
         playerProgress: 0,
         score:          0,
@@ -70,28 +78,22 @@ class _GameState {
         countdown:      3,
       );
 
-  // Grid is 3×3 on Easy, 4×4 on Medium/Hard
-  int get gridSize => difficulty == PatternTrailDifficulty.easy ? 3 : 4;
-  int get dotCount => gridSize * gridSize;
-
-  // Points for completing the current sequence
+  int get gridSize  => _gridSizeForLevel(level);
+  int get dotCount  => gridSize * gridSize;
   int get roundPoints => level * sequenceLength * 10;
 
   _GameState copyWith({
-    _Phase?                  phase,
-    PatternTrailDifficulty?  difficulty,
-    int?                     level,
-    int?                     sequenceLength,
-    List<int>?               sequence,
-    int?                     playerProgress,
-    int?                     score,
-    int?                     lives,
-    int?                     mistakes,
-    int?                     countdown,
-  }) =>
-      _GameState(
+    _Phase?   phase,
+    int?      level,
+    int?      sequenceLength,
+    List<int>? sequence,
+    int?      playerProgress,
+    int?      score,
+    int?      lives,
+    int?      mistakes,
+    int?      countdown,
+  }) => _GameState(
         phase:          phase          ?? this.phase,
-        difficulty:     difficulty     ?? this.difficulty,
         level:          level          ?? this.level,
         sequenceLength: sequenceLength ?? this.sequenceLength,
         sequence:       sequence       ?? this.sequence,
@@ -121,43 +123,32 @@ class _PatternTrailPageState extends State<PatternTrailPage>
 
   late _GameState _game;
   DateTime?       _gameStartTime;
-
-  static int _bestScore = 0;
+  bool            _resultSubmitted = false;
 
   // ── Per-dot visual state ─────────────────────────────────────────────────
-  int?      _highlightedDot;           // index of dot lit during showing
-  final Set<int> _correctlyTapped = {}; // dots correctly tapped this round
-  int?      _feedbackDot;              // dot currently flashing feedback
-  bool      _feedbackCorrect = false;  // true = green, false = red
-  bool      _inputLocked     = false;  // blocks taps during transitions
+  int?      _highlightedDot;
+  final Set<int> _correctlyTapped = {};
+  int?      _feedbackDot;
+  bool      _feedbackCorrect = false;
+  bool      _inputLocked     = false;
 
   // ── Animation controllers ────────────────────────────────────────────────
-  // 16 controllers cover the max 4×4 grid; easy (3×3) uses only 0–8.
   late final List<AnimationController> _dotCtrl;
   late final List<Animation<double>>   _dotGlow;
 
   late final AnimationController _gameOverCtrl;
   late final Animation<double>   _gameOverFade;
 
-  late final AnimationController _levelUpCtrl;
-  late final Animation<double>   _levelUpScale;
+  late final AnimationController _levelCompleteCtrl;
+  late final Animation<double>   _levelCompleteScale;
 
   late final AnimationController _cdCtrl;
   late final Animation<double>   _cdScale;
 
-  int _seqLenForLevel(PatternTrailDifficulty d, int level) {
-    final base = d == PatternTrailDifficulty.hard ? 4 : 3;
-    return base + (level - 1);
-  }
-
   @override
   void initState() {
     super.initState();
-    const d = PatternTrailDifficulty.medium;
-    _game = _GameState.initial(d).copyWith(
-      level:          widget.startLevel,
-      sequenceLength: _seqLenForLevel(d, widget.startLevel),
-    );
+    _game = _GameState.initial(widget.startLevel);
 
     _dotCtrl = List.generate(
       16,
@@ -174,10 +165,10 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     _gameOverFade =
         CurvedAnimation(parent: _gameOverCtrl, curve: Curves.easeOut);
 
-    _levelUpCtrl = AnimationController(
+    _levelCompleteCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
-    _levelUpScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-        CurvedAnimation(parent: _levelUpCtrl, curve: Curves.elasticOut));
+    _levelCompleteScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+        CurvedAnimation(parent: _levelCompleteCtrl, curve: Curves.elasticOut));
 
     _cdCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
@@ -189,23 +180,10 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   void dispose() {
     for (final c in _dotCtrl) c.dispose();
     _gameOverCtrl.dispose();
-    _levelUpCtrl.dispose();
+    _levelCompleteCtrl.dispose();
     _cdCtrl.dispose();
     super.dispose();
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Timing — dot-on duration shrinks as level increases
-  // ─────────────────────────────────────────────────────────────────────────
-
-  int _dotOnMs() {
-    final base = _game.difficulty == PatternTrailDifficulty.easy   ? 800
-               : _game.difficulty == PatternTrailDifficulty.medium ? 600
-               : 440;
-    return (base - (_game.level - 1) * 25).clamp(220, base);
-  }
-
-  static const int _dotOffMs = 160; // gap between dots
 
   // ─────────────────────────────────────────────────────────────────────────
   // Game flow
@@ -213,18 +191,17 @@ class _PatternTrailPageState extends State<PatternTrailPage>
 
   void _startGame() {
     HapticFeedback.mediumImpact();
+    _resultSubmitted = false;
     for (final c in _dotCtrl) { c.stop(); c.reset(); }
     setState(() {
-      _game = _GameState.initial(_game.difficulty).copyWith(
-        level:          widget.startLevel,
-        sequenceLength: _seqLenForLevel(_game.difficulty, widget.startLevel),
-        phase:          _Phase.countdown,
-        countdown:      3,
+      _game = _GameState.initial(widget.startLevel).copyWith(
+        phase:     _Phase.countdown,
+        countdown: 3,
       );
       _highlightedDot = null;
       _correctlyTapped.clear();
-      _feedbackDot    = null;
-      _inputLocked    = false;
+      _feedbackDot = null;
+      _inputLocked = false;
     });
     _runCountdown();
   }
@@ -257,7 +234,6 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     _playSequence(seq);
   }
 
-  // Build a random sequence, never repeating the same dot consecutively.
   List<int> _generateSequence(int length, int dotCount) {
     final rng = math.Random();
     final seq = <int>[];
@@ -272,9 +248,10 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   }
 
   Future<void> _playSequence(List<int> seq) async {
-    // Brief pre-play pause so the UI can settle
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
+
+    final dotOnMs = _dotOnMsForLevel(_game.level);
 
     for (int i = 0; i < seq.length; i++) {
       if (!mounted) return;
@@ -284,13 +261,13 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       _dotCtrl[idx].forward(from: 0);
       HapticFeedback.selectionClick();
 
-      await Future.delayed(Duration(milliseconds: _dotOnMs()));
+      await Future.delayed(Duration(milliseconds: dotOnMs));
       if (!mounted) return;
 
       setState(() => _highlightedDot = null);
       _dotCtrl[idx].reverse();
 
-      await Future.delayed(const Duration(milliseconds: _dotOffMs));
+      await Future.delayed(const Duration(milliseconds: 160));
     }
 
     if (!mounted) return;
@@ -321,25 +298,27 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       });
 
       if (newProgress >= _game.sequence.length) {
-        // ── Sequence complete → level up ───────────────────────────────────
+        // ── Sequence complete → level complete ────────────────────────────
         _inputLocked = true;
-        final points = _game.roundPoints; // capture before incrementing
-        Future.delayed(const Duration(milliseconds: 480), () {
+        Future.delayed(const Duration(milliseconds: 480), () async {
           if (!mounted) return;
           setState(() => _game = _game.copyWith(
-            score:          _game.score + points,
-            level:          _game.level + 1,
-            sequenceLength: _game.sequenceLength + 1,
-            phase:          _Phase.levelUp,
+            score: _game.score + _game.roundPoints,
+            phase: _Phase.levelComplete,
           ));
-          _levelUpCtrl.forward(from: 0);
+          _levelCompleteCtrl.forward(from: 0);
           HapticFeedback.heavyImpact();
-          Future.delayed(const Duration(milliseconds: 1900), () {
-            if (mounted) _startRound();
-          });
+
+          if (!_resultSubmitted) {
+            _resultSubmitted = true;
+            await GameProgressService.unlockUpToLevel('pattern_trail', _game.level + 1);
+            await _submitResult(completed: true);
+          }
+
+          await Future.delayed(const Duration(milliseconds: 2000));
+          if (mounted) Navigator.pop(context);
         });
       } else {
-        // Clear the green flash after a short delay
         Future.delayed(const Duration(milliseconds: 340), () {
           if (mounted) {
             setState(() => _feedbackDot = null);
@@ -348,7 +327,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
         });
       }
     } else {
-      // ── Wrong tap → lives down, replay same sequence ─────────────────────
+      // ── Wrong tap → lose a life ──────────────────────────────────────────
       HapticFeedback.heavyImpact();
       _dotCtrl[index].forward(from: 0);
       final newLives = _game.lives - 1;
@@ -370,7 +349,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
         if (newLives <= 0) {
           _endGame();
         } else {
-          // Replay the same sequence from the start
+          // Replay the same sequence
           setState(() {
             _correctlyTapped.clear();
             _game = _game.copyWith(phase: _Phase.showing, playerProgress: 0);
@@ -382,25 +361,20 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   }
 
   void _endGame() {
-    if (_game.score > _bestScore) _bestScore = _game.score;
     setState(() => _game = _game.copyWith(phase: _Phase.gameOver));
     _gameOverCtrl.forward(from: 0);
-    _submitResult();
+    if (!_resultSubmitted) {
+      _resultSubmitted = true;
+      _submitResult(completed: false);
+    }
   }
 
-  Future<void> _submitResult() async {
+  Future<void> _submitResult({required bool completed}) async {
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
-    await GameProgressService.unlockUpToLevel('pattern_trail', _game.level);
-    // Normalized score 0-1000: level + accuracy × difficulty
     final double accuracyFactor = (1.0 - (_game.mistakes * 0.08).clamp(0.0, 1.0));
-    final int diffLevel = _game.difficulty.index + 1; // 1/2/3
-    final int normalizedScore = (_game.level * 60 + accuracyFactor * diffLevel * 200).round().clamp(0, 1000);
-
-    // Local focus-point calculation — used as a guaranteed fallback so the
-    // player always earns something even if the backend returns 0 or fails.
-    // Scale: ~1 pt at level 1 easy, up to ~15 pts at level 8+ hard.
+    final int normalizedScore = (_game.level * 60 + accuracyFactor * 200).round().clamp(0, 1000);
     final double localFocusPoints =
         (normalizedScore / 60.0 * accuracyFactor).clamp(1.0, 15.0);
 
@@ -408,15 +382,13 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       gameType:          'pattern_trail',
       score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         true,
+      completed:         completed,
       levelReached:      _game.level,
       mistakes:          _game.mistakes,
     );
 
     if (!mounted) return;
 
-    // Use the backend's value if positive; otherwise fall back to locally
-    // computed points so the daily score is always updated.
     final double pointsToAdd = (result != null && result.focusScoreGained > 0)
         ? result.focusScoreGained
         : localFocusPoints;
@@ -436,8 +408,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final playing =
-            _game.phase != _Phase.idle && _game.phase != _Phase.gameOver;
-        if (playing) await _submitResult();
+            _game.phase != _Phase.idle && _game.phase != _Phase.gameOver &&
+            _game.phase != _Phase.levelComplete;
+        if (playing && !_resultSubmitted) {
+          _resultSubmitted = true;
+          await _submitResult(completed: false);
+        }
         if (mounted) Navigator.pop(context);
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -489,8 +465,8 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       case _Phase.showing:
       case _Phase.input:
         return _buildGameScreen();
-      case _Phase.levelUp:
-        return _buildLevelUpScreen();
+      case _Phase.levelComplete:
+        return _buildLevelCompleteScreen();
       case _Phase.gameOver:
         return FadeTransition(
             opacity: _gameOverFade, child: _buildGameOverScreen());
@@ -501,12 +477,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
 
   Widget _buildIdleScreen() {
     final gs = _game.gridSize;
+    final seqLen = _game.sequenceLength;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
-          // Glow icon
           Container(
             width: 90, height: 90,
             decoration: BoxDecoration(
@@ -535,9 +511,9 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           ),
           const SizedBox(height: 18),
 
-          // Preview grid
+          // Level info
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: _kCard,
               borderRadius: BorderRadius.circular(14),
@@ -545,111 +521,22 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             ),
             child: Column(
               children: [
-                _PreviewDotGrid(gridSize: gs),
-                const SizedBox(height: 14),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _LegendDot(color: _kAccent,  label: 'Sequence'),
-                    const SizedBox(width: 14),
-                    _LegendDot(color: _kCorrect, label: 'Correct'),
-                    const SizedBox(width: 14),
-                    _LegendDot(color: _kWrong,   label: 'Wrong'),
+                    _InfoChip(label: 'Level', value: '${widget.startLevel}', color: _kAccent),
+                    _InfoChip(label: 'Grid', value: '${gs}×$gs', color: _kGold),
+                    _InfoChip(label: 'Sequence', value: '$seqLen dots', color: AppColors.onTertiaryContainer),
+                    _InfoChip(label: 'Lives', value: '3', color: _kWrong),
                   ],
                 ),
+                const SizedBox(height: 14),
+                _PreviewDotGrid(gridSize: gs),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-
-          // Best score badge
-          if (_bestScore > 0) ...[
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: _kGold.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _kGold.withOpacity(0.3)),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.emoji_events_rounded,
-                    color: _kGold, size: 16),
-                const SizedBox(width: 6),
-                Text('Best: $_bestScore pts',
-                    style: const TextStyle(
-                        color: _kGold,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-              ]),
-            ),
-            const SizedBox(height: 20),
-          ] else
-            const SizedBox(height: 4),
-
-          // Difficulty selector
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Difficulty',
-                style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: PatternTrailDifficulty.values.map((d) {
-              final active = _game.difficulty == d;
-              final label  = d == PatternTrailDifficulty.easy   ? 'Easy'
-                           : d == PatternTrailDifficulty.medium ? 'Medium'
-                           : 'Hard';
-              final hint   = d == PatternTrailDifficulty.easy   ? '3×3  slow'
-                           : d == PatternTrailDifficulty.medium ? '4×4  normal'
-                           : '4×4  fast';
-              final col    = d == PatternTrailDifficulty.easy   ? _kCorrect
-                           : d == PatternTrailDifficulty.medium ? _kGold
-                           : _kWrong;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                      right: d != PatternTrailDifficulty.hard ? 8 : 0),
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _game = _game.copyWith(difficulty: d)),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: active ? col.withOpacity(0.16) : _kCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: active
-                                ? col.withOpacity(0.55)
-                                : _kBorder),
-                      ),
-                      child: Column(children: [
-                        Text(label,
-                            style: TextStyle(
-                                color: active ? col : _kMuted,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text(hint,
-                            style: TextStyle(
-                                color: active
-                                    ? col.withOpacity(0.65)
-                                    : _kMuted,
-                                fontSize: 10)),
-                      ]),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
           const SizedBox(height: 30),
 
-          // Start button
           GestureDetector(
             onTap: _startGame,
             child: Container(
@@ -666,7 +553,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                 ],
               ),
               child: const Center(
-                child: Text('Start',
+                child: Text('Start Level',
                     style: TextStyle(
                         color: AppColors.onPrimary,
                         fontWeight: FontWeight.w700,
@@ -704,7 +591,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     );
   }
 
-  // ── Active game screen (showing + input phases) ───────────────────────────
+  // ── Active game screen ────────────────────────────────────────────────────
 
   Widget _buildGameScreen() {
     final gs        = _game.gridSize;
@@ -716,7 +603,6 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       children: [
         const SizedBox(height: 16),
 
-        // Phase label
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 260),
           child: Text(
@@ -728,7 +614,6 @@ class _PatternTrailPageState extends State<PatternTrailPage>
         ),
         const SizedBox(height: 10),
 
-        // Step progress indicators
         if (seqLen > 0)
           _SequenceProgressBar(
             length:   seqLen,
@@ -736,9 +621,25 @@ class _PatternTrailPageState extends State<PatternTrailPage>
             isShowing: isShowing,
           ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
 
-        // Dot grid
+        // Lives row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (i) => Padding(
+            padding: const EdgeInsets.only(left: 3),
+            child: Icon(
+              i < _game.lives
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              color: i < _game.lives ? _kWrong : AppColors.outlineVariant,
+              size: 18,
+            ),
+          )),
+        ),
+
+        const SizedBox(height: 12),
+
         Expanded(
           child: Center(
             child: Padding(
@@ -810,16 +711,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     );
   }
 
-  // ── Level-up screen ───────────────────────────────────────────────────────
+  // ── Level complete screen ─────────────────────────────────────────────────
 
-  Widget _buildLevelUpScreen() {
-    // Points are already added to score; recover last-round value retroactively:
-    // before increment: level was (_game.level - 1), seqLen was (_game.sequenceLength - 1)
-    final prevPoints = (_game.level - 1) * (_game.sequenceLength - 1) * 10;
-
+  Widget _buildLevelCompleteScreen() {
     return Center(
       child: ScaleTransition(
-        scale: _levelUpScale,
+        scale: _levelCompleteScale,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -839,27 +736,23 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                   color: AppColors.primary, size: 46),
             ),
             const SizedBox(height: 20),
-            const Text('Level Up!',
+            const Text('Level Complete!',
                 style: TextStyle(
                     color: AppColors.onSurface,
                     fontSize: 34,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5)),
             const SizedBox(height: 8),
-            Text('Now on level ${_game.level}',
+            Text('Level ${widget.startLevel} cleared',
                 style: const TextStyle(color: _kMuted, fontSize: 16)),
             const SizedBox(height: 4),
-            Text('Sequence grows to ${_game.sequenceLength} dots',
-                style: const TextStyle(
-                    color: _kAccent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Text('+$prevPoints pts',
-                style: const TextStyle(
-                    color: _kGold,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold)),
+            Text(
+              'Unlocked Level ${widget.startLevel + 1}!',
+              style: const TextStyle(
+                  color: _kAccent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -869,7 +762,6 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   // ── Game over screen ──────────────────────────────────────────────────────
 
   Widget _buildGameOverScreen() {
-    final isNewBest = _game.score > 0 && _game.score >= _bestScore;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -894,40 +786,17 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                     fontSize: 32,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5)),
-            if (isNewBest) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _kGold.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _kGold.withOpacity(0.40)),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.emoji_events_rounded, color: _kGold, size: 14),
-                  SizedBox(width: 5),
-                  Text('New Best!',
-                      style: TextStyle(
-                          color: _kGold,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
-                ]),
-              ),
-            ],
+            const SizedBox(height: 6),
+            Text('Out of lives on Level ${widget.startLevel}',
+                style: const TextStyle(color: _kMuted, fontSize: 14)),
             const SizedBox(height: 28),
             _StatRow(
-                label: 'Final Score',
+                label: 'Score',
                 value: '${_game.score} pts',
                 valueColor: _kAccent),
             const SizedBox(height: 8),
             _StatRow(
-                label: 'Level Reached',
-                value: '${_game.level}',
-                valueColor: _kGold),
-            const SizedBox(height: 8),
-            _StatRow(
-                label: 'Longest Sequence',
+                label: 'Sequence Length',
                 value: '${_game.sequenceLength} dots',
                 valueColor: AppColors.onTertiaryContainer),
             const SizedBox(height: 8),
@@ -936,7 +805,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                 value: '${_game.mistakes}',
                 valueColor: _kWrong),
             const SizedBox(height: 44),
-            _PrimaryButton(label: 'Play Again', onTap: _startGame),
+            _PrimaryButton(label: 'Try Again', onTap: _startGame),
             const SizedBox(height: 12),
             _SecondaryButton(
                 label: 'Exit', onTap: () => Navigator.pop(context)),
@@ -945,6 +814,30 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Info chip
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color  color;
+  const _InfoChip({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(color: _kMuted, fontSize: 10)),
+        ],
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -957,7 +850,6 @@ class _PreviewDotGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Highlight a short sample sequence for illustration
     final highlights = gridSize == 3
         ? const {1: '1', 7: '2', 3: '3'}
         : const {2: '1', 13: '2', 5: '3', 10: '4'};
@@ -1003,7 +895,7 @@ class _PreviewDotGrid extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sequence progress bar  (small dots above the grid)
+// Sequence progress bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SequenceProgressBar extends StatelessWidget {
@@ -1048,31 +940,7 @@ class _SequenceProgressBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Legend dot  (idle screen)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LegendDot extends StatelessWidget {
-  final Color  color;
-  final String label;
-  const _LegendDot({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10, height: 10,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-          ),
-          const SizedBox(width: 5),
-          Text(label,
-              style: const TextStyle(color: _kMuted, fontSize: 10)),
-        ],
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared header widgets
+// Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BackButton extends StatelessWidget {
@@ -1132,33 +1000,6 @@ class _LevelScoreChip extends StatelessWidget {
         ]),
       );
 }
-
-class _LivesRow extends StatelessWidget {
-  final int lives;
-  const _LivesRow({required this.lives});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(
-          3,
-          (i) => Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Icon(
-              i < lives
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: i < lives ? _kWrong : AppColors.outlineVariant,
-              size: 18,
-            ),
-          ),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared stat / button widgets
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _StatRow extends StatelessWidget {
   final String label;

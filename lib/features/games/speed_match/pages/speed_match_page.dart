@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/providers/daily_score_provider.dart';
 import '../../../../core/widgets/score_gain_toast.dart';
+import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,9 +28,7 @@ const _kMuted   = AppColors.onSurfaceVariant;
 // Model
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum _Phase { idle, countdown, playing, gameOver }
-
-enum SpeedMatchDifficulty { easy, medium, hard }
+enum _Phase { idle, countdown, playing, levelComplete }
 
 enum _Shape { circle, square, triangle, star }
 
@@ -43,17 +42,22 @@ class _CardData {
     required this.color,
     required this.colorName,
   });
+}
 
-  bool matchesBy(SpeedMatchDifficulty difficulty, _CardData other) {
-    switch (difficulty) {
-      case SpeedMatchDifficulty.easy:
-        return colorName == other.colorName;
-      case SpeedMatchDifficulty.medium:
-        return shape == other.shape;
-      case SpeedMatchDifficulty.hard:
-        return colorName == other.colorName && shape == other.shape;
-    }
-  }
+/// Level-based match rule:
+///   Levels 1–3  → color must match
+///   Levels 4–7  → shape must match
+///   Levels 8–10 → both color and shape must match
+bool _cardMatches(_CardData a, _CardData b, int level) {
+  if (level <= 3) return a.colorName == b.colorName;
+  if (level <= 7) return a.shape == b.shape;
+  return a.colorName == b.colorName && a.shape == b.shape;
+}
+
+String _matchLabel(int level) {
+  if (level <= 3) return 'COLOR';
+  if (level <= 7) return 'SHAPE';
+  return 'COLOR + SHAPE';
 }
 
 const _kShapeColors = [
@@ -73,23 +77,21 @@ _CardData _randomCard([math.Random? rng]) {
 }
 
 class _GameState {
-  final _Phase               phase;
-  final SpeedMatchDifficulty difficulty;
-  final int                  score;
-  final int                  lives;
-  final int                  streak;
-  final int                  bestStreak;
-  final int                  countdown;
-  final int                  mistakes;
-  final int                  correct;
-  final _CardData?           currentCard;
-  final _CardData?           previousCard;
+  final _Phase     phase;
+  final int        level;
+  final int        score;
+  final int        streak;
+  final int        bestStreak;
+  final int        countdown;
+  final int        mistakes;
+  final int        correct;
+  final _CardData? currentCard;
+  final _CardData? previousCard;
 
   const _GameState({
     required this.phase,
-    required this.difficulty,
+    required this.level,
     required this.score,
-    required this.lives,
     required this.streak,
     required this.bestStreak,
     required this.countdown,
@@ -99,21 +101,20 @@ class _GameState {
     this.previousCard,
   });
 
-  factory _GameState.initial(SpeedMatchDifficulty d) => _GameState(
-        phase:       _Phase.idle,
-        difficulty:  d,
-        score:       0,
-        lives:       3,
-        streak:      0,
-        bestStreak:  0,
-        countdown:   3,
-        mistakes:    0,
-        correct:     0,
-      );
+  factory _GameState.initial(int level) => _GameState(
+    phase:      _Phase.idle,
+    level:      level,
+    score:      0,
+    streak:     0,
+    bestStreak: 0,
+    countdown:  3,
+    mistakes:   0,
+    correct:    0,
+  );
 
   bool? get isMatch {
     if (currentCard == null || previousCard == null) return null;
-    return currentCard!.matchesBy(difficulty, previousCard!);
+    return _cardMatches(currentCard!, previousCard!, level);
   }
 
   int get accuracy {
@@ -123,23 +124,21 @@ class _GameState {
   }
 
   _GameState copyWith({
-    _Phase?               phase,
-    SpeedMatchDifficulty? difficulty,
-    int?                  score,
-    int?                  lives,
-    int?                  streak,
-    int?                  bestStreak,
-    int?                  countdown,
-    int?                  mistakes,
-    int?                  correct,
-    _CardData?            currentCard,
-    _CardData?            previousCard,
+    _Phase?    phase,
+    int?       level,
+    int?       score,
+    int?       streak,
+    int?       bestStreak,
+    int?       countdown,
+    int?       mistakes,
+    int?       correct,
+    _CardData? currentCard,
+    _CardData? previousCard,
   }) =>
       _GameState(
         phase:        phase        ?? this.phase,
-        difficulty:   difficulty   ?? this.difficulty,
+        level:        level        ?? this.level,
         score:        score        ?? this.score,
-        lives:        lives        ?? this.lives,
         streak:       streak       ?? this.streak,
         bestStreak:   bestStreak   ?? this.bestStreak,
         countdown:    countdown    ?? this.countdown,
@@ -155,7 +154,8 @@ class _GameState {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SpeedMatchPage extends StatefulWidget {
-  const SpeedMatchPage({super.key});
+  final int startLevel;
+  const SpeedMatchPage({super.key, this.startLevel = 1});
 
   @override
   State<SpeedMatchPage> createState() => _SpeedMatchPageState();
@@ -166,26 +166,27 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   late _GameState _game;
   DateTime?       _gameStartTime;
+  bool            _resultSubmitted = false;
 
   static int _bestScore = 0;
 
-  // ── 60-second session timer (no-lives system) ────────────────────────────
-  Timer?  _sessionTimer;
-  int     _sessionSecondsLeft = 60;
+  // ── 60-second session timer ──────────────────────────────────────────────
+  Timer? _sessionTimer;
+  int    _sessionSecondsLeft = 60;
 
   // ── Per-card shrinking timer ─────────────────────────────────────────────
   late AnimationController _cardTimerCtrl;
   Timer?                   _cardTimeoutTimer;
 
   // ── Feedback flash ───────────────────────────────────────────────────────
-  bool                    _feedbackShowing    = false;
-  bool                    _lastAnswerCorrect  = false;
+  bool                    _feedbackShowing   = false;
+  bool                    _lastAnswerCorrect = false;
   late AnimationController _feedbackCtrl;
   late Animation<double>  _feedbackOpacity;
 
-  // ── Game-over fade ───────────────────────────────────────────────────────
-  late AnimationController _gameOverCtrl;
-  late Animation<double>  _gameOverFade;
+  // ── Level-complete fade ──────────────────────────────────────────────────
+  late AnimationController _levelCompleteCtrl;
+  late Animation<double>  _levelCompleteFade;
 
   // ── Countdown pulse ──────────────────────────────────────────────────────
   late AnimationController _cdCtrl;
@@ -194,7 +195,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   @override
   void initState() {
     super.initState();
-    _game = _GameState.initial(SpeedMatchDifficulty.medium);
+    _game = _GameState.initial(widget.startLevel);
 
     _cardTimerCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 3));
@@ -204,10 +205,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     _feedbackOpacity = CurvedAnimation(
         parent: _feedbackCtrl, curve: Curves.easeOut);
 
-    _gameOverCtrl = AnimationController(
+    _levelCompleteCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 450));
-    _gameOverFade = CurvedAnimation(
-        parent: _gameOverCtrl, curve: Curves.easeOut);
+    _levelCompleteFade = CurvedAnimation(
+        parent: _levelCompleteCtrl, curve: Curves.easeOut);
 
     _cdCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
@@ -219,7 +220,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   void dispose() {
     _cardTimerCtrl.dispose();
     _feedbackCtrl.dispose();
-    _gameOverCtrl.dispose();
+    _levelCompleteCtrl.dispose();
     _cdCtrl.dispose();
     _cardTimeoutTimer?.cancel();
     _sessionTimer?.cancel();
@@ -227,14 +228,12 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Per-card timer duration — shortens as score grows
+  // Per-card timer duration — base shortens with level, further reduced by score
   // ─────────────────────────────────────────────────────────────────────────
 
   Duration _cardDuration() {
-    final base = _game.difficulty == SpeedMatchDifficulty.easy   ? 3.0
-               : _game.difficulty == SpeedMatchDifficulty.medium ? 2.5
-               : 2.0;
-    final reduced = (base - _game.score * 0.04).clamp(0.7, base);
+    final baseSecs = (3.0 - (widget.startLevel - 1) * 0.22).clamp(0.8, 3.0);
+    final reduced  = (baseSecs - _game.score * 0.04).clamp(0.6, baseSecs);
     return Duration(milliseconds: (reduced * 1000).round());
   }
 
@@ -246,8 +245,9 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     HapticFeedback.mediumImpact();
     _cardTimeoutTimer?.cancel();
     _cardTimerCtrl.stop();
+    _resultSubmitted = false;
     setState(() {
-      _game = _GameState.initial(_game.difficulty)
+      _game = _GameState.initial(widget.startLevel)
           .copyWith(phase: _Phase.countdown, countdown: 3);
       _feedbackShowing = false;
     });
@@ -268,7 +268,6 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   void _beginPlaying() {
     _gameStartTime = DateTime.now();
     _sessionSecondsLeft = 60;
-    // Session timer — game ends after 60 s regardless of mistakes
     _sessionTimer?.cancel();
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
@@ -302,7 +301,6 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   void _onCardTimeout() {
     if (_game.phase != _Phase.playing || _feedbackShowing) return;
-    // First card has no previous — just advance silently
     if (_game.previousCard == null) {
       _nextCard();
     } else {
@@ -349,13 +347,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
       });
     } else {
       HapticFeedback.heavyImpact();
-      final newLives = _game.lives - 1;
       setState(() => _game = _game.copyWith(
-        lives:    newLives,
         streak:   0,
         mistakes: _game.mistakes + 1,
       ));
-      // No lives system — mistakes never end the game. Session timer does.
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) _nextCard();
       });
@@ -379,26 +374,36 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     _cardTimeoutTimer?.cancel();
     _cardTimerCtrl.stop();
     if (_game.score > _bestScore) _bestScore = _game.score;
-    setState(() => _game = _game.copyWith(phase: _Phase.gameOver));
-    _gameOverCtrl.forward(from: 0);
-    _submitResult();
+    setState(() => _game = _game.copyWith(phase: _Phase.levelComplete));
+    _levelCompleteCtrl.forward(from: 0);
+    _doLevelComplete();
+  }
+
+  Future<void> _doLevelComplete() async {
+    if (!_resultSubmitted) {
+      _resultSubmitted = true;
+      final nextLevel = widget.startLevel + 1;
+      await GameProgressService.unlockUpToLevel('speed_match', nextLevel);
+      await _submitResult();
+    }
+    await Future.delayed(const Duration(milliseconds: 2400));
+    if (mounted) Navigator.pop(context);
   }
 
   Future<void> _submitResult() async {
     final timePlayed = _gameStartTime != null
         ? DateTime.now().difference(_gameStartTime!).inSeconds
         : 0;
-    // Normalized score 0-1000: accuracy × difficulty × 333
     final int total = _game.correct + _game.mistakes;
     final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
-    final int diffLevel = _game.difficulty.index + 1; // 1/2/3
-    final int normalizedScore = (accuracyRate * diffLevel * 333).round().clamp(0, 1000);
+    final int normalizedScore =
+        (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType:          'speed_match',
       score:             normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         true, // session always runs to completion
-      levelReached:      _game.difficulty.index + 1,
+      completed:         true,
+      levelReached:      widget.startLevel,
       mistakes:          _game.mistakes,
     );
     if (result != null && mounted) {
@@ -417,9 +422,11 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (_game.phase == _Phase.playing) {
+        if (_game.phase == _Phase.playing && !_resultSubmitted) {
+          _sessionTimer?.cancel();
           _cardTimeoutTimer?.cancel();
           _cardTimerCtrl.stop();
+          _resultSubmitted = true;
           await _submitResult();
         }
         if (mounted) Navigator.pop(context);
@@ -467,7 +474,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Row(
         children: [
-          _BackButton(onTap: () => Navigator.pop(context)),
+          _BackButton(onTap: () => Navigator.maybePop(context)),
           const Spacer(),
           if (isPlaying) ...[
             _ScoreChip(score: _game.score, streak: _game.streak),
@@ -516,20 +523,23 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
         return _buildCountdownScreen();
       case _Phase.playing:
         return _buildPlayScreen();
-      case _Phase.gameOver:
+      case _Phase.levelComplete:
         return FadeTransition(
-            opacity: _gameOverFade, child: _buildGameOverScreen());
+            opacity: _levelCompleteFade, child: _buildLevelCompleteScreen());
     }
   }
 
   // ── Idle screen ──────────────────────────────────────────────────────────
 
   Widget _buildIdleScreen() {
+    final criterion = _matchLabel(widget.startLevel);
+    final cardMs    = (3.0 - (widget.startLevel - 1) * 0.22).clamp(0.8, 3.0);
+    final cardSec   = cardMs.toStringAsFixed(1);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
-          // Glow icon
           Container(
             width: 90, height: 90,
             decoration: BoxDecoration(
@@ -578,13 +588,14 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_rounded, color: _kCorrect, size: 16),
-                    SizedBox(width: 6),
-                    Text('Same color → tap YES  (Easy)',
-                        style: TextStyle(color: _kMuted, fontSize: 12)),
+                    const Icon(Icons.check_circle_rounded,
+                        color: _kCorrect, size: 16),
+                    const SizedBox(width: 6),
+                    Text('Match by $criterion → tap YES',
+                        style: const TextStyle(color: _kMuted, fontSize: 12)),
                   ],
                 ),
               ],
@@ -613,60 +624,20 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
           ] else
             const SizedBox(height: 4),
 
-          // Difficulty selector
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Difficulty',
-                style: TextStyle(color: AppColors.onSurface, fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: SpeedMatchDifficulty.values.map((d) {
-              final active = _game.difficulty == d;
-              final label  = d == SpeedMatchDifficulty.easy   ? 'Easy'
-                           : d == SpeedMatchDifficulty.medium ? 'Medium'
-                           : 'Hard';
-              final hint   = d == SpeedMatchDifficulty.easy   ? 'Color'
-                           : d == SpeedMatchDifficulty.medium ? 'Shape'
-                           : 'Both';
-              final col    = d == SpeedMatchDifficulty.easy   ? _kCorrect
-                           : d == SpeedMatchDifficulty.medium ? _kGold
-                           : _kWrong;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                      right: d != SpeedMatchDifficulty.hard ? 8 : 0),
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _game = _game.copyWith(difficulty: d)),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: active ? col.withOpacity(0.16) : _kCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: active ? col.withOpacity(0.55) : _kBorder),
-                      ),
-                      child: Column(children: [
-                        Text(label,
-                            style: TextStyle(
-                                color: active ? col : _kMuted,
-                                fontWeight: FontWeight.w700, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text('Match: $hint',
-                            style: TextStyle(
-                                color: active
-                                    ? col.withOpacity(0.65)
-                                    : _kMuted,
-                                fontSize: 10)),
-                      ]),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+          // Level info chips
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _InfoChip(icon: Icons.bar_chart_rounded,
+                  label: 'Level ${widget.startLevel}'),
+              _InfoChip(icon: Icons.compare_arrows_rounded,
+                  label: 'Match: $criterion'),
+              _InfoChip(icon: Icons.speed_rounded,
+                  label: '${cardSec}s per card'),
+              _InfoChip(icon: Icons.timer_rounded, label: '60s session'),
+            ],
           ),
           const SizedBox(height: 30),
 
@@ -733,28 +704,18 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     return Column(
       children: [
         const SizedBox(height: 12),
-
-        // Match criterion label
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Match by: ',
-                style: TextStyle(color: _kMuted, fontSize: 13)),
+            Text('Match by: ', style: TextStyle(color: _kMuted, fontSize: 13)),
             Text(
-              _game.difficulty == SpeedMatchDifficulty.easy
-                  ? 'COLOR'
-                  : _game.difficulty == SpeedMatchDifficulty.medium
-                      ? 'SHAPE'
-                      : 'COLOR + SHAPE',
+              _matchLabel(widget.startLevel),
               style: const TextStyle(
                   color: _kAccent, fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ],
         ),
-
         const SizedBox(height: 16),
-
-        // Cards area
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -767,8 +728,6 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                       color: _kMuted, fontSize: 12, letterSpacing: 0.3),
                 ),
                 const SizedBox(height: 10),
-
-                // Current card (large)
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   transitionBuilder: (child, anim) {
@@ -792,8 +751,6 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             ),
           ),
         ),
-
-        // YES / NO buttons — hidden until second card appears
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
           child: isFirstCard
@@ -838,10 +795,11 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     );
   }
 
-  // ── Game over screen ─────────────────────────────────────────────────────
+  // ── Level complete screen ────────────────────────────────────────────────
 
-  Widget _buildGameOverScreen() {
-    final isNewBest = _game.score > 0 && _game.score >= _bestScore;
+  Widget _buildLevelCompleteScreen() {
+    final nextLevel  = widget.startLevel + 1;
+    final isNewBest  = _game.score > 0 && _game.score >= _bestScore;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -852,16 +810,24 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
               width: 90, height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _kWrong.withOpacity(0.10),
-                border:
-                    Border.all(color: _kWrong.withOpacity(0.3), width: 1.5),
+                color: _kAccent.withOpacity(0.12),
+                border: Border.all(color: _kAccent.withOpacity(0.4), width: 1.5),
               ),
-              child: const Icon(Icons.bolt_rounded, color: _kWrong, size: 42),
+              child: const Icon(Icons.check_rounded, color: _kAccent, size: 44),
             ),
             const SizedBox(height: 20),
-            const Text('Game Over',
-                style: TextStyle(color: AppColors.onSurface, fontSize: 32,
+            const Text('Level Complete!',
+                style: TextStyle(color: AppColors.onSurface, fontSize: 30,
                     fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+            const SizedBox(height: 8),
+            Text('Level ${widget.startLevel} cleared',
+                style: const TextStyle(color: _kMuted, fontSize: 15)),
+            if (nextLevel <= 10) ...[
+              const SizedBox(height: 4),
+              Text('Unlocked Level $nextLevel!',
+                  style: const TextStyle(color: _kAccent, fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ],
             if (isNewBest) ...[
               const SizedBox(height: 8),
               Container(
@@ -880,23 +846,19 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                 ]),
               ),
             ],
-            const SizedBox(height: 28),
-            _StatRow(label: 'Cards Matched', value: '${_game.score}',
-                valueColor: _kAccent),
+            const SizedBox(height: 32),
+            _StatRow(label: 'Cards Matched',
+                value: '${_game.score}', valueColor: _kAccent),
             const SizedBox(height: 8),
-            _StatRow(label: 'Best Streak',   value: '×${_game.bestStreak}',
-                valueColor: _kGold),
+            _StatRow(label: 'Best Streak',
+                value: '×${_game.bestStreak}', valueColor: _kGold),
             const SizedBox(height: 8),
-            _StatRow(label: 'Accuracy',      value: '${_game.accuracy}%',
+            _StatRow(label: 'Accuracy',
+                value: '${_game.accuracy}%',
                 valueColor: AppColors.onTertiaryContainer),
             const SizedBox(height: 8),
-            _StatRow(label: 'Mistakes',      value: '${_game.mistakes}',
-                valueColor: _kWrong),
-            const SizedBox(height: 44),
-            _PrimaryButton(label: 'Play Again', onTap: _startGame),
-            const SizedBox(height: 12),
-            _SecondaryButton(
-                label: 'Exit', onTap: () => Navigator.pop(context)),
+            _StatRow(label: 'Mistakes',
+                value: '${_game.mistakes}', valueColor: _kWrong),
           ],
         ),
       ),
@@ -922,8 +884,8 @@ class _ShapeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasFeedback   = feedbackColor != null;
-    final borderColor   = hasFeedback ? feedbackColor! : _kBorder;
+    final hasFeedback = feedbackColor != null;
+    final borderColor = hasFeedback ? feedbackColor! : _kBorder;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       width: size + 36,
@@ -1078,11 +1040,11 @@ class _ExampleCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AnswerButton extends StatelessWidget {
-  final String      label;
-  final Color       color;
-  final IconData    icon;
+  final String       label;
+  final Color        color;
+  final IconData     icon;
   final VoidCallback onTap;
-  final bool        enabled;
+  final bool         enabled;
 
   const _AnswerButton({
     required this.label,
@@ -1168,8 +1130,8 @@ class _ScoreChip extends StatelessWidget {
           const Icon(Icons.star_rounded, color: _kGold, size: 14),
           const SizedBox(width: 5),
           Text('$score',
-              style: const TextStyle(color: AppColors.onSurface, fontSize: 13,
-                  fontWeight: FontWeight.w700)),
+              style: const TextStyle(color: AppColors.onSurface,
+                  fontSize: 13, fontWeight: FontWeight.w700)),
           if (streak > 1) ...[
             const SizedBox(width: 8),
             Container(
@@ -1207,13 +1169,35 @@ class _SessionTimerChip extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.timer_rounded, color: color, size: 14),
         const SizedBox(width: 5),
-        Text(
-          '${secondsLeft}s',
-          style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
-        ),
+        Text('${secondsLeft}s',
+            style: TextStyle(color: color, fontSize: 13,
+                fontWeight: FontWeight.w700)),
       ]),
     );
   }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: _kAccent, size: 14),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(color: AppColors.onSurface,
+                  fontSize: 12, fontWeight: FontWeight.w600)),
+        ]),
+      );
 }
 
 class _StatRow extends StatelessWidget {
@@ -1234,61 +1218,5 @@ class _StatRow extends StatelessWidget {
                   color: valueColor, fontSize: 14,
                   fontWeight: FontWeight.w700)),
         ],
-      );
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String      label;
-  final VoidCallback onTap;
-  const _PrimaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: AppColors.primary.withOpacity(0.38),
-                  blurRadius: 22,
-                  offset: const Offset(0, 9)),
-            ],
-          ),
-          child: Center(
-            child: Text(label,
-                style: const TextStyle(color: AppColors.onPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16, letterSpacing: 0.3)),
-          ),
-        ),
-      );
-}
-
-class _SecondaryButton extends StatelessWidget {
-  final String      label;
-  final VoidCallback onTap;
-  const _SecondaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Center(
-            child: Text(label,
-                style: const TextStyle(color: _kMuted,
-                    fontWeight: FontWeight.w600, fontSize: 15)),
-          ),
-        ),
       );
 }

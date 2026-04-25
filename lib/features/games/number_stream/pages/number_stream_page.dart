@@ -62,6 +62,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   int?              _tappedIdx;   // which button index was tapped
   bool              _correct = false;
   bool              _feedback = false; // true while showing tap result
+  bool              _resultSubmitted = false;
 
   // ── 2-minute session timer (no-lives system) ─────────────────────────────
   Timer? _sessionTimer;
@@ -137,6 +138,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _startGame() {
+    _resultSubmitted = false;
     _startTime = DateTime.now();
     _sessionSecondsLeft = 120;
     _sessionTimer?.cancel();
@@ -237,14 +239,21 @@ class _NumberStreamPageState extends State<NumberStreamPage>
       );
     });
 
-    Future.delayed(const Duration(milliseconds: 550), () {
+    Future.delayed(const Duration(milliseconds: 550), () async {
       if (!mounted) return;
       if (doLevelUp) {
+        _sessionTimer?.cancel();
         _levelCtrl.forward(from: 0);
         setState(() => _game = _game.copyWith(phase: NumberStreamPhase.levelUp));
-        Future.delayed(const Duration(milliseconds: 1900), () {
-          if (mounted) _nextEquation();
-        });
+
+        if (!_resultSubmitted) {
+          _resultSubmitted = true;
+          await GameProgressService.unlockUpToLevel('number_stream', _game.level);
+          await _submitResult();
+        }
+
+        await Future.delayed(const Duration(milliseconds: 1900));
+        if (mounted) Navigator.pop(context);
       } else {
         _nextEquation();
       }
@@ -281,7 +290,6 @@ class _NumberStreamPageState extends State<NumberStreamPage>
     final secs = _startTime != null
         ? DateTime.now().difference(_startTime!).inSeconds
         : 0;
-    await GameProgressService.unlockUpToLevel('number_stream', _game.level);
     // Normalized score 0-1000: level contribution + accuracy
     final double accuracyFactor = (1.0 - (_game.mistakes * 0.05).clamp(0.0, 1.0));
     final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
@@ -329,10 +337,11 @@ class _NumberStreamPageState extends State<NumberStreamPage>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final isPlaying = _game.phase == NumberStreamPhase.playing ||
-            _game.phase == NumberStreamPhase.levelUp;
-        if (isPlaying) {
+        final isPlaying = _game.phase == NumberStreamPhase.playing;
+        if (isPlaying && !_resultSubmitted) {
+          _resultSubmitted = true;
           _fallCtrl.stop();
+          _sessionTimer?.cancel();
           await _submitResult();
         }
         if (mounted) Navigator.pop(context);
