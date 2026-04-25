@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
@@ -538,6 +539,11 @@ class _CoachingPageState extends State<CoachingPage> {
       appBar: AppBar(
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: Colors.white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         title: const Text('Daily Coach',
             style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
