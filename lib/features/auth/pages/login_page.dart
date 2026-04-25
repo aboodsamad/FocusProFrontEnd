@@ -7,6 +7,7 @@ import '../../../core/services/notification_service.dart';
 
 import '../../home/pages/home_page.dart';
 import '../../home/providers/user_provider.dart';
+import '../../../core/providers/daily_score_provider.dart';
 import './signup_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -55,6 +56,7 @@ class _LoginPageState extends State<LoginPage> {
         // BEFORE navigating — HomeScreen will show a spinner while it loads.
         if (mounted) {
           await context.read<UserProvider>().reloadAfterLogin();
+          await context.read<DailyScoreProvider>().init();
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

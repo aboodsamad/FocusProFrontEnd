@@ -34,6 +34,20 @@ class DailyScoreProvider extends ChangeNotifier {
     }
   }
 
+  /// Clears in-memory state on logout so stale data isn't visible while
+  /// the next user's backend sync is loading.
+  void reset() {
+    _todayScore = 0.0;
+    _weeklyScores = List.generate(
+      7,
+      (i) => DailyScoreEntry(
+        date: DateTime.now().subtract(Duration(days: 6 - i)),
+        score: 0.0,
+      ),
+    );
+    notifyListeners();
+  }
+
   /// Adds points both locally and to the backend.
   /// Local is written first so the UI updates instantly even if the network
   /// call is slow or fails.
