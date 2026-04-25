@@ -270,18 +270,25 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          // Brand mark
-          RichText(
-            text: const TextSpan(
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
+          // Brand pill — same design as home page top-right
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: RichText(
+              text: const TextSpan(
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+                children: [
+                  TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                  TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+                ],
               ),
-              children: [
-                TextSpan(text: 'Locked', style: TextStyle(color: AppColors.primary)),
-                TextSpan(text: 'In', style: TextStyle(color: AppColors.secondary)),
-              ],
             ),
           ),
           const Spacer(),
