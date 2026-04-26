@@ -44,8 +44,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<DailyGoalModel> _todayGoals = [];
 
   // ── Usage-stats permission ────────────────────────────────────────────────
-  // Start as true so the banner doesn't flash on web/iOS.
-  bool _hasUsagePermission = true;
+  // null = still checking, true = granted, false = not granted → show banner
+  bool? _hasUsagePermission;
 
   // ── Lock-In state ─────────────────────────────────────────────────────────
   LockInSessionModel? _activeSession;
@@ -90,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     setState(() => _hasUsagePermission = has);
     if (has) ScreenEventSyncer.instance.start();
+    debugPrint('[HomeScreen] hasUsageStatsPermission = $has');
   }
 
   Future<void> _loadDistractingMinutes() async {
@@ -432,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_activeSession != null) _buildActiveBanner(),
-                  if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                  if (_hasUsagePermission == false) _buildUsagePermissionBanner(),
 
                   const SizedBox(height: 16),
                   _buildSectionHeader("Today's Challenge"),
