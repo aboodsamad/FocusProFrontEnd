@@ -4,13 +4,11 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/app_config.dart';
 import '../../../core/services/auth_service.dart';
 
-/// Sends batches of screen-switch events to the backend.
-/// Called by ScreenEventSyncer every 30 seconds.
+/// Sends batches of screen-switch events (from queryEvents) to the backend.
 class ScreenEventService {
   static const _endpoint = '${AppConfig.baseUrl}/screen-events/batch';
 
-  /// Posts [events] (each a map with packageName, appName, activityName, startedAt)
-  /// to the backend. Returns true on success, false on any error.
+  /// Posts [events] to the backend. Returns true on success.
   static Future<bool> sendBatch(List<Map<String, dynamic>> events) async {
     if (events.isEmpty) return true;
     try {

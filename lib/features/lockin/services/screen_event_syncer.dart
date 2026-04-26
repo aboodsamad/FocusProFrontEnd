@@ -3,14 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'android_lockin_helper.dart';
 import 'screen_event_service.dart';
 
-/// Background syncer that drains the Kotlin event buffer every 30 seconds
-/// and POSTs the events to the backend.
+/// Polls queryEvents() every 30 seconds and sends any new app-switch
+/// events to the backend.
 ///
-/// Usage — start once when the app is ready (e.g. after login):
-///   ScreenEventSyncer.instance.start();
+/// Uses the PACKAGE_USAGE_STATS permission — no AccessibilityService needed.
 ///
-/// Stop when the user logs out:
-///   ScreenEventSyncer.instance.stop();
+/// Usage:
+///   ScreenEventSyncer.instance.start();  // after login
+///   ScreenEventSyncer.instance.stop();   // on logout
 class ScreenEventSyncer {
   ScreenEventSyncer._();
   static final instance = ScreenEventSyncer._();
@@ -18,19 +18,23 @@ class ScreenEventSyncer {
   Timer? _timer;
   bool _running = false;
 
+  /// Tracks the last time we queried so we never send duplicates.
+  int _lastSyncMs = DateTime.now().millisecondsSinceEpoch;
+
   static const _interval = Duration(seconds: 30);
 
-  /// Starts the periodic sync. Safe to call multiple times — ignores if already running.
+  /// Starts the periodic sync. Safe to call multiple times.
   void start() {
     if (_running) return;
     _running = true;
+    _lastSyncMs = DateTime.now().millisecondsSinceEpoch;
     debugPrint('[ScreenEventSyncer] Started.');
-    // Run once immediately, then every 30s
+    // Run once immediately then every 30 seconds
     _sync();
     _timer = Timer.periodic(_interval, (_) => _sync());
   }
 
-  /// Stops the syncer and cancels the timer.
+  /// Stops the syncer.
   void stop() {
     _timer?.cancel();
     _timer = null;
@@ -40,11 +44,17 @@ class ScreenEventSyncer {
 
   Future<void> _sync() async {
     try {
-      final events = await AndroidLockInHelper.drainEvents();
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Ask Android for every app-switch event since the last sync
+      final events = await AndroidLockInHelper.getAppTimeline(_lastSyncMs, now);
+
+      _lastSyncMs = now; // always advance, even if send fails
+
       if (events.isEmpty) return;
       await ScreenEventService.sendBatch(events);
     } catch (e) {
-      debugPrint('[ScreenEventSyncer] Error during sync: $e');
+      debugPrint('[ScreenEventSyncer] Sync error: $e');
     }
   }
 }

@@ -54,8 +54,8 @@ class _LoginPageState extends State<LoginPage> {
         await AuthService.saveToken(token);
         // Start notification polling after login
         NotificationService.init();
-        // Start screen-event syncer if accessibility permission is already granted
-        AndroidLockInHelper.hasAccessibilityPermission().then((has) {
+        // Start screen-event syncer — uses PACKAGE_USAGE_STATS, no extra permission needed
+        AndroidLockInHelper.hasUsageStatsPermission().then((has) {
           if (has) ScreenEventSyncer.instance.start();
         });
         // Flush stale profile data and reload the correct user's data

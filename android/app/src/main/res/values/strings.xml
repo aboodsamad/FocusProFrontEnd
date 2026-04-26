@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">FocusPro</string>
-    <string name="accessibility_service_description">FocusPro uses this permission to detect which app you are currently using, so it can show you your real-time screen activity during focus sessions.</string>
-</resources>

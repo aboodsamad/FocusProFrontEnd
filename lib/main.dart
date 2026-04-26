@@ -18,7 +18,7 @@ import 'features/focus_session/pages/focus_rooms_page.dart';
 import 'features/profile/pages/profile_page.dart';
 import 'features/lockin/pages/lock_in_page.dart';
 import 'features/lockin/services/screen_event_syncer.dart';
-import 'features/lockin/services/android_lockin_helper.dart';
+import 'features/lockin/services/android_lockin_helper.dart' show AndroidLockInHelper;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,9 +33,9 @@ void main() async {
     await dailyScoreProvider.init();
     // Start notification polling if already logged in
     NotificationService.init();
-    // Start screen-event syncer if accessibility permission is already granted
-    final hasAccess = await AndroidLockInHelper.hasAccessibilityPermission();
-    if (hasAccess) ScreenEventSyncer.instance.start();
+    // Start screen-event syncer — uses PACKAGE_USAGE_STATS, no extra permission needed
+    final hasUsage = await AndroidLockInHelper.hasUsageStatsPermission();
+    if (hasUsage) ScreenEventSyncer.instance.start();
   }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
