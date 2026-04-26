@@ -118,19 +118,7 @@ class MainActivity : FlutterActivity() {
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
                 android.os.Process.myUid(), packageName)
         }
-        if (mode != AppOpsManager.MODE_ALLOWED) return false
-
-        // Samsung One UI reports MODE_ALLOWED before the user explicitly grants
-        // Usage Access. Verify by actually querying — an un-granted permission
-        // always returns an empty list even when AppOps says ALLOWED.
-        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val now = System.currentTimeMillis()
-        val stats = usm.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            now - 24 * 60 * 60 * 1000L,
-            now
-        )
-        return stats != null && stats.isNotEmpty()
+        return mode == AppOpsManager.MODE_ALLOWED
     }
 
     private fun getAppUsageToday(): String {
