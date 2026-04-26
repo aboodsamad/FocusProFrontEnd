@@ -8,6 +8,8 @@ import '../../../core/services/notification_service.dart';
 import '../../home/pages/home_page.dart';
 import '../../home/providers/user_provider.dart';
 import '../../../core/providers/daily_score_provider.dart';
+import '../../lockin/services/screen_event_syncer.dart';
+import '../../lockin/services/android_lockin_helper.dart';
 import './signup_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -52,6 +54,10 @@ class _LoginPageState extends State<LoginPage> {
         await AuthService.saveToken(token);
         // Start notification polling after login
         NotificationService.init();
+        // Start screen-event syncer if accessibility permission is already granted
+        AndroidLockInHelper.hasAccessibilityPermission().then((has) {
+          if (has) ScreenEventSyncer.instance.start();
+        });
         // Flush stale profile data and reload the correct user's data
         // BEFORE navigating — HomeScreen will show a spinner while it loads.
         if (mounted) {
