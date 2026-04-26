@@ -20,6 +20,8 @@ import '../../books/pages/books_page.dart';
 import '../../lockin/models/lock_in_session_model.dart';
 import '../../lockin/services/lock_in_service.dart';
 import '../../lockin/pages/lock_in_page.dart';
+import '../../lockin/services/android_lockin_helper.dart';
+import '../../lockin/services/screen_event_syncer.dart';
 
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
@@ -33,7 +35,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // ── Stats state ───────────────────────────────────────────────────────────
   int _distractingMinutes = 0;
   int _streakDays         = 0;
@@ -56,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
@@ -67,6 +71,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loadActiveSession();
       UpdateService.checkForUpdate(context);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startSyncerIfPermissionGranted();
+    }
+  }
+
+  Future<void> _startSyncerIfPermissionGranted() async {
+    final has = await AndroidLockInHelper.hasUsageStatsPermission();
+    if (has) ScreenEventSyncer.instance.start();
   }
 
   Future<void> _loadDistractingMinutes() async {
@@ -132,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }

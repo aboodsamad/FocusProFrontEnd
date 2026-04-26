@@ -19,6 +19,7 @@ import 'features/profile/pages/profile_page.dart';
 import 'features/lockin/pages/lock_in_page.dart';
 import 'features/lockin/services/screen_event_syncer.dart';
 import 'features/lockin/services/android_lockin_helper.dart' show AndroidLockInHelper;
+import 'features/lockin/widgets/usage_permission_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +79,13 @@ class _MyAppState extends State<MyApp> {
             builder: (_) => LockInPage(triggerScheduleId: scheduleId),
           ),
         );
+      }
+    });
+    // Show permission dialog after navigator is ready (cold-start with existing session)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ctx = _navigatorKey.currentContext;
+      if (ctx != null) {
+        await UsagePermissionDialog.showIfNeeded(ctx);
       }
     });
   }

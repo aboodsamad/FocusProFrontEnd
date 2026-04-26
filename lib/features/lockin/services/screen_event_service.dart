@@ -6,7 +6,8 @@ import '../../../core/services/auth_service.dart';
 
 /// Sends batches of screen-switch events (from queryEvents) to the backend.
 class ScreenEventService {
-  static const _endpoint = '${AppConfig.baseUrl}/screen-events/batch';
+  static const _batchEndpoint = '${AppConfig.baseUrl}/screen-events/batch';
+  static const _summaryEndpoint = '${AppConfig.baseUrl}/screen-events/summary';
 
   /// Posts [events] to the backend. Returns true on success.
   static Future<bool> sendBatch(List<Map<String, dynamic>> events) async {
@@ -16,7 +17,7 @@ class ScreenEventService {
       if (token == null || token.isEmpty) return false;
 
       final response = await http.post(
-        Uri.parse(_endpoint),
+        Uri.parse(_batchEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -34,6 +35,33 @@ class ScreenEventService {
     } catch (e) {
       debugPrint('[ScreenEvents] Network error: $e');
       return false;
+    }
+  }
+
+  /// Fetches today's screen-time summary from the backend.
+  /// Returns a map with keys like `totalMinutes`, `appBreakdown`, etc.
+  /// Returns null on error.
+  static Future<Map<String, dynamic>?> getSummary() async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final response = await http.get(
+        Uri.parse(_summaryEndpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('[ScreenEvents] getSummary failed: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('[ScreenEvents] getSummary error: $e');
+      return null;
     }
   }
 }

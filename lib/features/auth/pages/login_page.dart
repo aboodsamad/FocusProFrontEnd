@@ -10,6 +10,7 @@ import '../../home/providers/user_provider.dart';
 import '../../../core/providers/daily_score_provider.dart';
 import '../../lockin/services/screen_event_syncer.dart';
 import '../../lockin/services/android_lockin_helper.dart';
+import '../../lockin/widgets/usage_permission_dialog.dart';
 import './signup_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -54,16 +55,23 @@ class _LoginPageState extends State<LoginPage> {
         await AuthService.saveToken(token);
         // Start notification polling after login
         NotificationService.init();
-        // Start screen-event syncer — uses PACKAGE_USAGE_STATS, no extra permission needed
-        AndroidLockInHelper.hasUsageStatsPermission().then((has) {
-          if (has) ScreenEventSyncer.instance.start();
-        });
         // Flush stale profile data and reload the correct user's data
         // BEFORE navigating — HomeScreen will show a spinner while it loads.
         if (mounted) {
           await context.read<UserProvider>().reloadAfterLogin();
           await context.read<DailyScoreProvider>().init();
         }
+        if (!mounted) return;
+
+        // Start syncer if permission already granted; otherwise prompt the user.
+        final hasPermission =
+            await AndroidLockInHelper.hasUsageStatsPermission();
+        if (hasPermission) {
+          ScreenEventSyncer.instance.start();
+        } else if (mounted) {
+          await UsagePermissionDialog.showIfNeeded(context);
+        }
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
