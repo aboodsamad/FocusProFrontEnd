@@ -1,69 +1,55 @@
 import 'package:flutter/foundation.dart';
 import '../services/daily_score_service.dart';
-import '../services/auth_service.dart';
 
 export '../services/daily_score_service.dart' show DailyScoreEntry;
 
+/// Provides daily score data to the widget tree.
+/// All persistence is server-side — no local SharedPreferences caching needed.
 class DailyScoreProvider extends ChangeNotifier {
   double _todayScore = 0.0;
   List<DailyScoreEntry> _weeklyScores = List.generate(
     7,
     (i) => DailyScoreEntry(
-      date: DateTime.now().subtract(Duration(days: 6 - i)),
+      date:  DateTime.now().subtract(Duration(days: 6 - i)),
       score: 0.0,
     ),
   );
 
-  double get todayScore => _todayScore;
+  double get todayScore   => _todayScore;
   List<DailyScoreEntry> get weeklyScores => _weeklyScores;
 
-  /// Called on app start. Loads from local storage immediately, then tries to
-  /// reconcile with the backend so any cross-device or missed-sync data is merged.
+  /// Loads today's score and weekly history from the backend.
+  /// Called once after login.
   Future<void> init() async {
-    // 1. Show local data immediately so the UI is not blank
-    _todayScore = await DailyScoreService.getTodayScore();
+    _todayScore   = await DailyScoreService.getTodayScore();
     _weeklyScores = await DailyScoreService.getWeeklyScores();
     notifyListeners();
-
-    // 2. Try syncing from backend in the background
-    final token = await AuthService.getToken();
-    if (token != null) {
-      _todayScore = await DailyScoreService.syncTodayFromBackend(token);
-      _weeklyScores = await DailyScoreService.syncWeeklyFromBackend(token);
-      notifyListeners();
-    }
   }
 
-  /// Clears in-memory state on logout so stale data isn't visible while
-  /// the next user's backend sync is loading.
+  /// Resets to zero on logout so stale data isn't shown on the next login.
   void reset() {
-    _todayScore = 0.0;
+    _todayScore   = 0.0;
     _weeklyScores = List.generate(
       7,
       (i) => DailyScoreEntry(
-        date: DateTime.now().subtract(Duration(days: 6 - i)),
+        date:  DateTime.now().subtract(Duration(days: 6 - i)),
         score: 0.0,
       ),
     );
     notifyListeners();
   }
 
-  /// Adds points both locally and to the backend.
-  /// Local is written first so the UI updates instantly even if the network
-  /// call is slow or fails.
+  /// Adds [points] to today's score.
+  /// Updates the UI optimistically then syncs to backend and refreshes weekly.
   Future<void> addPoints(double points) async {
     if (points <= 0) return;
-
-    // 1. Save locally -- instant, always succeeds
-    await DailyScoreService.addPoints(points);
+    // Optimistic: show the new total immediately
     _todayScore += points;
+    notifyListeners();
+    // Persist to backend
+    await DailyScoreService.addPoints(points);
+    // Refresh the weekly chart with confirmed backend totals
     _weeklyScores = await DailyScoreService.getWeeklyScores();
     notifyListeners();
-
-    // 2. Sync to backend (fire-and-forget -- UI is already updated)
-    final token = await AuthService.getToken();
-    if (token != null) {
-      await DailyScoreService.addPointsToBackend(points, token);
-    }
   }
 }
