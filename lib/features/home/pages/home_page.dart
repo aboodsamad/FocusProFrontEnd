@@ -22,6 +22,7 @@ import '../../lockin/services/lock_in_service.dart';
 import '../../lockin/pages/lock_in_page.dart';
 import '../../lockin/services/android_lockin_helper.dart';
 import '../../lockin/services/screen_event_syncer.dart';
+import '../../lockin/widgets/usage_permission_dialog.dart';
 
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
@@ -70,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
       _loadChallenge();
       _loadActiveSession();
       UpdateService.checkForUpdate(context);
+      UsagePermissionDialog.showIfNeeded(context);
     });
   }
 

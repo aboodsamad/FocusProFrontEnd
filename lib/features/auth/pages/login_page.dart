@@ -10,7 +10,6 @@ import '../../home/providers/user_provider.dart';
 import '../../../core/providers/daily_score_provider.dart';
 import '../../lockin/services/screen_event_syncer.dart';
 import '../../lockin/services/android_lockin_helper.dart';
-import '../../lockin/widgets/usage_permission_dialog.dart';
 import './signup_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -63,14 +62,10 @@ class _LoginPageState extends State<LoginPage> {
         }
         if (!mounted) return;
 
-        // Start syncer if permission already granted; otherwise prompt the user.
+        // Start syncer if permission already granted (dialog is shown by HomeScreen).
         final hasPermission =
             await AndroidLockInHelper.hasUsageStatsPermission();
-        if (hasPermission) {
-          ScreenEventSyncer.instance.start();
-        } else if (mounted) {
-          await UsagePermissionDialog.showIfNeeded(context);
-        }
+        if (hasPermission) ScreenEventSyncer.instance.start();
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
