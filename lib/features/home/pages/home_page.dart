@@ -22,7 +22,6 @@ import '../../lockin/services/lock_in_service.dart';
 import '../../lockin/pages/lock_in_page.dart';
 import '../../lockin/services/android_lockin_helper.dart';
 import '../../lockin/services/screen_event_syncer.dart';
-import '../../lockin/widgets/usage_permission_dialog.dart';
 
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
@@ -44,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen>
   int _todaySessions      = 0;
   List<DailyGoalModel> _todayGoals = [];
 
+  // ── Usage-stats permission ────────────────────────────────────────────────
+  // Start as true so the banner doesn't flash on web/iOS.
+  bool _hasUsagePermission = true;
+
   // ── Lock-In state ─────────────────────────────────────────────────────────
   LockInSessionModel? _activeSession;
 
@@ -64,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen>
     _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
+    _checkUsagePermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDistractingMinutes();
       _loadStats();
@@ -71,19 +75,20 @@ class _HomeScreenState extends State<HomeScreen>
       _loadChallenge();
       _loadActiveSession();
       UpdateService.checkForUpdate(context);
-      UsagePermissionDialog.showIfNeeded(context);
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startSyncerIfPermissionGranted();
+      _checkUsagePermission();
     }
   }
 
-  Future<void> _startSyncerIfPermissionGranted() async {
+  Future<void> _checkUsagePermission() async {
     final has = await AndroidLockInHelper.hasUsageStatsPermission();
+    if (!mounted) return;
+    setState(() => _hasUsagePermission = has);
     if (has) ScreenEventSyncer.instance.start();
   }
 
@@ -427,6 +432,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_activeSession != null) _buildActiveBanner(),
+                  if (!_hasUsagePermission) _buildUsagePermissionBanner(),
 
                   const SizedBox(height: 16),
                   _buildSectionHeader("Today's Challenge"),
@@ -687,6 +693,50 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const Icon(Icons.chevron_right_rounded,
               color: AppColors.secondary, size: 18),
+        ]),
+      ),
+    );
+  }
+
+  // ── Usage-stats permission banner ─────────────────────────────────────────
+  Widget _buildUsagePermissionBanner() {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        await AndroidLockInHelper.requestUsageStatsPermission();
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFED7AA)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.phone_android_rounded,
+              color: Color(0xFFEA580C), size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Screen time access needed',
+                    style: TextStyle(
+                        color: Color(0xFF9A3412),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+                SizedBox(height: 2),
+                Text('Tap to grant Usage Access so FocusPro can track your screen time.',
+                    style: TextStyle(
+                        color: Color(0xFFC2410C),
+                        fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right_rounded,
+              color: Color(0xFFEA580C), size: 18),
         ]),
       ),
     );
