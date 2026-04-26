@@ -12,6 +12,7 @@ import '../models/activity_log.dart';
 import '../services/activity_log_service.dart';
 import '../widgets/daily_score_section.dart';
 import '../widgets/long_term_score_card.dart';
+import '../../lockin/pages/screen_time_stats_page.dart';
 
 // ── Category definition ────────────────────────────────────────────────────────
 class _Category {
@@ -259,6 +260,7 @@ class _ProfilePageState extends State<ProfilePage>
                 const SliverToBoxAdapter(child: LongTermScoreCard()),
                 const SliverToBoxAdapter(child: DailyScoreSection()),
                 SliverToBoxAdapter(child: _buildStatCards()),
+                SliverToBoxAdapter(child: _buildScreenTimeButton()),
                 SliverToBoxAdapter(child: _buildActivityLogSection()),
                 SliverToBoxAdapter(child: _buildAiHistorySection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
@@ -429,6 +431,73 @@ class _ProfilePageState extends State<ProfilePage>
             label: 'BOOKS READ',
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Screen Time Button ─────────────────────────────────────────────────────
+  Widget _buildScreenTimeButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ScreenTimeStatsPage()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.outlineVariant),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.phone_android_rounded,
+                    color: AppColors.secondary, size: 22),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Screen Time',
+                      style: TextStyle(
+                        color: AppColors.onSurface,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Today's app usage breakdown",
+                      style: TextStyle(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.onSurfaceVariant, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

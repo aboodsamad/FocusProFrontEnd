@@ -20,8 +20,6 @@ import '../../books/pages/books_page.dart';
 import '../../lockin/models/lock_in_session_model.dart';
 import '../../lockin/services/lock_in_service.dart';
 import '../../lockin/pages/lock_in_page.dart';
-import '../../lockin/services/android_lockin_helper.dart';
-import '../../lockin/services/screen_event_syncer.dart';
 
 import '../../books/pages/book_detail_page.dart';
 import '../../books/services/book_service.dart';
@@ -35,17 +33,12 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Stats state ───────────────────────────────────────────────────────────
   int _distractingMinutes = 0;
   int _streakDays         = 0;
   int _todaySessions      = 0;
   List<DailyGoalModel> _todayGoals = [];
-
-  // ── Usage-stats permission ────────────────────────────────────────────────
-  // null = still checking, true = granted, false = not granted → show banner
-  bool? _hasUsagePermission;
 
   // ── Lock-In state ─────────────────────────────────────────────────────────
   LockInSessionModel? _activeSession;
@@ -63,11 +56,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
-    _checkUsagePermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDistractingMinutes();
       _loadStats();
@@ -76,21 +67,6 @@ class _HomeScreenState extends State<HomeScreen>
       _loadActiveSession();
       UpdateService.checkForUpdate(context);
     });
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkUsagePermission();
-    }
-  }
-
-  Future<void> _checkUsagePermission() async {
-    final has = await AndroidLockInHelper.hasUsageStatsPermission();
-    if (!mounted) return;
-    setState(() => _hasUsagePermission = has);
-    if (has) ScreenEventSyncer.instance.start();
-    debugPrint('[HomeScreen] hasUsageStatsPermission = $has');
   }
 
   Future<void> _loadDistractingMinutes() async {
@@ -156,7 +132,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }
@@ -433,7 +408,6 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_activeSession != null) _buildActiveBanner(),
-                  if (_hasUsagePermission == false) _buildUsagePermissionBanner(),
 
                   const SizedBox(height: 16),
                   _buildSectionHeader("Today's Challenge"),
@@ -694,50 +668,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const Icon(Icons.chevron_right_rounded,
               color: AppColors.secondary, size: 18),
-        ]),
-      ),
-    );
-  }
-
-  // ── Usage-stats permission banner ─────────────────────────────────────────
-  Widget _buildUsagePermissionBanner() {
-    return GestureDetector(
-      onTap: () async {
-        HapticFeedback.lightImpact();
-        await AndroidLockInHelper.requestUsageStatsPermission();
-      },
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF7ED),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFFED7AA)),
-        ),
-        child: Row(children: [
-          const Icon(Icons.phone_android_rounded,
-              color: Color(0xFFEA580C), size: 20),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Screen time access needed',
-                    style: TextStyle(
-                        color: Color(0xFF9A3412),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13)),
-                SizedBox(height: 2),
-                Text('Tap to grant Usage Access so FocusPro can track your screen time.',
-                    style: TextStyle(
-                        color: Color(0xFFC2410C),
-                        fontSize: 12)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right_rounded,
-              color: Color(0xFFEA580C), size: 18),
         ]),
       ),
     );

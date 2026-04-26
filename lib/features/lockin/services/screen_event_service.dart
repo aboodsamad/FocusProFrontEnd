@@ -3,48 +3,54 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_config.dart';
 import '../../../core/services/auth_service.dart';
+import '../models/app_usage_stat_model.dart';
 
-/// Sends batches of screen-switch events (from queryEvents) to the backend.
 class ScreenEventService {
-  static const _batchEndpoint = '${AppConfig.baseUrl}/screen-events/batch';
-  static const _summaryEndpoint = '${AppConfig.baseUrl}/screen-events/summary';
+  static const _dailyUsageEndpoint = '${AppConfig.baseUrl}/screen-events/daily-usage';
+  static const _summaryEndpoint    = '${AppConfig.baseUrl}/screen-events/summary';
 
-  /// Posts [events] to the backend. Returns true on success.
-  static Future<bool> sendBatch(List<Map<String, dynamic>> events) async {
-    if (events.isEmpty) return true;
+  /// Posts today's aggregated app-usage totals to the backend (upserted per app per day).
+  static Future<bool> sendDailyUsage(List<AppUsageStatModel> stats) async {
+    if (stats.isEmpty) return true;
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) return false;
 
       final response = await http.post(
-        Uri.parse(_batchEndpoint),
+        Uri.parse(_dailyUsageEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'events': events}),
+        body: jsonEncode({
+          'usageStats': stats
+              .map((s) => {
+                    'packageName': s.packageName,
+                    'appName': s.appName,
+                    'totalMinutesToday': s.totalMinutesToday,
+                  })
+              .toList(),
+        }),
       );
 
       if (response.statusCode == 200) {
-        debugPrint('[ScreenEvents] Synced ${events.length} events.');
+        debugPrint('[ScreenEvents] Daily usage synced (${stats.length} apps).');
         return true;
-      } else {
-        debugPrint('[ScreenEvents] Sync failed: ${response.statusCode}');
-        return false;
       }
+      debugPrint('[ScreenEvents] Daily usage sync failed: ${response.statusCode}');
+      return false;
     } catch (e) {
-      debugPrint('[ScreenEvents] Network error: $e');
+      debugPrint('[ScreenEvents] sendDailyUsage error: $e');
       return false;
     }
   }
 
   /// Fetches today's screen-time summary from the backend.
-  /// Returns a map with keys like `totalMinutes`, `appBreakdown`, etc.
-  /// Returns null on error.
-  static Future<Map<String, dynamic>?> getSummary() async {
+  /// Returns a list of maps with keys: packageName, appName, totalMinutes, usageDate.
+  static Future<List<Map<String, dynamic>>> getSummary() async {
     try {
       final token = await AuthService.getToken();
-      if (token == null || token.isEmpty) return null;
+      if (token == null || token.isEmpty) return [];
 
       final response = await http.get(
         Uri.parse(_summaryEndpoint),
@@ -55,13 +61,14 @@ class ScreenEventService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list.cast<Map<String, dynamic>>();
       }
       debugPrint('[ScreenEvents] getSummary failed: ${response.statusCode}');
-      return null;
+      return [];
     } catch (e) {
       debugPrint('[ScreenEvents] getSummary error: $e');
-      return null;
+      return [];
     }
   }
 }
