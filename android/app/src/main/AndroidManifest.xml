@@ -1,4 +1,4 @@
-<!-- Sideloaded APK — no Play Store. Accessibility Service intentionally not used. -->
+<!-- Sideloaded APK — no Play Store. Accessibility Service enabled for real-time screen tracking. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -63,6 +63,20 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="focusSession"/>
+        </service>
+
+        <!-- Accessibility Service — detects which app the user is currently on in real-time -->
+        <service
+            android:name=".FocusProAccessibilityService"
+            android:exported="true"
+            android:label="FocusPro Screen Tracker"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
         </service>
 
         <meta-data

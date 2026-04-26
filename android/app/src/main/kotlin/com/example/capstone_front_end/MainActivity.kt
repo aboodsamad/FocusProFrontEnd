@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.app.usage.UsageStatsManager
+import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -21,6 +22,7 @@ class MainActivity : FlutterActivity() {
 
     private val lockInChannel = "focuspro/lockin"
     private val triggerChannel = "focuspro/lockin_trigger"
+    private val accessibilityChannel = "focuspro/accessibility"
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -63,6 +65,21 @@ class MainActivity : FlutterActivity() {
                         cancelAlarm(scheduleId)
                         result.success(null)
                     }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // ── Accessibility channel ─────────────────────────────────────────────
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, accessibilityChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "hasAccessibilityPermission" -> result.success(hasAccessibilityPermission())
+                    "requestAccessibilityPermission" -> {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        result.success(null)
+                    }
+                    "getCurrentApp" -> result.success(getCurrentApp())
+                    "drainEvents"  -> result.success(drainEvents())
                     else -> result.notImplemented()
                 }
             }
@@ -205,6 +222,72 @@ class MainActivity : FlutterActivity() {
             alarmManager.cancel(it)
             it.cancel()
         }
+    }
+
+    // ── Accessibility service helpers ─────────────────────────────────────────
+
+    /**
+     * Checks whether FocusProAccessibilityService is currently enabled
+     * by reading the list of enabled accessibility services from Settings.
+     */
+    private fun hasAccessibilityPermission(): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val colonSplitter = TextUtils.SimpleStringSplitter(':')
+        colonSplitter.setString(enabledServices)
+        val targetService = "$packageName/${FocusProAccessibilityService::class.java.name}"
+        while (colonSplitter.hasNext()) {
+            if (colonSplitter.next().equals(targetService, ignoreCase = true)) return true
+        }
+        return false
+    }
+
+    /**
+     * Returns a JSON string with the package name and app name of whatever
+     * the user is currently looking at. Reads directly from the static field
+     * kept live by FocusProAccessibilityService.
+     *
+     * Returns null if the service is not running or nothing has been detected yet.
+     */
+    private fun getCurrentApp(): String? {
+        val pkg = FocusProAccessibilityService.currentPackage
+        if (pkg.isEmpty()) return null
+
+        val appName = try {
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (_: PackageManager.NameNotFoundException) {
+            pkg
+        }
+
+        val obj = JSONObject()
+        obj.put("packageName", pkg)
+        obj.put("appName", appName)
+        obj.put("activityName", FocusProAccessibilityService.currentActivity)
+        obj.put("serviceRunning", FocusProAccessibilityService.isRunning)
+        return obj.toString()
+    }
+
+    /**
+     * Drains the event buffer from FocusProAccessibilityService and returns
+     * it as a JSON string so Flutter can POST it to the backend.
+     * Returns an empty JSON array "[]" if there are no buffered events.
+     */
+    private fun drainEvents(): String {
+        val events = FocusProAccessibilityService.drainEvents()
+        if (events.isEmpty()) return "[]"
+        val json = org.json.JSONArray()
+        events.forEach { e ->
+            val obj = org.json.JSONObject()
+            obj.put("packageName", e.packageName)
+            obj.put("appName", e.appName)
+            obj.put("activityName", e.activityName)
+            obj.put("startedAt", e.startedAt)
+            json.put(obj)
+        }
+        return json.toString()
     }
 
     override fun onDestroy() {

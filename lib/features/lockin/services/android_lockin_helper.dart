@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/app_usage_stat_model.dart';
+import '../models/current_app_model.dart';
 
 class AndroidLockInHelper {
   static const _channel = MethodChannel('focuspro/lockin');
+  static const _accessibilityChannel = MethodChannel('focuspro/accessibility');
 
   /// Opens Android Usage Access settings screen.
   static Future<void> requestUsageStatsPermission() async {
@@ -104,6 +106,63 @@ class AndroidLockInHelper {
       await _channel.invokeMethod('releaseWakeLock');
     } catch (e) {
       debugPrint('releaseWakeLock error: $e');
+    }
+  }
+
+  // ── Accessibility Service ─────────────────────────────────────────────────
+
+  /// Returns true if FocusProAccessibilityService is enabled in Android Settings.
+  static Future<bool> hasAccessibilityPermission() async {
+    if (!_isAndroid) return false;
+    try {
+      final result =
+          await _accessibilityChannel.invokeMethod<bool>('hasAccessibilityPermission');
+      return result ?? false;
+    } catch (e) {
+      debugPrint('hasAccessibilityPermission error: $e');
+      return false;
+    }
+  }
+
+  /// Opens Android Accessibility Settings so the user can enable the service.
+  static Future<void> requestAccessibilityPermission() async {
+    if (!_isAndroid) return;
+    try {
+      await _accessibilityChannel.invokeMethod('requestAccessibilityPermission');
+    } catch (e) {
+      debugPrint('requestAccessibilityPermission error: $e');
+    }
+  }
+
+  /// Drains the Kotlin event buffer and returns all captured screen-switch
+  /// events since the last drain. Returns an empty list if nothing is buffered.
+  static Future<List<Map<String, dynamic>>> drainEvents() async {
+    if (!_isAndroid) return [];
+    try {
+      final result =
+          await _accessibilityChannel.invokeMethod<String>('drainEvents');
+      if (result == null || result == '[]') return [];
+      final list = jsonDecode(result) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('drainEvents error: $e');
+      return [];
+    }
+  }
+
+  /// Returns the app the user is currently looking at, or null if the
+  /// accessibility service is not running / nothing detected yet.
+  static Future<CurrentAppModel?> getCurrentApp() async {
+    if (!_isAndroid) return null;
+    try {
+      final result =
+          await _accessibilityChannel.invokeMethod<String>('getCurrentApp');
+      if (result == null) return null;
+      final map = jsonDecode(result) as Map<String, dynamic>;
+      return CurrentAppModel.fromJson(map);
+    } catch (e) {
+      debugPrint('getCurrentApp error: $e');
+      return null;
     }
   }
 
