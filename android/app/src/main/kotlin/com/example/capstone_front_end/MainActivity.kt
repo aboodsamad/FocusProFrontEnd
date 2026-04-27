@@ -1,4 +1,4 @@
-package com.example.capstone_front_end
+package com.example.LockedIn
 
 import android.app.AppOpsManager
 import android.app.AlarmManager
@@ -24,8 +24,8 @@ import java.util.Calendar
 
 class MainActivity : FlutterActivity() {
 
-    private val lockInChannel = "focuspro/lockin"
-    private val triggerChannel = "focuspro/lockin_trigger"
+    private val lockInChannel = "LockedIn/lockin"
+    private val triggerChannel = "LockedIn/lockin_trigger"
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -289,7 +289,7 @@ class MainActivity : FlutterActivity() {
         @Suppress("DEPRECATION")
         wakeLock = pm.newWakeLock(
             PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-            "focuspro:lockin")
+            "LockedIn:lockin")
         wakeLock?.acquire(4 * 60 * 60 * 1000L)
     }
 
@@ -310,7 +310,7 @@ class MainActivity : FlutterActivity() {
             if (before(Calendar.getInstance())) add(Calendar.DAY_OF_YEAR, 1)
         }
         val intent = Intent(this, AlarmReceiver::class.java).apply {
-            action = "com.example.capstone_front_end.LOCK_IN_ALARM"
+            action = "com.example.LockedIn.LOCK_IN_ALARM"
             putExtra("SCHEDULE_ID", scheduleId)
         }
         val pending = PendingIntent.getBroadcast(

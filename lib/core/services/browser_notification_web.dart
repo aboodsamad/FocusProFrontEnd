@@ -23,7 +23,7 @@ class BrowserNotification {
   }
 
   /// Subscribe to VAPID Web Push.
-  /// The actual subscription is done by JS in index.html (_focuspro_subscribePush)
+  /// The actual subscription is done by JS in index.html (_LockedIn_subscribePush)
   /// to avoid dart:js_util / allowInterop issues in Dart 3.8.
   /// Returns the subscription JSON (endpoint + keys) or null on failure.
   static Future<Map<String, dynamic>?> subscribeToWebPush(String vapidPublicKey) async {
@@ -33,13 +33,13 @@ class BrowserNotification {
 
     try {
       // Reset result and kick off JS subscription
-      js.context['_focuspro_pushResult'] = null;
-      js.context.callMethod('_focuspro_subscribePush', [vapidPublicKey]);
+      js.context['_LockedIn_pushResult'] = null;
+      js.context.callMethod('_LockedIn_subscribePush', [vapidPublicKey]);
 
       // Poll for up to 15 seconds until JS finishes
       for (int i = 0; i < 150; i++) {
         await Future.delayed(const Duration(milliseconds: 100));
-        final result = js.context['_focuspro_pushResult'];
+        final result = js.context['_LockedIn_pushResult'];
         if (result == null) continue;
 
         // Convert JsObject → Dart map via JSON round-trip

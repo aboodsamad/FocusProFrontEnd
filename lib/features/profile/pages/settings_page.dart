@@ -14,16 +14,16 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   // Focus defaults
   int _defaultDuration = 60;
-  int _defaultPrep     = 5;
+  int _defaultPrep = 5;
 
   // Notifications
   bool _notifySchedule = true;
-  bool _notifyHabits   = true;
+  bool _notifyHabits = true;
 
   // Privacy
   bool _analytics = true;
 
-  bool _saving   = false;
+  bool _saving = false;
   bool _deleting = false;
 
   @override
@@ -36,10 +36,10 @@ class _SettingsPageState extends State<SettingsPage> {
     final p = await SharedPreferences.getInstance();
     setState(() {
       _defaultDuration = p.getInt('default_duration') ?? 60;
-      _defaultPrep     = p.getInt('default_prep')     ?? 5;
-      _notifySchedule  = p.getBool('notify_schedule') ?? true;
-      _notifyHabits    = p.getBool('notify_habits')   ?? true;
-      _analytics       = p.getBool('analytics')       ?? true;
+      _defaultPrep = p.getInt('default_prep') ?? 5;
+      _notifySchedule = p.getBool('notify_schedule') ?? true;
+      _notifyHabits = p.getBool('notify_habits') ?? true;
+      _analytics = p.getBool('analytics') ?? true;
     });
   }
 
@@ -55,8 +55,10 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Settings saved ✓',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          content: const Text(
+            'Settings saved ✓',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
           backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -78,20 +80,16 @@ class _SettingsPageState extends State<SettingsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56, height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.delete_forever_rounded,
-                    color: AppColors.error, size: 28),
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(color: AppColors.error.withOpacity(0.12), shape: BoxShape.circle),
+                child: const Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text('Delete Account',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
+              const Text(
+                'Delete Account',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               const Text(
                 'All your progress, habits, and data will be permanently deleted. This cannot be undone.',
@@ -99,46 +97,45 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 24),
-              Row(children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, false),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F2937),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF374151)),
-                      ),
-                      child: const Center(
-                        child: Text('Cancel',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, true),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: Text('Delete',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1F2937),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF374151)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(12)),
+                        child: const Center(
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -150,10 +147,9 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final token = await AuthService.getToken();
       if (token != null) {
-        await http.delete(
-          Uri.parse('${AuthService.baseUrl}/user/account'),
-          headers: {'Authorization': 'Bearer $token'},
-        ).timeout(const Duration(seconds: 10));
+        await http
+            .delete(Uri.parse('${AuthService.baseUrl}/user/account'), headers: {'Authorization': 'Bearer $token'})
+            .timeout(const Duration(seconds: 10));
       }
     } catch (_) {}
     final p = await SharedPreferences.getInstance();
@@ -201,24 +197,20 @@ class _SettingsPageState extends State<SettingsPage> {
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: Container(
-              width: 40, height: 40,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: const Color(0xFF1F2937),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFF374151)),
               ),
-              child: const Icon(Icons.arrow_back_ios_rounded,
-                  color: Colors.white, size: 18),
+              child: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 18),
             ),
           ),
           const SizedBox(width: 16),
           const Text(
             'Settings',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           GestureDetector(
@@ -235,15 +227,13 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               child: _saving
                   ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
                   : const Text(
                       'Save',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
             ),
           ),
@@ -287,11 +277,7 @@ class _SettingsPageState extends State<SettingsPage> {
           for (int i = 0; i < rows.length; i++) ...[
             rows[i],
             if (i < rows.length - 1)
-              Container(
-                height: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                color: const Color(0xFF1F2937),
-              ),
+              Container(height: 1, margin: const EdgeInsets.symmetric(horizontal: 16), color: const Color(0xFF1F2937)),
           ],
         ],
       ),
@@ -364,7 +350,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _toggleRow(
             icon: Icons.bar_chart_rounded,
             label: 'Usage analytics',
-            subtitle: 'Anonymous data to improve FocusPro',
+            subtitle: 'Anonymous data to improve LockedIn',
             value: _analytics,
             onChanged: (v) => setState(() => _analytics = v),
           ),
@@ -391,40 +377,38 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Row(
               children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.error.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.delete_forever_rounded,
-                      color: AppColors.error, size: 22),
+                  child: const Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 22),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Delete My Account',
-                          style: TextStyle(
-                              color: AppColors.error,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'Delete My Account',
+                        style: TextStyle(color: AppColors.error, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
                       SizedBox(height: 3),
-                      Text('Permanently remove all your data',
-                          style: TextStyle(
-                              color: AppColors.error,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400)),
+                      Text(
+                        'Permanently remove all your data',
+                        style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w400),
+                      ),
                     ],
                   ),
                 ),
                 _deleting
                     ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(
-                            color: AppColors.error, strokeWidth: 2))
-                    : const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.error, size: 20),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: AppColors.error, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right_rounded, color: AppColors.error, size: 20),
               ],
             ),
           ),
@@ -446,7 +430,8 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         children: [
           Container(
-            width: 38, height: 38,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: AppColors.secondary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
@@ -458,15 +443,12 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  label,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                    style: const TextStyle(
-                        color: Color(0xFF6B7280), fontSize: 12)),
+                Text(subtitle, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
               ],
             ),
           ),
@@ -497,11 +479,10 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
           ),
           // Decrement
           GestureDetector(
@@ -510,7 +491,8 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged(next);
             },
             child: Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: const Color(0xFF1F2937),
                 borderRadius: BorderRadius.circular(10),
@@ -526,11 +508,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Text(
               '$value $unit',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.secondary,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: AppColors.secondary, fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 12),
@@ -541,15 +519,14 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged(next);
             },
             child: Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: AppColors.secondary.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppColors.secondary.withOpacity(0.4)),
+                border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
               ),
-              child: const Icon(Icons.add,
-                  color: AppColors.secondary, size: 18),
+              child: const Icon(Icons.add, color: AppColors.secondary, size: 18),
             ),
           ),
         ],

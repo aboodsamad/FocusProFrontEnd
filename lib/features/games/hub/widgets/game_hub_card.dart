@@ -11,12 +11,8 @@ import '../models/game_registry.dart';
 class _ScienceInfo {
   final String whatItIs;
   final String targets;
-  final String whyInFocusPro;
-  const _ScienceInfo({
-    required this.whatItIs,
-    required this.targets,
-    required this.whyInFocusPro,
-  });
+  final String whyInLockedIn;
+  const _ScienceInfo({required this.whatItIs, required this.targets, required this.whyInLockedIn});
 }
 
 const _scienceMap = <String, _ScienceInfo>{
@@ -27,7 +23,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Your hippocampus holds the image while your prefrontal cortex '
         'keeps it alive long enough to act on it.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is basically the N-back task in disguise  the single most '
         'studied working memory exercise in neuroscience, replicated across '
         '24 brain-imaging studies.',
@@ -39,7 +35,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'The front of your brain works overtime here  planning ahead, '
         'holding constraints in mind, and catching your own mistakes.',
-    whyInFocusPro:
+    whyInLockedIn:
         'Brain scans taken while people solve Sudoku show clear spikes in '
         'prefrontal activity  the same region that suffers most when '
         'you\'re stressed or sleep-deprived.',
@@ -51,7 +47,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'The part of your brain that detects conflict and the one that '
         'processes where things are both have to fire together, fast.',
-    whyInFocusPro:
+    whyInLockedIn:
         'The ACTIVE trial  the longest brain-training study ever run  '
         'found that this exact type of speed training kept paying off '
         'a full decade later.',
@@ -63,7 +59,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'You\'re forcing your brain to suppress the obvious answer and pick '
         'the correct one instead  that\'s pure inhibitory control.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is the Stroop task, and it\'s been used in research for '
         'nearly a century. It\'s the go-to test for attention and impulse '
         'control, especially in ADHD studies.',
@@ -75,7 +71,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Both sides of your prefrontal cortex light up  one for the '
         'math, one for keeping track of what\'s already gone.',
-    whyInFocusPro:
+    whyInLockedIn:
         'After just 4 weeks of this kind of training, brain scans showed '
         'measurable growth in working memory and processing speed '
         '(Nouchi et al., PLOS ONE, 2013).',
@@ -87,7 +83,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Spatial memory lives in the hippocampus; keeping the sequence '
         'straight pulls in your right frontal and parietal regions too.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is a direct version of the Corsi Block test  a staple of '
         'clinical neuropsychology since the 1970s, still used today to '
         'assess memory and brain injury.',
@@ -99,7 +95,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'You\'re constantly switching between tasks and tracking multiple '
         'things at once, which hammers your prefrontal and parietal cortex.',
-    whyInFocusPro:
+    whyInLockedIn:
         'Managing several moving objects simultaneously is one of the '
         'clearest ways to stress-test executive attention  the skill '
         'that tends to slip first under fatigue or distraction.',
@@ -134,78 +130,62 @@ void _showInfoSheet(BuildContext context, GameItem game, Color color) {
               margin: const EdgeInsets.only(top: 12, bottom: 20),
               width: 36,
               height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              decoration: BoxDecoration(color: AppColors.outlineVariant, borderRadius: BorderRadius.circular(2)),
             ),
           ),
 
           // ── Game name + category badge ────────────────────────────────────
-          Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.secondaryContainer.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary.withOpacity(0.30)),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.secondaryContainer.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.secondary.withOpacity(0.30)),
+                ),
+                child: Icon(game.icon, color: AppColors.primary, size: 22),
               ),
-              child: Icon(game.icon, color: AppColors.primary, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    game.title,
-                    style: const TextStyle(
-                        color: AppColors.onSurface,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryContainer,
-                      borderRadius: BorderRadius.circular(20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      game.title,
+                      style: const TextStyle(color: AppColors.onSurface, fontSize: 17, fontWeight: FontWeight.bold),
                     ),
-                    child: Text(
-                      game.categoryLabel,
-                      style: const TextStyle(
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        game.categoryLabel,
+                        style: const TextStyle(
                           color: AppColors.onSecondaryContainer,
                           fontSize: 11,
-                          fontWeight: FontWeight.w700),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
 
           const SizedBox(height: 24),
 
           // ── Three science sections ────────────────────────────────────────
-          _InfoSection(
-            emoji: '🎯',
-            label: 'What it is',
-            body: info.whatItIs,
-          ),
+          _InfoSection(emoji: '🎯', label: 'What it is', body: info.whatItIs),
           const SizedBox(height: 16),
-          _InfoSection(
-            emoji: '🧠',
-            label: 'What it targets',
-            body: info.targets,
-          ),
+          _InfoSection(emoji: '🧠', label: 'What it targets', body: info.targets),
           const SizedBox(height: 16),
-          _InfoSection(
-            emoji: '🔬',
-            label: "Why it's in FocusPro",
-            body: info.whyInFocusPro,
-          ),
+          _InfoSection(emoji: '🔬', label: "Why it's in LockedIn", body: info.whyInLockedIn),
 
           const SizedBox(height: 28),
 
@@ -217,15 +197,10 @@ void _showInfoSheet(BuildContext context, GameItem game, Color color) {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 minimumSize: const Size.fromHeight(48),
               ),
-              child: const Text(
-                'Got it',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('Got it', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
           ),
 
@@ -258,28 +233,27 @@ class _GameHubCardState extends State<GameHubCard> {
 
   @override
   Widget build(BuildContext context) {
-    final game      = widget.game;
+    final game = widget.game;
     final available = game.isAvailable;
     final hasRoadmap = GameRegistry.hasRoadmap(game.id);
 
     return GestureDetector(
-      onTapDown:   available ? (_) => setState(() => _pressed = true)  : null,
-      onTapUp:     available ? (_) { setState(() => _pressed = false); widget.onTap?.call(); } : null,
+      onTapDown: available ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: available
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap?.call();
+            }
+          : null,
       onTapCancel: available ? () => setState(() => _pressed = false) : null,
       child: AnimatedScale(
-        scale:    _pressed ? 0.97 : 1.0,
+        scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         child: Container(
           decoration: BoxDecoration(
-            color:        AppColors.surfaceContainerLowest,
+            color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color:      Colors.black.withOpacity(0.07),
-                blurRadius: 12,
-                offset:     const Offset(0, 4),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -303,12 +277,10 @@ class _GameHubCardState extends State<GameHubCard> {
                           child: Text(
                             game.title,
                             style: TextStyle(
-                              color:      available
-                                  ? AppColors.primary
-                                  : AppColors.onSurfaceVariant,
-                              fontSize:   18,
+                              color: available ? AppColors.primary : AppColors.onSurfaceVariant,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              height:     1.2,
+                              height: 1.2,
                             ),
                           ),
                         ),
@@ -324,11 +296,7 @@ class _GameHubCardState extends State<GameHubCard> {
                       game.shortDesc,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color:    AppColors.onSurfaceVariant,
-                        fontSize: 13,
-                        height:   1.4,
-                      ),
+                      style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.4),
                     ),
 
                     // Level progress indicator (roadmap games only)
@@ -350,34 +318,25 @@ class _GameHubCardState extends State<GameHubCard> {
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: AppColors.onPrimary,
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                               ),
-                              child: const Text(
-                                'Play',
-                                style: TextStyle(
-                                  fontSize:   15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child: const Text('Play', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                             ),
                           )
                         : Container(
-                            width:  double.infinity,
+                            width: double.infinity,
                             height: 44,
                             decoration: BoxDecoration(
-                              color:        AppColors.surfaceContainerLow,
+                              color: AppColors.surfaceContainerLow,
                               borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                  color: AppColors.outlineVariant),
+                              border: Border.all(color: AppColors.outlineVariant),
                             ),
                             child: const Center(
                               child: Text(
                                 'Coming Soon',
                                 style: TextStyle(
-                                  color:      AppColors.onSurfaceVariant,
-                                  fontSize:   14,
+                                  color: AppColors.onSurfaceVariant,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -418,10 +377,7 @@ class _GameHubCardState extends State<GameHubCard> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            _gameColor.withValues(alpha: 0.15),
-                            _gameColor.withValues(alpha: 0.55),
-                          ],
+                          colors: [_gameColor.withValues(alpha: 0.15), _gameColor.withValues(alpha: 0.55)],
                         ),
                       ),
                     ),
@@ -429,10 +385,7 @@ class _GameHubCardState extends State<GameHubCard> {
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          shape: BoxShape.circle,
-                        ),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
                         child: Icon(game.icon, size: 36, color: Colors.white),
                       ),
                     ),
@@ -440,32 +393,38 @@ class _GameHubCardState extends State<GameHubCard> {
                 )
               : Container(
                   color: available ? _gameColor.withValues(alpha: 0.15) : AppColors.surfaceContainerLow,
-                  child: Center(child: Icon(game.icon, size: 52, color: available ? _gameColor.withValues(alpha: 0.45) : AppColors.outlineVariant)),
+                  child: Center(
+                    child: Icon(
+                      game.icon,
+                      size: 52,
+                      color: available ? _gameColor.withValues(alpha: 0.45) : AppColors.outlineVariant,
+                    ),
+                  ),
                 ),
         ),
         // Category badge (top-right overlay)
         Positioned(
-          top:   10,
+          top: 10,
           right: 10,
           child: _CategoryBadge(label: game.categoryLabel, available: available),
         ),
         // Coming soon overlay
         if (!available)
           Positioned(
-            top:  10,
+            top: 10,
             left: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color:        AppColors.surfaceContainerLowest,
+                color: AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(12),
-                border:       Border.all(color: AppColors.outlineVariant),
+                border: Border.all(color: AppColors.outlineVariant),
               ),
               child: const Text(
                 'Soon',
                 style: TextStyle(
-                  color:      AppColors.onSurfaceVariant,
-                  fontSize:   10,
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
                 ),
@@ -501,24 +460,27 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
     final game = widget.game;
 
     return GestureDetector(
-      onTapDown:   (_) => setState(() => _pressed = true),
-      onTapUp:     (_) { setState(() => _pressed = false); widget.onTap?.call(); },
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap?.call();
+      },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale:    _pressed ? 0.97 : 1.0,
+        scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         child: AnimatedContainer(
-          duration:     const Duration(milliseconds: 180),
-          height:       170,
+          duration: const Duration(milliseconds: 180),
+          height: 170,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color:        AppColors.primaryContainer,
+            color: AppColors.primaryContainer,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color:      AppColors.primary.withOpacity(_pressed ? 0.35 : 0.18),
+                color: AppColors.primary.withOpacity(_pressed ? 0.35 : 0.18),
                 blurRadius: _pressed ? 32 : 20,
-                offset:     const Offset(0, 6),
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -527,7 +489,9 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
               // Background image (right half)
               if (game.imageUrl != null && game.imageUrl!.isNotEmpty)
                 Positioned(
-                  right: 0, top: 0, bottom: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
                   width: 200,
                   child: ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
@@ -550,42 +514,36 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Top row: icon + badge + info button
-                    Row(children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color:        Colors.white.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(14),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(game.icon, color: AppColors.onPrimary, size: 22),
                         ),
-                        child: Icon(
-                          game.icon,
-                          color: AppColors.onPrimary,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color:        AppColors.secondaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Featured',
-                          style: TextStyle(
-                            color:      AppColors.onSecondaryContainer,
-                            fontSize:   11,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Featured',
+                            style: TextStyle(
+                              color: AppColors.onSecondaryContainer,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      _InfoButton(
-                        game: game,
-                        onLight: false,
-                      ),
-                    ]),
+                        const Spacer(),
+                        _InfoButton(game: game, onLight: false),
+                      ],
+                    ),
 
                     const Spacer(),
 
@@ -593,50 +551,47 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
                     Text(
                       game.title,
                       style: const TextStyle(
-                        color:         AppColors.onPrimary,
-                        fontSize:      22,
-                        fontWeight:    FontWeight.bold,
+                        color: AppColors.onPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                         letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Row(children: [
-                      Expanded(
-                        child: Text(
-                          game.shortDesc,
-                          style: TextStyle(
-                            color:   Colors.white.withOpacity(0.80),
-                            fontSize: 13,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            game.shortDesc,
+                            style: TextStyle(color: Colors.white.withOpacity(0.80), fontSize: 13),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Play button
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color:        AppColors.secondaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.play_arrow_rounded,
-                                color: AppColors.onSecondaryContainer, size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              'Play',
-                              style: TextStyle(
-                                color:      AppColors.onSecondaryContainer,
-                                fontSize:   13,
-                                fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        // Play button
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_arrow_rounded, color: AppColors.onSecondaryContainer, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'Play',
+                                style: TextStyle(
+                                  color: AppColors.onSecondaryContainer,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -654,13 +609,11 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
 
 class _InfoButton extends StatelessWidget {
   final GameItem game;
+
   /// true = light background (used on white/light cards), false = dark/primary bg
   final bool onLight;
 
-  const _InfoButton({
-    required this.game,
-    this.onLight = true,
-  });
+  const _InfoButton({required this.game, this.onLight = true});
 
   @override
   Widget build(BuildContext context) {
@@ -668,22 +621,17 @@ class _InfoButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => _showInfoSheet(context, game, Color(game.colorValue)),
       child: Container(
-        width: 30, height: 30,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
-          color:  onLight
-              ? AppColors.surfaceContainerLow
-              : Colors.white.withOpacity(0.15),
-          shape:  BoxShape.circle,
-          border: Border.all(
-            color: onLight
-                ? AppColors.outlineVariant
-                : Colors.white.withOpacity(0.30),
-          ),
+          color: onLight ? AppColors.surfaceContainerLow : Colors.white.withOpacity(0.15),
+          shape: BoxShape.circle,
+          border: Border.all(color: onLight ? AppColors.outlineVariant : Colors.white.withOpacity(0.30)),
         ),
         child: Icon(
           Icons.info_outline_rounded,
           color: onLight ? AppColors.onSurfaceVariant : AppColors.onPrimary,
-          size:  15,
+          size: 15,
         ),
       ),
     );
@@ -699,11 +647,7 @@ class _InfoSection extends StatelessWidget {
   final String label;
   final String body;
 
-  const _InfoSection({
-    required this.emoji,
-    required this.label,
-    required this.body,
-  });
+  const _InfoSection({required this.emoji, required this.label, required this.body});
 
   @override
   Widget build(BuildContext context) {
@@ -711,14 +655,13 @@ class _InfoSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 34, height: 34,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            color:        AppColors.secondaryContainer.withOpacity(0.5),
+            color: AppColors.secondaryContainer.withOpacity(0.5),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Center(
-            child: Text(emoji, style: const TextStyle(fontSize: 16)),
-          ),
+          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 16))),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -727,19 +670,10 @@ class _InfoSection extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                    color:      AppColors.primary,
-                    fontSize:   12,
-                    fontWeight: FontWeight.bold),
+                style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 3),
-              Text(
-                body,
-                style: const TextStyle(
-                    color:    AppColors.onSurfaceVariant,
-                    fontSize: 13,
-                    height:   1.5),
-              ),
+              Text(body, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5)),
             ],
           ),
         ),
@@ -763,21 +697,15 @@ class _CategoryBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color:        available
-            ? AppColors.secondaryContainer
-            : AppColors.surfaceContainerLowest,
+        color: available ? AppColors.secondaryContainer : AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        border: available
-            ? null
-            : Border.all(color: AppColors.outlineVariant),
+        border: available ? null : Border.all(color: AppColors.outlineVariant),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color:      available
-              ? AppColors.onSecondaryContainer
-              : AppColors.onSurfaceVariant,
-          fontSize:   11,
+          color: available ? AppColors.onSecondaryContainer : AppColors.onSurfaceVariant,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -794,8 +722,7 @@ class _LevelProgressIndicator extends StatefulWidget {
   const _LevelProgressIndicator({required this.gameId});
 
   @override
-  State<_LevelProgressIndicator> createState() =>
-      _LevelProgressIndicatorState();
+  State<_LevelProgressIndicator> createState() => _LevelProgressIndicatorState();
 }
 
 class _LevelProgressIndicatorState extends State<_LevelProgressIndicator> {
@@ -808,9 +735,7 @@ class _LevelProgressIndicatorState extends State<_LevelProgressIndicator> {
   }
 
   Future<void> _load() async {
-    final level = await GameRegistry.totalLevels(widget.gameId) > 0
-        ? await _fetchLevel()
-        : 1;
+    final level = await GameRegistry.totalLevels(widget.gameId) > 0 ? await _fetchLevel() : 1;
     if (mounted) setState(() => _level = level);
   }
 
@@ -869,16 +794,11 @@ class _LevelProgressIndicatorState extends State<_LevelProgressIndicator> {
     final total = GameRegistry.totalLevels(widget.gameId);
     return Row(
       children: [
-        Icon(Icons.bar_chart_rounded,
-            size: 14, color: AppColors.secondary),
+        Icon(Icons.bar_chart_rounded, size: 14, color: AppColors.secondary),
         const SizedBox(width: 4),
         Text(
           'Level $_level / $total',
-          style: const TextStyle(
-            color:      AppColors.secondary,
-            fontSize:   12,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ],
     );

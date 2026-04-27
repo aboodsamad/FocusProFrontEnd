@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -46,10 +46,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await AuthService.login(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      final result = await AuthService.login(_usernameController.text.trim(), _passwordController.text.trim());
       setState(() => _isLoading = false);
 
       final token = result['token']?.toString() ?? '';
@@ -69,31 +66,20 @@ class _LoginPageState extends State<LoginPage> {
           await context.read<HabitProvider>().load();
         }
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login Successful!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login Successful!'), backgroundColor: Colors.green));
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login failed: no token received'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login failed: no token received'), backgroundColor: Colors.red));
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
     }
   }
 
@@ -113,63 +99,35 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.onSurfaceVariant,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.onSurfaceVariant),
         ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           obscureText: obscure,
           keyboardType: keyboardType,
-          style: const TextStyle(
-            color: AppColors.onSurface,
-            fontSize: 15,
-          ),
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: AppColors.outline,
-              fontSize: 15,
-            ),
+            hintStyle: const TextStyle(color: AppColors.outline, fontSize: 15),
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.surfaceContainerHigh,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.secondary,
-                width: 1.5,
-              ),
+              borderSide: const BorderSide(color: AppColors.secondary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: AppColors.error, width: 1),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 1.5,
-              ),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           validator: validator,
         ),
@@ -201,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   // ── App header ───────────────────────────────────────────
                   const Text(
-                    'FocusPro',
+                    'LockedIn',
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
@@ -212,10 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 6),
                   const Text(
                     'Reclaim your mental clarity.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 15, color: AppColors.onSurfaceVariant),
                   ),
                   const SizedBox(height: 32),
 
@@ -241,11 +196,7 @@ class _LoginPageState extends State<LoginPage> {
                           // ── Card heading ─────────────────────────────────
                           const Text(
                             'Welcome back',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                           const SizedBox(height: 24),
 
@@ -299,27 +250,17 @@ class _LoginPageState extends State<LoginPage> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            style: const TextStyle(
-                              color: AppColors.onSurface,
-                              fontSize: 15,
-                            ),
+                            style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
                             decoration: InputDecoration(
                               hintText: 'Enter your password',
-                              hintStyle: const TextStyle(
-                                color: AppColors.outline,
-                                fontSize: 15,
-                              ),
+                              hintStyle: const TextStyle(color: AppColors.outline, fontSize: 15),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
+                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                   color: AppColors.outline,
                                   size: 20,
                                 ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
                               filled: true,
                               fillColor: AppColors.surfaceContainerHigh,
@@ -333,29 +274,17 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.secondary,
-                                  width: 1.5,
-                                ),
+                                borderSide: const BorderSide(color: AppColors.secondary, width: 1.5),
                               ),
                               errorBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.error,
-                                  width: 1,
-                                ),
+                                borderSide: const BorderSide(color: AppColors.error, width: 1),
                               ),
                               focusedErrorBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.error,
-                                  width: 1.5,
-                                ),
+                                borderSide: const BorderSide(color: AppColors.error, width: 1.5),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -379,9 +308,7 @@ class _LoginPageState extends State<LoginPage> {
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: AppColors.onPrimary,
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -389,18 +316,10 @@ class _LoginPageState extends State<LoginPage> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                          AppColors.onPrimary,
-                                        ),
+                                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
                                       ),
                                     )
-                                  : const Text(
-                                      'Login',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                  : const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -408,28 +327,15 @@ class _LoginPageState extends State<LoginPage> {
                           // ── Divider ──────────────────────────────────────
                           Row(
                             children: [
-                              const Expanded(
-                                child: Divider(
-                                  color: AppColors.outlineVariant,
-                                  thickness: 1,
-                                ),
-                              ),
+                              const Expanded(child: Divider(color: AppColors.outlineVariant, thickness: 1)),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: Text(
                                   'Or continue with',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.outline,
-                                  ),
+                                  style: TextStyle(fontSize: 13, color: AppColors.outline),
                                 ),
                               ),
-                              const Expanded(
-                                child: Divider(
-                                  color: AppColors.outlineVariant,
-                                  thickness: 1,
-                                ),
-                              ),
+                              const Expanded(child: Divider(color: AppColors.outlineVariant, thickness: 1)),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -443,31 +349,21 @@ class _LoginPageState extends State<LoginPage> {
                                 if (kIsWeb) {
                                   // Web: open in same browser tab so the OAuth
                                   // redirect lands back on OAuthCallbackPage.
-                                  openUrl(
-                                    '${AuthService.baseUrl}/oauth2/authorization/google',
-                                  );
+                                  openUrl('${AuthService.baseUrl}/oauth2/authorization/google');
                                 } else {
                                   // Android / iOS: drive the whole OAuth flow
                                   // inside an in-app WebView so the callback
                                   // can be intercepted without deep-link setup.
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const GoogleAuthWebviewPage(),
-                                    ),
-                                  );
+                                  Navigator.of(
+                                    context,
+                                  ).push(MaterialPageRoute(builder: (_) => const GoogleAuthWebviewPage()));
                                 }
                               },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: AppColors.surfaceContainerLowest,
                                 foregroundColor: AppColors.onSurface,
-                                side: const BorderSide(
-                                  color: AppColors.outlineVariant,
-                                  width: 1,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
+                                side: const BorderSide(color: AppColors.outlineVariant, width: 1),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -522,18 +418,11 @@ class _LoginPageState extends State<LoginPage> {
                               children: [
                                 const Text(
                                   "Don't have an account? ",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.onSurfaceVariant,
-                                  ),
+                                  style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const SignupPage(),
-                                      ),
-                                    );
+                                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignupPage()));
                                   },
                                   child: const Text(
                                     'Sign up',

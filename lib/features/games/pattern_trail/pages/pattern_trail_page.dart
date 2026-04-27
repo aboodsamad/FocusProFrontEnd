@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,14 +15,14 @@ import '../../services/game_service.dart';
 // Design constants  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg      = AppColors.surface;
-const _kCard    = AppColors.primaryContainer;
-const _kBorder  = AppColors.outlineVariant;
-const _kAccent  = AppColors.secondaryContainer;
-const _kGold    = AppColors.primaryFixed;
-const _kWrong   = AppColors.error;
+const _kBg = AppColors.surface;
+const _kCard = AppColors.primaryContainer;
+const _kBorder = AppColors.outlineVariant;
+const _kAccent = AppColors.secondaryContainer;
+const _kGold = AppColors.primaryFixed;
+const _kWrong = AppColors.error;
 const _kCorrect = AppColors.secondaryContainer;
-const _kMuted   = AppColors.onSurfaceVariant;
+const _kMuted = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Level-based difficulty helpers
@@ -45,14 +45,14 @@ enum _Phase { idle, countdown, showing, input, levelComplete, gameOver }
 
 class _GameState {
   final _Phase phase;
-  final int    level;
-  final int    sequenceLength;
+  final int level;
+  final int sequenceLength;
   final List<int> sequence;
-  final int    playerProgress;
-  final int    score;
-  final int    lives;
-  final int    mistakes;
-  final int    countdown;
+  final int playerProgress;
+  final int score;
+  final int lives;
+  final int mistakes;
+  final int countdown;
 
   const _GameState({
     required this.phase,
@@ -67,42 +67,42 @@ class _GameState {
   });
 
   factory _GameState.initial(int level) => _GameState(
-        phase:          _Phase.idle,
-        level:          level,
-        sequenceLength: _seqLenForLevel(level),
-        sequence:       const [],
-        playerProgress: 0,
-        score:          0,
-        lives:          3,
-        mistakes:       0,
-        countdown:      3,
-      );
+    phase: _Phase.idle,
+    level: level,
+    sequenceLength: _seqLenForLevel(level),
+    sequence: const [],
+    playerProgress: 0,
+    score: 0,
+    lives: 3,
+    mistakes: 0,
+    countdown: 3,
+  );
 
-  int get gridSize  => _gridSizeForLevel(level);
-  int get dotCount  => gridSize * gridSize;
+  int get gridSize => _gridSizeForLevel(level);
+  int get dotCount => gridSize * gridSize;
   int get roundPoints => level * sequenceLength * 10;
 
   _GameState copyWith({
-    _Phase?   phase,
-    int?      level,
-    int?      sequenceLength,
+    _Phase? phase,
+    int? level,
+    int? sequenceLength,
     List<int>? sequence,
-    int?      playerProgress,
-    int?      score,
-    int?      lives,
-    int?      mistakes,
-    int?      countdown,
+    int? playerProgress,
+    int? score,
+    int? lives,
+    int? mistakes,
+    int? countdown,
   }) => _GameState(
-        phase:          phase          ?? this.phase,
-        level:          level          ?? this.level,
-        sequenceLength: sequenceLength ?? this.sequenceLength,
-        sequence:       sequence       ?? this.sequence,
-        playerProgress: playerProgress ?? this.playerProgress,
-        score:          score          ?? this.score,
-        lives:          lives          ?? this.lives,
-        mistakes:       mistakes       ?? this.mistakes,
-        countdown:      countdown      ?? this.countdown,
-      );
+    phase: phase ?? this.phase,
+    level: level ?? this.level,
+    sequenceLength: sequenceLength ?? this.sequenceLength,
+    sequence: sequence ?? this.sequence,
+    playerProgress: playerProgress ?? this.playerProgress,
+    score: score ?? this.score,
+    lives: lives ?? this.lives,
+    mistakes: mistakes ?? this.mistakes,
+    countdown: countdown ?? this.countdown,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,62 +118,52 @@ class PatternTrailPage extends StatefulWidget {
   State<PatternTrailPage> createState() => _PatternTrailPageState();
 }
 
-class _PatternTrailPageState extends State<PatternTrailPage>
-    with TickerProviderStateMixin {
-
+class _PatternTrailPageState extends State<PatternTrailPage> with TickerProviderStateMixin {
   late _GameState _game;
-  DateTime?       _gameStartTime;
-  bool            _resultSubmitted = false;
+  DateTime? _gameStartTime;
+  bool _resultSubmitted = false;
 
   // ── Per-dot visual state ─────────────────────────────────────────────────
-  int?      _highlightedDot;
+  int? _highlightedDot;
   final Set<int> _correctlyTapped = {};
-  int?      _feedbackDot;
-  bool      _feedbackCorrect = false;
-  bool      _inputLocked     = false;
+  int? _feedbackDot;
+  bool _feedbackCorrect = false;
+  bool _inputLocked = false;
 
   // ── Animation controllers ────────────────────────────────────────────────
   late final List<AnimationController> _dotCtrl;
-  late final List<Animation<double>>   _dotGlow;
+  late final List<Animation<double>> _dotGlow;
 
   late final AnimationController _gameOverCtrl;
-  late final Animation<double>   _gameOverFade;
+  late final Animation<double> _gameOverFade;
 
   late final AnimationController _levelCompleteCtrl;
-  late final Animation<double>   _levelCompleteScale;
+  late final Animation<double> _levelCompleteScale;
 
   late final AnimationController _cdCtrl;
-  late final Animation<double>   _cdScale;
+  late final Animation<double> _cdScale;
 
   @override
   void initState() {
     super.initState();
     _game = _GameState.initial(widget.startLevel);
 
-    _dotCtrl = List.generate(
-      16,
-      (_) => AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 220)),
-    );
+    _dotCtrl = List.generate(16, (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 220)));
     _dotGlow = _dotCtrl
-        .map((c) => Tween<double>(begin: 0.0, end: 1.0)
-            .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
+        .map((c) => Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
-    _gameOverCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 450));
-    _gameOverFade =
-        CurvedAnimation(parent: _gameOverCtrl, curve: Curves.easeOut);
+    _gameOverCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+    _gameOverFade = CurvedAnimation(parent: _gameOverCtrl, curve: Curves.easeOut);
 
-    _levelCompleteCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _levelCompleteScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-        CurvedAnimation(parent: _levelCompleteCtrl, curve: Curves.elasticOut));
+    _levelCompleteCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _levelCompleteScale = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _levelCompleteCtrl, curve: Curves.elasticOut));
 
-    _cdCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(
-        CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
+    _cdCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
   }
 
   @override
@@ -192,12 +182,12 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   void _startGame() {
     HapticFeedback.mediumImpact();
     _resultSubmitted = false;
-    for (final c in _dotCtrl) { c.stop(); c.reset(); }
+    for (final c in _dotCtrl) {
+      c.stop();
+      c.reset();
+    }
     setState(() {
-      _game = _GameState.initial(widget.startLevel).copyWith(
-        phase:     _Phase.countdown,
-        countdown: 3,
-      );
+      _game = _GameState.initial(widget.startLevel).copyWith(phase: _Phase.countdown, countdown: 3);
       _highlightedDot = null;
       _correctlyTapped.clear();
       _feedbackDot = null;
@@ -219,14 +209,13 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   }
 
   void _startRound() {
-    for (final c in _dotCtrl) { c.stop(); c.reset(); }
+    for (final c in _dotCtrl) {
+      c.stop();
+      c.reset();
+    }
     final seq = _generateSequence(_game.sequenceLength, _game.dotCount);
     setState(() {
-      _game = _game.copyWith(
-        phase:          _Phase.showing,
-        sequence:       seq,
-        playerProgress: 0,
-      );
+      _game = _game.copyWith(phase: _Phase.showing, sequence: seq, playerProgress: 0);
       _correctlyTapped.clear();
       _feedbackDot = null;
       _inputLocked = true;
@@ -275,7 +264,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     if (!mounted) return;
 
     setState(() {
-      _game        = _game.copyWith(phase: _Phase.input);
+      _game = _game.copyWith(phase: _Phase.input);
       _inputLocked = false;
     });
   }
@@ -284,17 +273,17 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     if (_game.phase != _Phase.input || _inputLocked) return;
 
     HapticFeedback.selectionClick();
-    final expected    = _game.sequence[_game.playerProgress];
-    final correct     = index == expected;
+    final expected = _game.sequence[_game.playerProgress];
+    final correct = index == expected;
     final newProgress = _game.playerProgress + 1;
 
     if (correct) {
       _dotCtrl[index].forward(from: 0);
       setState(() {
         _correctlyTapped.add(index);
-        _feedbackDot     = index;
+        _feedbackDot = index;
         _feedbackCorrect = true;
-        _game            = _game.copyWith(playerProgress: newProgress);
+        _game = _game.copyWith(playerProgress: newProgress);
       });
 
       if (newProgress >= _game.sequence.length) {
@@ -302,10 +291,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
         _inputLocked = true;
         Future.delayed(const Duration(milliseconds: 480), () async {
           if (!mounted) return;
-          setState(() => _game = _game.copyWith(
-            score: _game.score + _game.roundPoints,
-            phase: _Phase.levelComplete,
-          ));
+          setState(() => _game = _game.copyWith(score: _game.score + _game.roundPoints, phase: _Phase.levelComplete));
           _levelCompleteCtrl.forward(from: 0);
           HapticFeedback.heavyImpact();
 
@@ -332,13 +318,10 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       _dotCtrl[index].forward(from: 0);
       final newLives = _game.lives - 1;
       setState(() {
-        _feedbackDot     = index;
+        _feedbackDot = index;
         _feedbackCorrect = false;
-        _inputLocked     = true;
-        _game            = _game.copyWith(
-          lives:    newLives,
-          mistakes: _game.mistakes + 1,
-        );
+        _inputLocked = true;
+        _game = _game.copyWith(lives: newLives, mistakes: _game.mistakes + 1);
       });
 
       Future.delayed(const Duration(milliseconds: 750), () {
@@ -370,21 +353,18 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   }
 
   Future<void> _submitResult({required bool completed}) async {
-    final timePlayed = _gameStartTime != null
-        ? DateTime.now().difference(_gameStartTime!).inSeconds
-        : 0;
+    final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     final double accuracyFactor = (1.0 - (_game.mistakes * 0.08).clamp(0.0, 1.0));
     final int normalizedScore = (_game.level * 50 + (accuracyFactor * 150)).round().clamp(0, 1000);
-    final double localFocusPoints =
-        (normalizedScore / 70.0 * accuracyFactor).clamp(0.8, 10.0);
+    final double localFocusPoints = (normalizedScore / 70.0 * accuracyFactor).clamp(0.8, 10.0);
 
     final result = await GameService.submitResult(
-      gameType:          'pattern_trail',
-      score:             normalizedScore,
+      gameType: 'pattern_trail',
+      score: normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         completed,
-      levelReached:      completed ? _game.level + 1 : _game.level,
-      mistakes:          _game.mistakes,
+      completed: completed,
+      levelReached: completed ? _game.level + 1 : _game.level,
+      mistakes: _game.mistakes,
     );
 
     if (!mounted) return;
@@ -408,8 +388,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final playing =
-            _game.phase != _Phase.idle && _game.phase != _Phase.gameOver &&
-            _game.phase != _Phase.levelComplete;
+            _game.phase != _Phase.idle && _game.phase != _Phase.gameOver && _game.phase != _Phase.levelComplete;
         if (playing && !_resultSubmitted) {
           _resultSubmitted = true;
           await _submitResult(completed: false);
@@ -436,18 +415,14 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   // ── Header ───────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    final showStats =
-        _game.phase != _Phase.idle && _game.phase != _Phase.gameOver;
+    final showStats = _game.phase != _Phase.idle && _game.phase != _Phase.gameOver;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Row(
         children: [
           _BackButton(onTap: () => Navigator.pop(context)),
           const Spacer(),
-          if (showStats) ...[
-            _LevelScoreChip(level: _game.level, score: _game.score),
-            const SizedBox(width: 10),
-          ],
+          if (showStats) ...[_LevelScoreChip(level: _game.level, score: _game.score), const SizedBox(width: 10)],
           const SizedBox(width: 40),
         ],
       ),
@@ -468,8 +443,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       case _Phase.levelComplete:
         return _buildLevelCompleteScreen();
       case _Phase.gameOver:
-        return FadeTransition(
-            opacity: _gameOverFade, child: _buildGameOverScreen());
+        return FadeTransition(opacity: _gameOverFade, child: _buildGameOverScreen());
     }
   }
 
@@ -484,25 +458,25 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       child: Column(
         children: [
           Container(
-            width: 90, height: 90,
+            width: 90,
+            height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                _kAccent.withOpacity(0.28),
-                _kAccent.withOpacity(0.04),
-              ]),
-              border:
-                  Border.all(color: _kAccent.withOpacity(0.35), width: 1.5),
+              gradient: RadialGradient(colors: [_kAccent.withOpacity(0.28), _kAccent.withOpacity(0.04)]),
+              border: Border.all(color: _kAccent.withOpacity(0.35), width: 1.5),
             ),
             child: const Icon(Icons.timeline_rounded, color: _kAccent, size: 42),
           ),
           const SizedBox(height: 18),
-          const Text('Pattern Trail',
-              style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5)),
+          const Text(
+            'Pattern Trail',
+            style: TextStyle(
+              color: AppColors.onSurface,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
           const SizedBox(height: 10),
           Text(
             'Watch the dots light up one by one.\nTap them back in the exact same order!',
@@ -546,19 +520,19 @@ class _PatternTrailPageState extends State<PatternTrailPage>
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(
-                      color: AppColors.primary.withOpacity(0.38),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10)),
+                  BoxShadow(color: AppColors.primary.withOpacity(0.38), blurRadius: 24, offset: const Offset(0, 10)),
                 ],
               ),
               child: const Center(
-                child: Text('Start Level',
-                    style: TextStyle(
-                        color: AppColors.onPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 17,
-                        letterSpacing: 0.6)),
+                child: Text(
+                  'Start Level',
+                  style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    letterSpacing: 0.6,
+                  ),
+                ),
               ),
             ),
           ),
@@ -576,16 +550,13 @@ class _PatternTrailPageState extends State<PatternTrailPage>
         children: [
           ScaleTransition(
             scale: _cdScale,
-            child: Text('${_game.countdown}',
-                style: const TextStyle(
-                    color: _kAccent,
-                    fontSize: 96,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -4)),
+            child: Text(
+              '${_game.countdown}',
+              style: const TextStyle(color: _kAccent, fontSize: 96, fontWeight: FontWeight.w800, letterSpacing: -4),
+            ),
           ),
           const SizedBox(height: 8),
-          const Text('Get ready…',
-              style: TextStyle(color: _kMuted, fontSize: 16)),
+          const Text('Get ready…', style: TextStyle(color: _kMuted, fontSize: 16)),
         ],
       ),
     );
@@ -594,10 +565,10 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   // ── Active game screen ────────────────────────────────────────────────────
 
   Widget _buildGameScreen() {
-    final gs        = _game.gridSize;
+    final gs = _game.gridSize;
     final isShowing = _game.phase == _Phase.showing;
-    final progress  = _game.playerProgress;
-    final seqLen    = _game.sequence.length;
+    final progress = _game.playerProgress;
+    final seqLen = _game.sequence.length;
 
     return Column(
       children: [
@@ -608,34 +579,29 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           child: Text(
             isShowing ? 'Watch the sequence…' : 'Tap ${progress + 1} of $seqLen',
             key: ValueKey('$isShowing$progress'),
-            style: const TextStyle(
-                color: _kMuted, fontSize: 14, fontWeight: FontWeight.w500),
+            style: const TextStyle(color: _kMuted, fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 10),
 
-        if (seqLen > 0)
-          _SequenceProgressBar(
-            length:   seqLen,
-            done:     progress,
-            isShowing: isShowing,
-          ),
+        if (seqLen > 0) _SequenceProgressBar(length: seqLen, done: progress, isShowing: isShowing),
 
         const SizedBox(height: 8),
 
         // Lives row
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (i) => Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Icon(
-              i < _game.lives
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: i < _game.lives ? _kWrong : AppColors.outlineVariant,
-              size: 18,
+          children: List.generate(
+            3,
+            (i) => Padding(
+              padding: const EdgeInsets.only(left: 3),
+              child: Icon(
+                i < _game.lives ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                color: i < _game.lives ? _kWrong : AppColors.outlineVariant,
+                size: 18,
+              ),
             ),
-          )),
+          ),
         ),
 
         const SizedBox(height: 12),
@@ -644,10 +610,7 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: _buildDotGrid(gs),
-              ),
+              child: AspectRatio(aspectRatio: 1, child: _buildDotGrid(gs)),
             ),
           ),
         ),
@@ -660,9 +623,9 @@ class _PatternTrailPageState extends State<PatternTrailPage>
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount:    gs,
-        mainAxisSpacing:   gs == 3 ? 18 : 13,
-        crossAxisSpacing:  gs == 3 ? 18 : 13,
+        crossAxisCount: gs,
+        mainAxisSpacing: gs == 3 ? 18 : 13,
+        crossAxisSpacing: gs == 3 ? 18 : 13,
       ),
       itemCount: gs * gs,
       itemBuilder: (_, index) => _buildDot(index),
@@ -670,9 +633,9 @@ class _PatternTrailPageState extends State<PatternTrailPage>
   }
 
   Widget _buildDot(int index) {
-    final isHighlighted   = _highlightedDot == index;
-    final isDoneTapped    = _correctlyTapped.contains(index);
-    final isFeedback      = _feedbackDot == index;
+    final isHighlighted = _highlightedDot == index;
+    final isDoneTapped = _correctlyTapped.contains(index);
+    final isFeedback = _feedbackDot == index;
 
     final Color dotColor;
     final Color borderColor;
@@ -680,21 +643,21 @@ class _PatternTrailPageState extends State<PatternTrailPage>
 
     if (isFeedback) {
       final c = _feedbackCorrect ? _kCorrect : _kWrong;
-      dotColor    = c.withOpacity(0.88);
+      dotColor = c.withOpacity(0.88);
       borderColor = c;
-      shadows     = [BoxShadow(color: c.withOpacity(0.50), blurRadius: 20, spreadRadius: 2)];
+      shadows = [BoxShadow(color: c.withOpacity(0.50), blurRadius: 20, spreadRadius: 2)];
     } else if (isHighlighted) {
-      dotColor    = _kAccent.withOpacity(0.90);
+      dotColor = _kAccent.withOpacity(0.90);
       borderColor = _kAccent;
-      shadows     = [BoxShadow(color: _kAccent.withOpacity(0.50), blurRadius: 20, spreadRadius: 2)];
+      shadows = [BoxShadow(color: _kAccent.withOpacity(0.50), blurRadius: 20, spreadRadius: 2)];
     } else if (isDoneTapped) {
-      dotColor    = _kAccent.withOpacity(0.22);
+      dotColor = _kAccent.withOpacity(0.22);
       borderColor = _kAccent.withOpacity(0.45);
-      shadows     = [];
+      shadows = [];
     } else {
-      dotColor    = _kCard;
+      dotColor = _kCard;
       borderColor = _kBorder;
-      shadows     = [];
+      shadows = [];
     }
 
     return GestureDetector(
@@ -702,9 +665,9 @@ class _PatternTrailPageState extends State<PatternTrailPage>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          shape:     BoxShape.circle,
-          color:     dotColor,
-          border:    Border.all(color: borderColor, width: 2.0),
+          shape: BoxShape.circle,
+          color: dotColor,
+          border: Border.all(color: borderColor, width: 2.0),
           boxShadow: shadows,
         ),
       ),
@@ -721,37 +684,31 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 90, height: 90,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primaryFixed,
-                boxShadow: [
-                  BoxShadow(
-                      color: _kGold.withOpacity(0.45),
-                      blurRadius: 36,
-                      spreadRadius: 4),
-                ],
+                boxShadow: [BoxShadow(color: _kGold.withOpacity(0.45), blurRadius: 36, spreadRadius: 4)],
               ),
-              child: const Icon(Icons.star_rounded,
-                  color: AppColors.primary, size: 46),
+              child: const Icon(Icons.star_rounded, color: AppColors.primary, size: 46),
             ),
             const SizedBox(height: 20),
-            const Text('Level Complete!',
-                style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5)),
+            const Text(
+              'Level Complete!',
+              style: TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text('Level ${widget.startLevel} cleared',
-                style: const TextStyle(color: _kMuted, fontSize: 16)),
+            Text('Level ${widget.startLevel} cleared', style: const TextStyle(color: _kMuted, fontSize: 16)),
             const SizedBox(height: 4),
             Text(
               'Unlocked Level ${widget.startLevel + 1}!',
-              style: const TextStyle(
-                  color: _kAccent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600),
+              style: const TextStyle(color: _kAccent, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -769,46 +726,41 @@ class _PatternTrailPageState extends State<PatternTrailPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 90, height: 90,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _kWrong.withOpacity(0.10),
-                border:
-                    Border.all(color: _kWrong.withOpacity(0.30), width: 1.5),
+                border: Border.all(color: _kWrong.withOpacity(0.30), width: 1.5),
               ),
-              child: const Icon(Icons.timeline_rounded,
-                  color: _kWrong, size: 42),
+              child: const Icon(Icons.timeline_rounded, color: _kWrong, size: 42),
             ),
             const SizedBox(height: 20),
-            const Text('Game Over',
-                style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5)),
+            const Text(
+              'Game Over',
+              style: TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text('Out of lives on Level ${widget.startLevel}',
-                style: const TextStyle(color: _kMuted, fontSize: 14)),
+            Text('Out of lives on Level ${widget.startLevel}', style: const TextStyle(color: _kMuted, fontSize: 14)),
             const SizedBox(height: 28),
-            _StatRow(
-                label: 'Score',
-                value: '${_game.score} pts',
-                valueColor: _kAccent),
+            _StatRow(label: 'Score', value: '${_game.score} pts', valueColor: _kAccent),
             const SizedBox(height: 8),
             _StatRow(
-                label: 'Sequence Length',
-                value: '${_game.sequenceLength} dots',
-                valueColor: AppColors.onTertiaryContainer),
+              label: 'Sequence Length',
+              value: '${_game.sequenceLength} dots',
+              valueColor: AppColors.onTertiaryContainer,
+            ),
             const SizedBox(height: 8),
-            _StatRow(
-                label: 'Mistakes',
-                value: '${_game.mistakes}',
-                valueColor: _kWrong),
+            _StatRow(label: 'Mistakes', value: '${_game.mistakes}', valueColor: _kWrong),
             const SizedBox(height: 44),
             _PrimaryButton(label: 'Try Again', onTap: _startGame),
             const SizedBox(height: 12),
-            _SecondaryButton(
-                label: 'Exit', onTap: () => Navigator.pop(context)),
+            _SecondaryButton(label: 'Exit', onTap: () => Navigator.pop(context)),
           ],
         ),
       ),
@@ -823,21 +775,21 @@ class _PatternTrailPageState extends State<PatternTrailPage>
 class _InfoChip extends StatelessWidget {
   final String label;
   final String value;
-  final Color  color;
+  final Color color;
   const _InfoChip({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value,
-              style: TextStyle(
-                  color: color, fontSize: 15, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(color: _kMuted, fontSize: 10)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        value,
+        style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 2),
+      Text(label, style: const TextStyle(color: _kMuted, fontSize: 10)),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -850,41 +802,34 @@ class _PreviewDotGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final highlights = gridSize == 3
-        ? const {1: '1', 7: '2', 3: '3'}
-        : const {2: '1', 13: '2', 5: '3', 10: '4'};
+    final highlights = gridSize == 3 ? const {1: '1', 7: '2', 3: '3'} : const {2: '1', 13: '2', 5: '3', 10: '4'};
 
     return SizedBox(
       height: gridSize == 3 ? 108 : 128,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:   gridSize,
-          mainAxisSpacing:  8,
+          crossAxisCount: gridSize,
+          mainAxisSpacing: 8,
           crossAxisSpacing: 8,
         ),
         itemCount: gridSize * gridSize,
         itemBuilder: (_, i) {
           final label = highlights[i];
-          final lit   = label != null;
+          final lit = label != null;
           return Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: lit ? _kAccent.withOpacity(0.85) : _kCard,
-              border: Border.all(
-                  color: lit ? _kAccent : _kBorder, width: 1.5),
-              boxShadow: lit
-                  ? [BoxShadow(
-                      color: _kAccent.withOpacity(0.45), blurRadius: 10)]
-                  : null,
+              border: Border.all(color: lit ? _kAccent : _kBorder, width: 1.5),
+              boxShadow: lit ? [BoxShadow(color: _kAccent.withOpacity(0.45), blurRadius: 10)] : null,
             ),
             child: lit
                 ? Center(
-                    child: Text(label,
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800)),
+                    child: Text(
+                      label,
+                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w800),
+                    ),
                   )
                 : null,
           );
@@ -899,39 +844,34 @@ class _PreviewDotGrid extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SequenceProgressBar extends StatelessWidget {
-  final int  length;
-  final int  done;
+  final int length;
+  final int done;
   final bool isShowing;
 
-  const _SequenceProgressBar({
-    required this.length,
-    required this.done,
-    required this.isShowing,
-  });
+  const _SequenceProgressBar({required this.length, required this.done, required this.isShowing});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(length, (i) {
-        final isDone    = i < done;
+        final isDone = i < done;
         final isCurrent = !isShowing && i == done;
-        final size      = isDone || isCurrent ? 10.0 : 7.0;
-        final color     = isDone    ? _kAccent
-                        : isCurrent ? _kGold
-                        : _kBorder;
+        final size = isDone || isCurrent ? 10.0 : 7.0;
+        final color = isDone
+            ? _kAccent
+            : isCurrent
+            ? _kGold
+            : _kBorder;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.symmetric(horizontal: 3.5),
-          width:  size,
+          width: size,
           height: size,
           decoration: BoxDecoration(
-            shape:     BoxShape.circle,
-            color:     color,
-            boxShadow: isCurrent
-                ? [BoxShadow(
-                    color: _kGold.withOpacity(0.60), blurRadius: 8)]
-                : null,
+            shape: BoxShape.circle,
+            color: color,
+            boxShadow: isCurrent ? [BoxShadow(color: _kGold.withOpacity(0.60), blurRadius: 8)] : null,
           ),
         );
       }),
@@ -949,18 +889,18 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kBorder),
-          ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.onPrimary, size: 16),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorder),
+      ),
+      child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onPrimary, size: 16),
+    ),
+  );
 }
 
 class _LevelScoreChip extends StatelessWidget {
@@ -970,117 +910,107 @@ class _LevelScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _kBorder),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: _kAccent.withOpacity(0.20),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text('Lv $level',
-                style: const TextStyle(
-                    color: _kAccent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700)),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: _kCard,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _kBorder),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(color: _kAccent.withOpacity(0.20), borderRadius: BorderRadius.circular(8)),
+          child: Text(
+            'Lv $level',
+            style: const TextStyle(color: _kAccent, fontSize: 11, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(width: 8),
-          const Icon(Icons.star_rounded, color: _kGold, size: 14),
-          const SizedBox(width: 4),
-          Text('$score',
-              style: const TextStyle(
-                  color: AppColors.onPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700)),
-        ]),
-      );
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.star_rounded, color: _kGold, size: 14),
+        const SizedBox(width: 4),
+        Text(
+          '$score',
+          style: const TextStyle(color: AppColors.onPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+      ],
+    ),
+  );
 }
 
 class _StatRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color  valueColor;
-  const _StatRow(
-      {required this.label,
-      required this.value,
-      required this.valueColor});
+  final Color valueColor;
+  const _StatRow({required this.label, required this.value, required this.valueColor});
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(color: _kMuted, fontSize: 14)),
-          Text(value,
-              style: TextStyle(
-                  color: valueColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700)),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(label, style: const TextStyle(color: _kMuted, fontSize: 14)),
+      Text(
+        value,
+        style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
 }
 
 class _PrimaryButton extends StatelessWidget {
-  final String       label;
+  final String label;
   final VoidCallback onTap;
   const _PrimaryButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: AppColors.primary.withOpacity(0.38),
-                  blurRadius: 22,
-                  offset: const Offset(0, 9)),
-            ],
-          ),
-          child: Center(
-            child: Text(label,
-                style: const TextStyle(
-                    color: AppColors.onPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    letterSpacing: 0.3)),
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.38), blurRadius: 22, offset: const Offset(0, 9))],
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.onPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            letterSpacing: 0.3,
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _SecondaryButton extends StatelessWidget {
-  final String       label;
+  final String label;
   final VoidCallback onTap;
   const _SecondaryButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Center(
-            child: Text(label,
-                style: const TextStyle(
-                    color: _kMuted,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15)),
-          ),
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: const TextStyle(color: _kMuted, fontWeight: FontWeight.w600, fontSize: 15),
         ),
-      );
+      ),
+    ),
+  );
 }

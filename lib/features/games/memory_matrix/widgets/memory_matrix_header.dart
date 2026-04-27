@@ -1,4 +1,4 @@
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10,20 +10,13 @@ class MemoryMatrixScoreChip extends StatelessWidget {
   final int score;
   final int level;
 
-  const MemoryMatrixScoreChip({
-    super.key,
-    required this.score,
-    required this.level,
-  });
+  const MemoryMatrixScoreChip({super.key, required this.score, required this.level});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -31,22 +24,14 @@ class MemoryMatrixScoreChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '$score',
-            style: const TextStyle(
-              color:      AppColors.onPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize:   14,
-            ),
+            style: const TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.w700, fontSize: 14),
           ),
           const SizedBox(width: 8),
           Container(width: 1, height: 12, color: AppColors.onPrimaryContainer),
           const SizedBox(width: 8),
           Text(
             'Lv $level',
-            style: const TextStyle(
-              color:      AppColors.onPrimaryContainer,
-              fontSize:   12,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -75,7 +60,7 @@ class MemoryMatrixLivesRow extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4),
           child: Icon(
             Icons.favorite_rounded,
-            size:  18,
+            size: 18,
             color: i < lives ? AppColors.error : AppColors.primaryContainer,
           ),
         ),
@@ -98,17 +83,10 @@ class MemoryMatrixStatusLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
-        color:        AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20)),
       child: Text(
         text,
-        style: const TextStyle(
-          color:      AppColors.onPrimaryContainer,
-          fontSize:   14,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -123,11 +101,7 @@ class MemoryMatrixTimerRing extends StatelessWidget {
   final int timeLeft;
   final int totalTime;
 
-  const MemoryMatrixTimerRing({
-    super.key,
-    required this.timeLeft,
-    required this.totalTime,
-  });
+  const MemoryMatrixTimerRing({super.key, required this.timeLeft, required this.totalTime});
 
   Color get _color {
     if (totalTime == 0) return AppColors.secondaryContainer;
@@ -141,24 +115,20 @@ class MemoryMatrixTimerRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final fraction = totalTime > 0 ? (timeLeft / totalTime).clamp(0.0, 1.0) : 0.0;
     return SizedBox(
-      width:  52,
+      width: 52,
       height: 52,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CircularProgressIndicator(
-            value:           fraction,
+            value: fraction,
             backgroundColor: AppColors.primaryContainer,
-            valueColor:      AlwaysStoppedAnimation<Color>(_color),
-            strokeWidth:     4,
+            valueColor: AlwaysStoppedAnimation<Color>(_color),
+            strokeWidth: 4,
           ),
           Text(
             '$timeLeft',
-            style: TextStyle(
-              color:      _color,
-              fontSize:   15,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: _color, fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -174,37 +144,22 @@ class MemoryMatrixTimerRing extends StatelessWidget {
 class MemoryMatrixStatRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color  valueColor;
+  final Color valueColor;
 
-  const MemoryMatrixStatRow({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
+  const MemoryMatrixStatRow({super.key, required this.label, required this.value, required this.valueColor});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color:        AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(14)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 14),
-          ),
+          Text(label, style: const TextStyle(color: AppColors.onPrimaryContainer, fontSize: 14)),
           Text(
             value,
-            style: TextStyle(
-              color:      valueColor,
-              fontSize:   16,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: valueColor, fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ],
       ),

@@ -10,11 +10,7 @@ import '../constants/app_colors.dart';
 class ScoreGainToast {
   static OverlayEntry? _active;
 
-  static void show(
-    BuildContext context,
-    double gained, {
-    String? source,
-  }) {
+  static void show(BuildContext context, double gained, {String? source}) {
     if (gained <= 0.0) return;
     _active?.remove();
     _active = null;
@@ -43,18 +39,13 @@ class _ToastWidget extends StatefulWidget {
   final String source;
   final VoidCallback onDone;
 
-  const _ToastWidget({
-    required this.gained,
-    required this.source,
-    required this.onDone,
-  });
+  const _ToastWidget({required this.gained, required this.source, required this.onDone});
 
   @override
   State<_ToastWidget> createState() => _ToastWidgetState();
 }
 
-class _ToastWidgetState extends State<_ToastWidget>
-    with SingleTickerProviderStateMixin {
+class _ToastWidgetState extends State<_ToastWidget> with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
@@ -63,10 +54,7 @@ class _ToastWidgetState extends State<_ToastWidget>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 460),
-    );
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 460));
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(
       begin: const Offset(0, -1.4),
@@ -77,9 +65,9 @@ class _ToastWidgetState extends State<_ToastWidget>
 
     _autoClose = Timer(const Duration(milliseconds: 2600), () {
       if (mounted) {
-        _ctrl
-            .reverse(from: 1.0)
-            .then((_) { if (mounted) widget.onDone(); });
+        _ctrl.reverse(from: 1.0).then((_) {
+          if (mounted) widget.onDone();
+        });
       }
     });
   }
@@ -138,11 +126,7 @@ class _ToastBody extends StatelessWidget {
             offset: const Offset(0, 10),
             spreadRadius: 2,
           ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 14, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -151,15 +135,8 @@ class _ToastBody extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.bolt_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 28),
           ),
           const SizedBox(width: 14),
 
@@ -180,13 +157,7 @@ class _ToastBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  source,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.78),
-                    fontSize: 12,
-                  ),
-                ),
+                Text(source, style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 12)),
               ],
             ),
           ),
@@ -195,11 +166,10 @@ class _ToastBody extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_awesome_rounded,
-                  color: Colors.white.withOpacity(0.65), size: 16),
+              Icon(Icons.auto_awesome_rounded, color: Colors.white.withOpacity(0.65), size: 16),
               const SizedBox(height: 2),
               Text(
-                'FocusPro',
+                'LockedIn',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.5),
                   fontSize: 9,

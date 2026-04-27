@@ -16,13 +16,13 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
-  final _formKey                   = GlobalKey<FormState>();
-  final _usernameController        = TextEditingController();
-  final _emailController           = TextEditingController();
-  final _passwordController        = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _nameController            = TextEditingController();
-  final _dobController             = TextEditingController();
+  final _nameController = TextEditingController();
+  final _dobController = TextEditingController();
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -32,10 +32,10 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
 
-  bool      _obscurePassword        = true;
-  bool      _obscureConfirmPassword = true;
-  bool      _isLoading              = false;
-  bool      _consentUsage           = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  bool _consentUsage = false;
   DateTime? _selectedDate;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -44,29 +44,22 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+    _fadeController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _slideController = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
+    _scaleController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0.0, 0.08), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOut),
-        );
-    _scaleAnimation = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+    _scaleAnimation = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeOut));
 
     _startAnimations();
   }
@@ -129,23 +122,20 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select your date of birth'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select your date of birth'), backgroundColor: Colors.red));
       return;
     }
 
     setState(() => _isLoading = true);
 
     final signupData = {
-      'username':     _usernameController.text.trim(),
-      'email':        _emailController.text.trim(),
-      'password':     _passwordController.text.trim(),
-      'name':         _nameController.text.trim(),
-      'dob':          _dobController.text.trim(),
+      'username': _usernameController.text.trim(),
+      'email': _emailController.text.trim(),
+      'password': _passwordController.text.trim(),
+      'name': _nameController.text.trim(),
+      'dob': _dobController.text.trim(),
       'consentUsage': _consentUsage,
     };
 
@@ -166,26 +156,18 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Welcome! Let\'s set up your focus profile.'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Welcome! Let\'s set up your focus profile.'), backgroundColor: Colors.green),
         );
         // Navigate to diagnostic  this sets the initial focus score
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)));
       } else {
         throw Exception('Signup failed: No token received');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
     }
   }
 
@@ -207,11 +189,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.onSurfaceVariant,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.onSurfaceVariant),
         ),
         const SizedBox(height: 6),
         TextFormField(
@@ -220,52 +198,28 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
           readOnly: readOnly,
           onTap: onTap,
           keyboardType: keyboardType,
-          style: const TextStyle(
-            color: AppColors.onSurface,
-            fontSize: 15,
-          ),
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: AppColors.outline,
-              fontSize: 15,
-            ),
+            hintStyle: const TextStyle(color: AppColors.outline, fontSize: 15),
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.surfaceContainerHigh,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.secondary,
-                width: 1.5,
-              ),
+              borderSide: const BorderSide(color: AppColors.secondary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: AppColors.error, width: 1),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 1.5,
-              ),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           validator: validator,
         ),
@@ -315,15 +269,11 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.center_focus_strong,
-                            color: AppColors.onPrimary,
-                            size: 30,
-                          ),
+                          child: const Icon(Icons.center_focus_strong, color: AppColors.onPrimary, size: 30),
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'FocusPro',
+                          'LockedIn',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -355,19 +305,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                 // ── Card heading ─────────────────────────
                                 const Text(
                                   'Create Account',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
+                                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary),
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
                                   'Step into your deep work sanctuary.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.onSurfaceVariant,
-                                  ),
+                                  style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
                                 ),
                                 const SizedBox(height: 24),
 
@@ -376,9 +319,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   controller: _nameController,
                                   label: 'Full Name',
                                   hint: 'Your full name',
-                                  validator: (v) => (v == null || v.isEmpty)
-                                      ? 'Please enter your full name'
-                                      : null,
+                                  validator: (v) => (v == null || v.isEmpty) ? 'Please enter your full name' : null,
                                 ),
                                 const SizedBox(height: 14),
 
@@ -409,8 +350,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                     if (v == null || v.isEmpty) {
                                       return 'Please enter your email';
                                     }
-                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                        .hasMatch(v)) {
+                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
                                       return 'Please enter a valid email';
                                     }
                                     return null;
@@ -430,9 +370,8 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                     color: AppColors.outline,
                                     size: 18,
                                   ),
-                                  validator: (v) => (v == null || v.isEmpty)
-                                      ? 'Please select your date of birth'
-                                      : null,
+                                  validator: (v) =>
+                                      (v == null || v.isEmpty) ? 'Please select your date of birth' : null,
                                 ),
                                 const SizedBox(height: 14),
 
@@ -444,15 +383,11 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   obscure: _obscurePassword,
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
+                                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                       color: AppColors.outline,
                                       size: 20,
                                     ),
-                                    onPressed: () => setState(
-                                      () => _obscurePassword = !_obscurePassword,
-                                    ),
+                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) {
@@ -480,10 +415,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                       color: AppColors.outline,
                                       size: 20,
                                     ),
-                                    onPressed: () => setState(
-                                      () => _obscureConfirmPassword =
-                                          !_obscureConfirmPassword,
-                                    ),
+                                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                                   ),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) {
@@ -505,23 +437,16 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                       height: 24,
                                       child: Checkbox(
                                         value: _consentUsage,
-                                        onChanged: (v) => setState(
-                                          () => _consentUsage = v ?? false,
-                                        ),
+                                        onChanged: (v) => setState(() => _consentUsage = v ?? false),
                                         activeColor: AppColors.primary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     const Expanded(
                                       child: Text(
                                         'I agree to data usage terms',
-                                        style: TextStyle(
-                                          color: AppColors.onSurfaceVariant,
-                                          fontSize: 14,
-                                        ),
+                                        style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
                                       ),
                                     ),
                                   ],
@@ -538,9 +463,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: AppColors.onPrimary,
                                       elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(28),
-                                      ),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                                     ),
                                     child: _isLoading
                                         ? const SizedBox(
@@ -548,18 +471,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                             height: 20,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                AppColors.onPrimary,
-                                              ),
+                                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
                                             ),
                                           )
                                         : const Text(
                                             'Create Account',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                                           ),
                                   ),
                                 ),
@@ -568,30 +485,15 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                 // ── Divider ───────────────────────────────
                                 Row(
                                   children: [
-                                    const Expanded(
-                                      child: Divider(
-                                        color: AppColors.outlineVariant,
-                                        thickness: 1,
-                                      ),
-                                    ),
+                                    const Expanded(child: Divider(color: AppColors.outlineVariant, thickness: 1)),
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
                                       child: Text(
                                         'or continue with',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.outline,
-                                        ),
+                                        style: TextStyle(fontSize: 13, color: AppColors.outline),
                                       ),
                                     ),
-                                    const Expanded(
-                                      child: Divider(
-                                        color: AppColors.outlineVariant,
-                                        thickness: 1,
-                                      ),
-                                    ),
+                                    const Expanded(child: Divider(color: AppColors.outlineVariant, thickness: 1)),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -602,21 +504,13 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   height: 48,
                                   child: OutlinedButton(
                                     onPressed: () {
-                                      openUrl(
-                                        '${AuthService.baseUrl}/oauth2/authorization/google',
-                                      );
+                                      openUrl('${AuthService.baseUrl}/oauth2/authorization/google');
                                     },
                                     style: OutlinedButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.surfaceContainerLowest,
+                                      backgroundColor: AppColors.surfaceContainerLowest,
                                       foregroundColor: AppColors.onSurface,
-                                      side: const BorderSide(
-                                        color: AppColors.outlineVariant,
-                                        width: 1,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(28),
-                                      ),
+                                      side: const BorderSide(color: AppColors.outlineVariant, width: 1),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
@@ -627,15 +521,13 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                           child: Image.network(
                                             'https://developers.google.com/identity/images/g-logo.png',
                                             fit: BoxFit.contain,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
+                                            errorBuilder: (context, error, stackTrace) {
                                               return Container(
                                                 width: 18,
                                                 height: 18,
                                                 decoration: BoxDecoration(
                                                   color: const Color(0xFF4285F4),
-                                                  borderRadius:
-                                                      BorderRadius.circular(2),
+                                                  borderRadius: BorderRadius.circular(2),
                                                 ),
                                                 child: const Center(
                                                   child: Text(
@@ -673,18 +565,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                     children: [
                                       const Text(
                                         'Already have an account? ',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
+                                        style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
                                       ),
                                       GestureDetector(
-                                        onTap: () =>
-                                            Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (_) => const LoginPage(),
-                                          ),
-                                        ),
+                                        onTap: () => Navigator.of(
+                                          context,
+                                        ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())),
                                         child: const Text(
                                           'Log in',
                                           style: TextStyle(

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io' show Directory, File;
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'package:capstone_front_end/core/services/auth_service.dart';
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/services/auth_service.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -41,9 +41,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   // ── TTS ───────────────────────────────────────────────────────────────────
   AudioPlayer? _audioPlayer;
-  WebAudioProxy? _webAudio;      // web-native HTMLAudioElement wrapper (replaces just_audio on web)
-  File? _tempAudioFile;          // temp file used on native; deleted on dispose/replace
-  String? _webBlobUrl;           // blob:// URL created for web playback; revoked on dispose/replace
+  WebAudioProxy? _webAudio; // web-native HTMLAudioElement wrapper (replaces just_audio on web)
+  File? _tempAudioFile; // temp file used on native; deleted on dispose/replace
+  String? _webBlobUrl; // blob:// URL created for web playback; revoked on dispose/replace
   StreamSubscription? _durationSub;
   StreamSubscription? _positionSub;
   StreamSubscription? _playingSub;
@@ -81,7 +81,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseAnim = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _pageController = PageController();
     _initWaveBars();
@@ -93,7 +96,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     for (int i = 0; i < _waveBarCount; i++) {
       final dur = Duration(milliseconds: 400 + rng.nextInt(600));
       final ctrl = AnimationController(vsync: this, duration: dur)..repeat(reverse: true);
-      final anim = Tween<double>(begin: 0.15 + rng.nextDouble() * 0.25, end: 0.55 + rng.nextDouble() * 0.45).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
+      final anim = Tween<double>(
+        begin: 0.15 + rng.nextDouble() * 0.25,
+        end: 0.55 + rng.nextDouble() * 0.45,
+      ).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
       _barCtrls.add(ctrl);
       _barAnims.add(anim);
     }
@@ -114,7 +120,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _audioPlayer?.dispose();
     _audioPlayer = null;
     // Clean up any temp file written for native playback
-    try { _tempAudioFile?.deleteSync(); } catch (_) {}
+    try {
+      _tempAudioFile?.deleteSync();
+    } catch (_) {}
     _tempAudioFile = null;
     // Release blob URL allocated for web playback
     if (_webBlobUrl != null) {
@@ -147,7 +155,12 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         final next = _currentIndex + 1;
         Future.delayed(const Duration(milliseconds: 600), () {
           if (!mounted) return;
-          setState(() { _currentIndex = next; _ttsProgress = 0; _audioDuration = Duration.zero; _audioPosition = Duration.zero; });
+          setState(() {
+            _currentIndex = next;
+            _ttsProgress = 0;
+            _audioDuration = Duration.zero;
+            _audioPosition = Duration.zero;
+          });
           _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
           if (_audioMode) {
             Future.delayed(const Duration(milliseconds: 400), () {
@@ -200,7 +213,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       };
       proxy.onPosition = (pos, progress) {
         if (!mounted) return;
-        setState(() { _audioPosition = pos; _ttsProgress = progress; });
+        setState(() {
+          _audioPosition = pos;
+          _ttsProgress = progress;
+        });
       };
       proxy.onPlaying = (playing) {
         if (!mounted) return;
@@ -231,8 +247,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       setState(() {
         _audioPosition = pos;
         if (_audioDuration.inMilliseconds > 0) {
-          _ttsProgress =
-              (pos.inMilliseconds / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
+          _ttsProgress = (pos.inMilliseconds / _audioDuration.inMilliseconds).clamp(0.0, 1.0);
         }
       });
     });
@@ -257,9 +272,8 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     try {
       // Write bytes to a real temp file so ExoPlayer / AVPlayer can seek and
       // report the correct duration (StreamAudioSource often shows 0:00).
-      final tempDir  = Directory.systemTemp;
-      final tempFile = File(
-          '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3');
+      final tempDir = Directory.systemTemp;
+      final tempFile = File('${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3');
       await tempFile.writeAsBytes(bytes, flush: true);
       _tempAudioFile = tempFile;
       await player.setAudioSource(AudioSource.uri(Uri.file(tempFile.path)));
@@ -268,7 +282,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     } catch (e) {
       debugPrint('just_audio playback error: $e');
       if (mounted) {
-        setState(() { _ttsPlaying = false; _ttsLoading = false; });
+        setState(() {
+          _ttsPlaying = false;
+          _ttsLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Playback failed. Tap the page first, then press play.'),
@@ -331,14 +348,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     }
     try {
       final token = await AuthService.getToken() ?? '';
-      final resp = await http.post(
-        Uri.parse('${AuthService.baseUrl}/tts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'text': text}),
-      ).timeout(const Duration(seconds: 120));
+      final resp = await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/tts'),
+            headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+            body: jsonEncode({'text': text}),
+          )
+          .timeout(const Duration(seconds: 120));
       if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
         _audioCache[index] = resp.bodyBytes;
         debugPrint('TTS pre-fetch done for snippet $index (${resp.bodyBytes.length} bytes)');
@@ -359,14 +375,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     const retryDelay = Duration(seconds: 20);
     for (int attempt = 0; attempt < 2; attempt++) {
       final token = await AuthService.getToken() ?? '';
-      final resp = await http.post(
-        Uri.parse('${AuthService.baseUrl}/tts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'text': text}),
-      ).timeout(const Duration(seconds: 120));
+      final resp = await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/tts'),
+            headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+            body: jsonEncode({'text': text}),
+          )
+          .timeout(const Duration(seconds: 120));
 
       if (!mounted) return null;
 
@@ -376,10 +391,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
       if (resp.statusCode == 503 && attempt == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Server is warming up — retrying in 20 s…'),
-            duration: Duration(seconds: 20),
-          ),
+          const SnackBar(content: Text('Server is warming up — retrying in 20 s…'), duration: Duration(seconds: 20)),
         );
         await Future.delayed(retryDelay);
         if (!mounted) return null;
@@ -452,10 +464,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       debugPrint('TTS error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Audio playback failed. Please try again.'),
-            duration: Duration(seconds: 3),
-          ),
+          const SnackBar(content: Text('Audio playback failed. Please try again.'), duration: Duration(seconds: 3)),
         );
       }
     } finally {
@@ -465,15 +474,27 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   Future<void> _ttsStop() async {
     _disposeAudioPlayer();
-    if (mounted) setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; });
+    if (mounted)
+      setState(() {
+        _ttsPlaying = false;
+        _ttsProgress = 0;
+        _audioPosition = Duration.zero;
+      });
     for (final c in _barCtrls) c.stop();
   }
 
   Future<void> _ttsPauseResume() async {
     if (kIsWeb) {
       final proxy = _webAudio;
-      if (proxy == null) { await _ttsPlay(); return; }
-      if (proxy.isPlaying) { proxy.pause(); } else { proxy.resume(); }
+      if (proxy == null) {
+        await _ttsPlay();
+        return;
+      }
+      if (proxy.isPlaying) {
+        proxy.pause();
+      } else {
+        proxy.resume();
+      }
       return;
     }
     final player = _audioPlayer;
@@ -494,17 +515,22 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     final clamped = target < Duration.zero
         ? Duration.zero
         : target > _audioDuration
-            ? _audioDuration
-            : target;
-    if (kIsWeb) { _webAudio?.seek(clamped); return; }
+        ? _audioDuration
+        : target;
+    if (kIsWeb) {
+      _webAudio?.seek(clamped);
+      return;
+    }
     await _audioPlayer?.seek(clamped);
   }
 
   Future<void> _seekTo(double fraction) async {
     if (_audioDuration == Duration.zero) return;
-    final pos = Duration(
-        milliseconds: (fraction * _audioDuration.inMilliseconds).round());
-    if (kIsWeb) { _webAudio?.seek(pos); return; }
+    final pos = Duration(milliseconds: (fraction * _audioDuration.inMilliseconds).round());
+    if (kIsWeb) {
+      _webAudio?.seek(pos);
+      return;
+    }
     await _audioPlayer?.seek(pos);
   }
 
@@ -537,7 +563,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (i < 0 || i >= _snippets.length || !mounted) return;
     _disposeAudioPlayer();
     if (!mounted) return;
-    setState(() { _ttsPlaying = false; _ttsProgress = 0; _audioPosition = Duration.zero; _audioDuration = Duration.zero; _currentIndex = i; });
+    setState(() {
+      _ttsPlaying = false;
+      _ttsProgress = 0;
+      _audioPosition = Duration.zero;
+      _audioDuration = Duration.zero;
+      _currentIndex = i;
+    });
     for (final c in _barCtrls) c.stop();
     _pageController.animateToPage(i, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     if (autoPlay && _audioMode) {
@@ -644,7 +676,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-            child: const Text('Retry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Retry',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ],
@@ -672,23 +707,29 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text('FocusPro', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Manrope')),
+            child: Text(
+              'LockedIn',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Manrope'),
+            ),
           ),
           if (_snippets.isNotEmpty) ...[
             GestureDetector(
-              onTap: () => setState(() { _audioMode = true; _readingMode = false; }),
+              onTap: () => setState(() {
+                _audioMode = true;
+                _readingMode = false;
+              }),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20)),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.headphones_rounded, color: Colors.white, size: 15),
                     SizedBox(width: 5),
-                    Text('Listen', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Listen',
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
               ),
@@ -737,7 +778,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                   decoration: BoxDecoration(
                     color: _coverColor,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: _coverColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))],
+                    boxShadow: [
+                      BoxShadow(color: _coverColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8)),
+                    ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -753,16 +796,16 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                               fit: BoxFit.cover,
                               width: 120,
                               height: 180,
-                              errorBuilder: (_, __, ___) => _BookCoverFallback(
-                                color: _coverColor, title: widget.book.title),
+                              errorBuilder: (_, __, ___) =>
+                                  _BookCoverFallback(color: _coverColor, title: widget.book.title),
                             )
                           : Image.asset(
                               url,
                               fit: BoxFit.cover,
                               width: 120,
                               height: 180,
-                              errorBuilder: (_, __, ___) => _BookCoverFallback(
-                                color: _coverColor, title: widget.book.title),
+                              errorBuilder: (_, __, ___) =>
+                                  _BookCoverFallback(color: _coverColor, title: widget.book.title),
                             );
                     }(),
                   ),
@@ -787,7 +830,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                       const SizedBox(height: 6),
                       Text(
                         widget.book.author,
-                        style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -849,7 +896,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                         ),
                         if (_snippets.isNotEmpty)
                           GestureDetector(
-                            onTap: () => setState(() { _readingMode = true; _audioMode = false; }),
+                            onTap: () => setState(() {
+                              _readingMode = true;
+                              _audioMode = false;
+                            }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               decoration: BoxDecoration(
@@ -863,7 +913,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                                   SizedBox(width: 6),
                                   Text(
                                     'Test Your Retention',
-                                    style: TextStyle(color: AppColors.onPrimaryFixedVariant, fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: AppColors.onPrimaryFixedVariant,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -903,7 +957,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                     color: AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(widget.book.description, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.6)),
+                  child: Text(
+                    widget.book.description,
+                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.6),
+                  ),
                 ),
               ],
             ),
@@ -917,11 +974,20 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                 children: [
                   const Text(
                     'Chapter Roadmap',
-                    style: TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Manrope',
+                    ),
                   ),
                   Text(
                     '${totalCount - completedCount} Remaining',
-                    style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -937,7 +1003,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: GestureDetector(
                   onTap: unlocked
-                      ? () => setState(() { _currentIndex = i; _readingMode = true; })
+                      ? () => setState(() {
+                          _currentIndex = i;
+                          _readingMode = true;
+                        })
                       : () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -955,7 +1024,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                         borderRadius: BorderRadius.circular(12),
                         border: Border(
                           left: BorderSide(
-                            color: done ? AppColors.secondary : isCurrent && unlocked ? AppColors.onTertiaryContainer : Colors.transparent,
+                            color: done
+                                ? AppColors.secondary
+                                : isCurrent && unlocked
+                                ? AppColors.onTertiaryContainer
+                                : Colors.transparent,
                             width: 4,
                           ),
                         ),
@@ -997,7 +1070,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: isCurrent && !done ? Colors.white : done ? AppColors.primary : AppColors.onSurface,
+                                    color: isCurrent && !done
+                                        ? Colors.white
+                                        : done
+                                        ? AppColors.primary
+                                        : AppColors.onSurface,
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Manrope',
@@ -1005,9 +1082,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  done ? 'Completed' : unlocked ? (isCurrent ? 'Next up' : 'Available') : 'Locked',
+                                  done
+                                      ? 'Completed'
+                                      : unlocked
+                                      ? (isCurrent ? 'Next up' : 'Available')
+                                      : 'Locked',
                                   style: TextStyle(
-                                    color: isCurrent && !done ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
+                                    color: isCurrent && !done
+                                        ? AppColors.onPrimaryContainer
+                                        : AppColors.onSurfaceVariant,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1088,10 +1171,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
               child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF9CA3AF), size: 20),
             ),
           ),
@@ -1111,7 +1191,12 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                 const SizedBox(height: 2),
                 Text(
                   'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                  style: const TextStyle(color: Color(0xFFD1D5DB), fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                  style: const TextStyle(
+                    color: Color(0xFFD1D5DB),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Manrope',
+                  ),
                 ),
               ],
             ),
@@ -1119,15 +1204,16 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           GestureDetector(
             onTap: () async {
               await _ttsStop();
-              if (mounted) setState(() { _audioMode = false; _readingMode = true; });
+              if (mounted)
+                setState(() {
+                  _audioMode = false;
+                  _readingMode = true;
+                });
             },
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
               child: const Icon(Icons.menu_book_rounded, color: Color(0xFF9CA3AF), size: 18),
             ),
           ),
@@ -1168,33 +1254,29 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           child: ClipOval(
             child: hasImage
                 ? (isNetworkUrl
-                    ? Image.network(
-                        bookUrl,
-                        width: 240,
-                        height: 240,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
-                          color: _coverColor,
-                          title: widget.book.title,
-                          author: widget.book.author,
-                        ),
-                      )
-                    : Image.asset(
-                        bookUrl,
-                        width: 240,
-                        height: 240,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
-                          color: _coverColor,
-                          title: widget.book.title,
-                          author: widget.book.author,
-                        ),
-                      ))
-                : _AudioCoverFallbackCircle(
-                    color: _coverColor,
-                    title: widget.book.title,
-                    author: widget.book.author,
-                  ),
+                      ? Image.network(
+                          bookUrl,
+                          width: 240,
+                          height: 240,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
+                            color: _coverColor,
+                            title: widget.book.title,
+                            author: widget.book.author,
+                          ),
+                        )
+                      : Image.asset(
+                          bookUrl,
+                          width: 240,
+                          height: 240,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _AudioCoverFallbackCircle(
+                            color: _coverColor,
+                            title: widget.book.title,
+                            author: widget.book.author,
+                          ),
+                        ))
+                : _AudioCoverFallbackCircle(color: _coverColor, title: widget.book.title, author: widget.book.author),
           ),
         ),
       ),
@@ -1207,10 +1289,19 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         Text(
           _snippets.isNotEmpty ? _snippets[_currentIndex].snippetTitle : widget.book.title,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.3, fontFamily: 'Manrope'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            height: 1.3,
+            fontFamily: 'Manrope',
+          ),
         ),
         const SizedBox(height: 8),
-        Text(widget.book.author, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 15, fontWeight: FontWeight.w500)),
+        Text(
+          widget.book.author,
+          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 15, fontWeight: FontWeight.w500),
+        ),
       ],
     );
   }
@@ -1241,11 +1332,21 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             children: [
               Text(
                 _formatDuration(_audioPosition),
-                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+                style: const TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
               ),
               Text(
                 _formatDuration(_audioDuration),
-                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+                style: const TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
@@ -1270,9 +1371,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             decoration: BoxDecoration(
               color: selected ? AppColors.secondaryFixed : const Color(0xFF1F2937),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: selected
-                  ? [BoxShadow(color: AppColors.secondaryFixed.withOpacity(0.2), blurRadius: 12)]
-                  : [],
+              boxShadow: selected ? [BoxShadow(color: AppColors.secondaryFixed.withOpacity(0.2), blurRadius: 12)] : [],
             ),
             child: Text(
               s == s.roundToDouble() ? '${s.toInt()}x' : '${s}x',
@@ -1325,10 +1424,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             child: _ttsLoading
                 ? const Padding(
                     padding: EdgeInsets.all(22),
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                      strokeWidth: 3,
-                    ),
+                    child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
                   )
                 : Icon(
                     _ttsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -1359,11 +1455,24 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       children: [
         Row(
           children: [
-            const Text('Chapters', style: TextStyle(color: Color(0xFFE5E7EB), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Manrope')),
+            const Text(
+              'Chapters',
+              style: TextStyle(
+                color: Color(0xFFE5E7EB),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Manrope',
+              ),
+            ),
             const Spacer(),
             Text(
               '${_completedChapters.length} OF ${_snippets.length} COMPLETED',
-              style: TextStyle(color: AppColors.secondaryFixed.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1),
+              style: TextStyle(
+                color: AppColors.secondaryFixed.withOpacity(0.8),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
             ),
           ],
         ),
@@ -1391,9 +1500,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               decoration: BoxDecoration(
                 color: active ? AppColors.primaryContainer.withOpacity(0.3) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: active ? AppColors.secondaryFixed.withOpacity(0.15) : Colors.transparent,
-                ),
+                border: Border.all(color: active ? AppColors.secondaryFixed.withOpacity(0.15) : Colors.transparent),
               ),
               child: Opacity(
                 opacity: unlocked ? 1.0 : 0.45,
@@ -1416,7 +1523,16 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                           ? const Icon(Icons.lock_rounded, color: Color(0xFF6B7280), size: 16)
                           : active
                           ? const Icon(Icons.equalizer_rounded, color: AppColors.secondaryFixed, size: 18)
-                          : Center(child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold))),
+                          : Center(
+                              child: Text(
+                                '${i + 1}',
+                                style: const TextStyle(
+                                  color: Color(0xFF6B7280),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1491,10 +1607,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
               child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
             ),
           ),
@@ -1503,29 +1616,42 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
               children: [
                 const Text(
                   'Now Reading',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Manrope'),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Manrope',
+                  ),
                 ),
                 Text(
                   'Chapter ${_currentIndex + 1} of ${_snippets.length}',
-                  style: TextStyle(color: AppColors.onPrimaryContainer.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5),
+                  style: TextStyle(
+                    color: AppColors.onPrimaryContainer.withOpacity(0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
+                  ),
                 ),
               ],
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() { _readingMode = false; _audioMode = true; }),
+            onTap: () => setState(() {
+              _readingMode = false;
+              _audioMode = true;
+            }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(20)),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.headphones_rounded, color: Colors.white, size: 14),
                   SizedBox(width: 5),
-                  Text('Listen', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Listen',
+                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ),
@@ -1561,7 +1687,12 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                       const SizedBox(width: 10),
                       Text(
                         _currentIndex < _snippets.length - 1 ? 'Done & Next' : 'Complete Book',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Manrope'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontFamily: 'Manrope',
+                        ),
                       ),
                     ],
                   ),
@@ -1573,7 +1704,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           Container(
             margin: const EdgeInsets.only(top: 8),
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08)))),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -1597,7 +1730,8 @@ class _ReaderPage extends StatelessWidget {
   final BookSnippetModel snippet;
   const _ReaderPage({required this.snippet});
 
-  List<String> get _paragraphs => snippet.snippetText.split(RegExp(r'\n+')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+  List<String> get _paragraphs =>
+      snippet.snippetText.split(RegExp(r'\n+')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -1637,7 +1771,14 @@ class _ReaderPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Container(width: 48, height: 4, decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(2))),
+                      Container(
+                        width: 48,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1663,11 +1804,29 @@ class _ReaderPage extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer, shape: BoxShape.circle)),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: AppColors.primaryContainer, shape: BoxShape.circle),
+                      ),
                       const SizedBox(width: 6),
-                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.5), shape: BoxShape.circle)),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 6),
-                      Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.2), shape: BoxShape.circle)),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1720,9 +1879,7 @@ class _NavBtn extends StatelessWidget {
           : null,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? Colors.white : AppColors.onPrimaryContainer, size: 22),
-        ],
+        children: [Icon(icon, color: active ? Colors.white : AppColors.onPrimaryContainer, size: 22)],
       ),
     ),
   );
@@ -1741,7 +1898,10 @@ class _MetaChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: color.withOpacity(0.25)),
     ),
-    child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+    child: Text(
+      label,
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+    ),
   );
 }
 
@@ -1768,7 +1928,15 @@ class _CompletionSheet extends StatelessWidget {
           child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 32),
         ),
         const SizedBox(height: 16),
-        const Text('Book Completed!', style: TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Manrope')),
+        const Text(
+          'Book Completed!',
+          style: TextStyle(
+            color: AppColors.onSurface,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Manrope',
+          ),
+        ),
         const SizedBox(height: 8),
         Text(
           'You finished "${book.title}". Great job keeping your focus!',
@@ -1777,19 +1945,26 @@ class _CompletionSheet extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         GestureDetector(
-          onTap: () { Navigator.pop(context); Navigator.pop(context); },
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
-            child: const Center(child: Text('Back to Library', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15))),
+            child: const Center(
+              child: Text(
+                'Back to Library',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
           ),
         ),
       ],
     ),
   );
 }
-
 
 // Circular fallback used in the audio player
 class _AudioCoverFallbackCircle extends StatelessWidget {
@@ -1824,7 +1999,13 @@ class _AudioCoverFallbackCircle extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, height: 1.3, fontFamily: 'Manrope'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+                fontFamily: 'Manrope',
+              ),
             ),
           ),
           Positioned(
@@ -1876,7 +2057,13 @@ class _AudioCoverFallback extends StatelessWidget {
                   title,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.3, fontFamily: 'Manrope'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                    fontFamily: 'Manrope',
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1893,7 +2080,6 @@ class _AudioCoverFallback extends StatelessWidget {
     );
   }
 }
-
 
 class _BookCoverFallback extends StatelessWidget {
   final Color color;
@@ -1912,9 +2098,13 @@ class _BookCoverFallback extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(title, textAlign: TextAlign.center, maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3)),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3),
+                ),
               ],
             ),
           ),
@@ -1923,4 +2113,3 @@ class _BookCoverFallback extends StatelessWidget {
     );
   }
 }
-

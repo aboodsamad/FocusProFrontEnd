@@ -10,19 +10,16 @@ class UpdateService {
   static const String _currentVersion = '1.5';
 
   static const String _owner = 'aboodsamad';
-  static const String _repo  = 'FocusProFrontEnd';
+  static const String _repo = 'LockedInFrontEnd';
 
-  static const String _apiUrl =
-      'https://api.github.com/repos/$_owner/$_repo/releases/latest';
+  static const String _apiUrl = 'https://api.github.com/repos/$_owner/$_repo/releases/latest';
 
   /// Checks GitHub for the latest release. Only shows a dialog if a version
   /// strictly newer than [_currentVersion] exists AND has an attached .apk.
   static Future<void> checkForUpdate(BuildContext context) async {
-    
     try {
       final resp = await http
-          .get(Uri.parse(_apiUrl),
-              headers: {'Accept': 'application/vnd.github+json'})
+          .get(Uri.parse(_apiUrl), headers: {'Accept': 'application/vnd.github+json'})
           .timeout(const Duration(seconds: 8));
 
       if (resp.statusCode != 200) return;
@@ -30,8 +27,7 @@ class UpdateService {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
 
       // Strip the leading "v" from the tag (e.g. "v1.2" → "1.2")
-      final latestTag =
-          (data['tag_name'] as String? ?? '').replaceFirst('v', '').trim();
+      final latestTag = (data['tag_name'] as String? ?? '').replaceFirst('v', '').trim();
 
       final downloadUrl = _extractApkUrl(data);
 
@@ -63,8 +59,7 @@ class UpdateService {
     return false; // equal → not newer
   }
 
-  static List<int> _toInts(String v) =>
-      v.split('.').map((s) => int.tryParse(s.trim()) ?? 0).toList();
+  static List<int> _toInts(String v) => v.split('.').map((s) => int.tryParse(s.trim()) ?? 0).toList();
 
   /// Finds the first .apk asset URL in the release.
   static String? _extractApkUrl(Map<String, dynamic> data) {
@@ -78,8 +73,7 @@ class UpdateService {
     return null;
   }
 
-  static void _showUpdateDialog(
-      BuildContext context, String version, String downloadUrl) {
+  static void _showUpdateDialog(BuildContext context, String version, String downloadUrl) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -90,53 +84,39 @@ class UpdateService {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.system_update_rounded,
-                  color: Color(0xFF10B981), size: 22),
+              decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.15), shape: BoxShape.circle),
+              child: const Icon(Icons.system_update_rounded, color: Color(0xFF10B981), size: 22),
             ),
             const SizedBox(width: 12),
             const Text(
               'Update Available',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         content: Text(
-          'FocusPro v$version is ready to install with new features and fixes.\n\nTap Update to download the new APK.',
-          style: const TextStyle(
-              color: Color(0xFF9CA3AF), fontSize: 13, height: 1.5),
+          'LockedIn v$version is ready to install with new features and fixes.\n\nTap Update to download the new APK.',
+          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Later',
-                style: TextStyle(color: Color(0xFF6B7280))),
+            child: const Text('Later', style: TextStyle(color: Color(0xFF6B7280))),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             icon: const Icon(Icons.download_rounded, size: 16),
-            label: const Text('Update',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.of(context).pop();
               // Skip canLaunchUrl  it fails silently on Android for https
               // when the query isn't whitelisted. Just launch directly.
               try {
-                await launchUrl(
-                  Uri.parse(downloadUrl),
-                  mode: LaunchMode.externalApplication,
-                );
+                await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
               } catch (_) {}
             },
           ),

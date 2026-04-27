@@ -1,4 +1,4 @@
-package com.example.capstone_front_end
+package com.example.LockedIn
 
 import android.content.BroadcastReceiver
 import android.content.Context
