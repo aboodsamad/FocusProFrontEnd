@@ -1,6 +1,6 @@
 {
-    "name": "LockedIn",
-    "short_name": "LockedIn",
+    "name": "capstone_front_end",
+    "short_name": "capstone_front_end",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
