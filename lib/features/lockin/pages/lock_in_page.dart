@@ -280,7 +280,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
     }
   }
 
-  // ── Lifecycle — release pin on app detach ────────────────────────────────
+  // ── Lifecycle  release pin on app detach ────────────────────────────────
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

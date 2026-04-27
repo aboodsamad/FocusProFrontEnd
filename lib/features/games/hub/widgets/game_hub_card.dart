@@ -22,13 +22,13 @@ class _ScienceInfo {
 const _scienceMap = <String, _ScienceInfo>{
   'memory_matrix': _ScienceInfo(
     whatItIs:
-        'A grid flashes a pattern for a few seconds — your job is to '
+        'A grid flashes a pattern for a few seconds  your job is to '
         'remember it and tap the same squares back.',
     targets:
         'Your hippocampus holds the image while your prefrontal cortex '
         'keeps it alive long enough to act on it.',
     whyInFocusPro:
-        'This is basically the N-back task in disguise — the single most '
+        'This is basically the N-back task in disguise  the single most '
         'studied working memory exercise in neuroscience, replicated across '
         '24 brain-imaging studies.',
   ),
@@ -37,32 +37,32 @@ const _scienceMap = <String, _ScienceInfo>{
         'Place digits 1–9 so no number repeats in any row, column, or box. '
         'Simple rule, genuinely hard to master.',
     targets:
-        'The front of your brain works overtime here — planning ahead, '
+        'The front of your brain works overtime here  planning ahead, '
         'holding constraints in mind, and catching your own mistakes.',
     whyInFocusPro:
         'Brain scans taken while people solve Sudoku show clear spikes in '
-        'prefrontal activity — the same region that suffers most when '
+        'prefrontal activity  the same region that suffers most when '
         'you\'re stressed or sleep-deprived.',
   ),
   'speed_match': _ScienceInfo(
     whatItIs:
-        'A card appears — does it match the one before it? '
+        'A card appears  does it match the one before it? '
         'Tap Yes or No as fast as you can before the timer wins.',
     targets:
         'The part of your brain that detects conflict and the one that '
         'processes where things are both have to fire together, fast.',
     whyInFocusPro:
-        'The ACTIVE trial — the longest brain-training study ever run — '
+        'The ACTIVE trial  the longest brain-training study ever run  '
         'found that this exact type of speed training kept paying off '
         'a full decade later.',
   ),
   'color_match': _ScienceInfo(
     whatItIs:
         'The word says RED but it\'s printed in blue. Tap the actual ink '
-        'color — not the word. Your brain will fight you on this.',
+        'color  not the word. Your brain will fight you on this.',
     targets:
         'You\'re forcing your brain to suppress the obvious answer and pick '
-        'the correct one instead — that\'s pure inhibitory control.',
+        'the correct one instead  that\'s pure inhibitory control.',
     whyInFocusPro:
         'This is the Stroop task, and it\'s been used in research for '
         'nearly a century. It\'s the go-to test for attention and impulse '
@@ -73,7 +73,7 @@ const _scienceMap = <String, _ScienceInfo>{
         'Equations drift down the screen and you have to solve them '
         'before they disappear. Speed and accuracy both matter.',
     targets:
-        'Both sides of your prefrontal cortex light up — one for the '
+        'Both sides of your prefrontal cortex light up  one for the '
         'math, one for keeping track of what\'s already gone.',
     whyInFocusPro:
         'After just 4 weeks of this kind of training, brain scans showed '
@@ -82,26 +82,26 @@ const _scienceMap = <String, _ScienceInfo>{
   ),
   'pattern_trail': _ScienceInfo(
     whatItIs:
-        'Dots appear one by one — watch the sequence, then tap them '
+        'Dots appear one by one  watch the sequence, then tap them '
         'back in the exact same order from memory.',
     targets:
         'Spatial memory lives in the hippocampus; keeping the sequence '
         'straight pulls in your right frontal and parietal regions too.',
     whyInFocusPro:
-        'This is a direct version of the Corsi Block test — a staple of '
+        'This is a direct version of the Corsi Block test  a staple of '
         'clinical neuropsychology since the 1970s, still used today to '
         'assess memory and brain injury.',
   ),
   'train_of_thought': _ScienceInfo(
     whatItIs:
-        'Trains are heading for stations — tap the junctions to reroute '
+        'Trains are heading for stations  tap the junctions to reroute '
         'them to the right color before anything crashes.',
     targets:
         'You\'re constantly switching between tasks and tracking multiple '
         'things at once, which hammers your prefrontal and parietal cortex.',
     whyInFocusPro:
         'Managing several moving objects simultaneously is one of the '
-        'clearest ways to stress-test executive attention — the skill '
+        'clearest ways to stress-test executive attention  the skill '
         'that tends to slip first under fatigue or distraction.',
   ),
 };
@@ -237,7 +237,7 @@ void _showInfoSheet(BuildContext context, GameItem game, Color color) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GameHubCard — Deep Focus redesign
+// GameHubCard  Deep Focus redesign
 // Full-width card with banner area, game info, and Play button
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -649,7 +649,7 @@ class _GameHubFeaturedCardState extends State<GameHubFeaturedCard> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _InfoButton — circular info button
+// _InfoButton  circular info button
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoButton extends StatelessWidget {
@@ -691,7 +691,7 @@ class _InfoButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _InfoSection — one row inside the bottom sheet
+// _InfoSection  one row inside the bottom sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoSection extends StatelessWidget {
@@ -786,7 +786,7 @@ class _CategoryBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _LevelProgressIndicator — small "Level n/10" chip for roadmap games
+// _LevelProgressIndicator  small "Level n/10" chip for roadmap games
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LevelProgressIndicator extends StatefulWidget {
@@ -824,7 +824,7 @@ class _LevelProgressIndicatorState extends State<_LevelProgressIndicator> {
     // Re-use service through registry helper
     final total = GameRegistry.totalLevels(gameId);
     if (total <= 0) return 1;
-    // Access service via import in registry — need direct import here
+    // Access service via import in registry  need direct import here
     return _levelFromPrefs(gameId);
   }
 
@@ -847,7 +847,7 @@ class _LevelProgressIndicatorState extends State<_LevelProgressIndicator> {
   }
 
   Future<int> _getMaxUnlocked(String gameId) async {
-    // We can't avoid the import — add it at the top of this file.
+    // We can't avoid the import  add it at the top of this file.
     // This method is here to make the indirection clear; it calls
     // GameProgressService.getMaxUnlockedLevel(gameId).
     // The actual call is resolved once the import is present.

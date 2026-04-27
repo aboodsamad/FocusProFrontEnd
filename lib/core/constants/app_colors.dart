@@ -25,7 +25,7 @@ class AppColors {
   static const Color onSecondaryFixed       = Color(0xFF002113);
   static const Color onSecondaryFixedVariant= Color(0xFF005236);
 
-  // ── Tertiary (slate blue — metrics & progress) ─────────────────────────────
+  // ── Tertiary (slate blue  metrics & progress) ─────────────────────────────
   static const Color tertiary              = Color(0xFF00264E);
   static const Color onTertiary            = Color(0xFFFFFFFF);
   static const Color tertiaryContainer     = Color(0xFF0E3C6F);

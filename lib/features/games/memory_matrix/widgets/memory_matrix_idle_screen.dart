@@ -53,7 +53,7 @@ class MemoryMatrixIdleScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _MiniGridPreview  (private — only used by MemoryMatrixIdleScreen)
+// _MiniGridPreview  (private  only used by MemoryMatrixIdleScreen)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// 3 × 3 preview grid that cycles random lit cells to demo the mechanic.

@@ -10,7 +10,7 @@ class CoachingResponse {
   final String reply;
   final int sessionId;
   final List<DailyGoalModel> updatedGoals;
-  /// Full conversation history — only present in GET /coaching/session/today
+  /// Full conversation history  only present in GET /coaching/session/today
   final List<CoachingMessage>? messages;
 
   const CoachingResponse({
@@ -56,7 +56,7 @@ class CoachingService {
         'Authorization': 'Bearer $token',
       };
 
-  /// POST /coaching/goals — set morning goals
+  /// POST /coaching/goals  set morning goals
   static Future<CoachingResponse?> setDailyGoals(
       String token, List<String> goals) async {
     try {
@@ -75,7 +75,7 @@ class CoachingService {
         return CoachingResponse.fromJson(
             jsonDecode(resp.body) as Map<String, dynamic>);
       }
-      debugPrint('CoachingService.setDailyGoals: status ${resp.statusCode} — ${resp.body}');
+      debugPrint('CoachingService.setDailyGoals: status ${resp.statusCode}  ${resp.body}');
       return null;
     } catch (e) {
       debugPrint('CoachingService.setDailyGoals error: $e');
@@ -99,7 +99,7 @@ class CoachingService {
         return CoachingResponse.fromJson(
             jsonDecode(resp.body) as Map<String, dynamic>);
       }
-      debugPrint('CoachingService.sendMessage: status ${resp.statusCode} — ${resp.body}');
+      debugPrint('CoachingService.sendMessage: status ${resp.statusCode}  ${resp.body}');
       return null;
     } catch (e) {
       debugPrint('CoachingService.sendMessage error: $e');
@@ -123,7 +123,7 @@ class CoachingService {
         return CoachingResponse.fromJson(
             jsonDecode(resp.body) as Map<String, dynamic>);
       }
-      debugPrint('CoachingService.startEvening: status ${resp.statusCode} — ${resp.body}');
+      debugPrint('CoachingService.startEvening: status ${resp.statusCode}  ${resp.body}');
       return null;
     } catch (e) {
       debugPrint('CoachingService.startEvening error: $e');
@@ -131,7 +131,7 @@ class CoachingService {
     }
   }
 
-  /// GET /coaching/session/today — restore session after logout/login
+  /// GET /coaching/session/today  restore session after logout/login
   static Future<CoachingResponse?> getTodaySession(String token) async {
     try {
       final resp = await http
@@ -176,7 +176,7 @@ class CoachingService {
     }
   }
 
-  /// POST /notifications/reminder — schedule a manual reminder at a specific time
+  /// POST /notifications/reminder  schedule a manual reminder at a specific time
   static Future<bool> addReminder(
       String token, String title, String message, TimeOfDay time) async {
     try {

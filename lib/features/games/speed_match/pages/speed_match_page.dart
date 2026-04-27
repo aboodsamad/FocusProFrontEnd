@@ -12,7 +12,7 @@ import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants — Deep Focus light theme
+// Design constants  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kBg      = AppColors.surface;
@@ -228,7 +228,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Per-card timer duration — base shortens with level, further reduced by score
+  // Per-card timer duration  base shortens with level, further reduced by score
   // ─────────────────────────────────────────────────────────────────────────
 
   Duration _cardDuration() {

@@ -13,7 +13,7 @@ import '../widgets/sudoku_header.dart';
 import '../widgets/sudoku_number_pad.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colours — Deep Focus light theme
+// Colours  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kBg      = AppColors.surface;

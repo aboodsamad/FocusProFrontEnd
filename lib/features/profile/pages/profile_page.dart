@@ -279,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          // Brand pill — same design as home page top-right
+          // Brand pill  same design as home page top-right
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
@@ -301,7 +301,7 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
           const Spacer(),
-          // Settings button — modern icon
+          // Settings button  modern icon
           GestureDetector(
             onTap: () {},
             child: Container(

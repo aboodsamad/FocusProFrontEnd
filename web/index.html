@@ -27,7 +27,7 @@
     <!--
       FocusPro Push Notification Setup
       ─────────────────────────────────
-      We register notification_sw.js at scope '/push-sw/' — a scope that is
+      We register notification_sw.js at scope '/push-sw/'  a scope that is
       SEPARATE from Flutter's flutter_service_worker.js at '/'.
       This prevents Flutter's SW from overwriting ours on every page load.
       Push events are delivered to whichever SW CREATED the subscription,
@@ -39,7 +39,7 @@
     <script>
       window._focuspro_pushResult = null;
 
-      // Register FocusPro's push SW at '/push-sw/' — completely separate from
+      // Register FocusPro's push SW at '/push-sw/'  completely separate from
       // Flutter's SW at '/'. They coexist without fighting each other.
       var _focuspro_swReg = null;
       if ('serviceWorker' in navigator) {

@@ -53,7 +53,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
     try {
       final hashPart   = getLocationHash();
       final searchPart = getLocationSearch();
-      print('OAuth callback — hash: $hashPart  search: $searchPart');
+      print('OAuth callback  hash: $hashPart  search: $searchPart');
 
       // Try hash first, fall back to query string.
       final code = _extractCode(hashPart) ?? _extractCode(searchPart);

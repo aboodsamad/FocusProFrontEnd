@@ -125,7 +125,7 @@ class LevelFactory {
   }
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L1 — one fork, two stations
+  // L1  one fork, two stations
   //
   //  tunnel(0.04) ─────────────────── fork0(0.60) ─┬─ st_blue
   //                                                  └─ st_red
@@ -149,7 +149,7 @@ class LevelFactory {
       );
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L2 — two forks, four stations
+  // L2  two forks, four stations
   //
   //  tunnel(0.04) ──────── fork0(0.50) ──┬── fork1(0.74) ─┬─ st_blue
   //                                       │                 └─ st_pink
@@ -180,7 +180,7 @@ class LevelFactory {
       );
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L3 — three forks, five stations
+  // L3  three forks, five stations
   //
   //  tunnel(0.04) ──── fork0(0.42) ──┬── fork1(0.65) ──┬── fork3(0.82) ─┬─ st_blue
   //                                   │                  │                 └─ st_red
@@ -214,7 +214,7 @@ class LevelFactory {
       );
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L4 — four forks, six stations
+  // L4  four forks, six stations
   //
   //  tunnel(0.04) ─── fork0(0.36) ──┬── fork1(0.58) ──┬── fork3(0.78) ─┬─ st_blue
   //                                  │                  │                 └─ st_red
@@ -251,7 +251,7 @@ class LevelFactory {
       );
  
   // ─────────────────────────────────────────────────────────────────────────
-  // L5 — same tree as L4, faster + more trains
+  // L5  same tree as L4, faster + more trains
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l5() => LevelConfig(
         nodes: _mk([
@@ -281,7 +281,7 @@ class LevelFactory {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // L6 — L4 layout, speed 0.28, interval 1.7, 2 allowed mistakes
+  // L6  L4 layout, speed 0.28, interval 1.7, 2 allowed mistakes
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l6() => LevelConfig(
         nodes: _mk([
@@ -312,7 +312,7 @@ class LevelFactory {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // L7 — L5 layout, speed 0.30, interval 1.55, 2 allowed mistakes
+  // L7  L5 layout, speed 0.30, interval 1.55, 2 allowed mistakes
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l7() => LevelConfig(
         nodes: _mk([
@@ -344,7 +344,7 @@ class LevelFactory {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // L8 — L5 layout, speed 0.32, interval 1.45, 2 allowed mistakes
+  // L8  L5 layout, speed 0.32, interval 1.45, 2 allowed mistakes
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l8() => LevelConfig(
         nodes: _mk([
@@ -376,7 +376,7 @@ class LevelFactory {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // L9 — L5 layout, speed 0.34, interval 1.35, 1 allowed mistake
+  // L9  L5 layout, speed 0.34, interval 1.35, 1 allowed mistake
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l9() => LevelConfig(
         nodes: _mk([
@@ -408,7 +408,7 @@ class LevelFactory {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // L10 — maximum intensity: speed 0.36, interval 1.30, 1 allowed mistake
+  // L10  maximum intensity: speed 0.36, interval 1.30, 1 allowed mistake
   // ─────────────────────────────────────────────────────────────────────────
   static LevelConfig _l10() => LevelConfig(
         nodes: _mk([

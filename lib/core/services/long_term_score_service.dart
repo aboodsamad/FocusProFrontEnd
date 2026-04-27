@@ -5,7 +5,7 @@ import 'auth_service.dart';
 /// Fetches the long-term EMA focus score from the backend.
 ///
 /// The EMA is calculated entirely server-side using all past daily_score
-/// records — no SharedPreferences or on-device computation required.
+/// records  no SharedPreferences or on-device computation required.
 ///
 /// Public API is identical to the old local implementation so all callers
 /// (UserProvider) work without any changes.
@@ -33,7 +33,7 @@ class LongTermScoreService {
         _cachedWeekTrend = (body['weekTrend'] as num?)?.toDouble();
       }
     } catch (_) {
-      // Network error — keep previously cached values
+      // Network error  keep previously cached values
     }
   }
 
@@ -45,7 +45,7 @@ class LongTermScoreService {
   }
 
   /// Returns the 7-day trend.  Positive = improving, negative = declining.
-  /// Must be called after [getScore()] — shares the same cached fetch.
+  /// Must be called after [getScore()]  shares the same cached fetch.
   static Future<double?> getWeekTrend() async {
     return _cachedWeekTrend;
   }

@@ -2,7 +2,7 @@ import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SudokuInfoCard  — timer / mistakes stat chip
+// SudokuInfoCard   timer / mistakes stat chip
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SudokuInfoCard extends StatelessWidget {
@@ -120,7 +120,7 @@ class SudokuDifficultySelector extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SudokuStatRow  — used inside the win dialog
+// SudokuStatRow   used inside the win dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SudokuStatRow extends StatelessWidget {

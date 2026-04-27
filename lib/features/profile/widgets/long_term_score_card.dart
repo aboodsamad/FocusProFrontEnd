@@ -387,11 +387,11 @@ class _ArcGaugePainter extends CustomPainter {
   static const double _strokeW   = 13.0;
 
   static const List<Color> _gaugeColors = [
-    Color(0xFFEF4444), // red    — Beginner
-    Color(0xFFF97316), // orange — Building
-    Color(0xFFF59E0B), // amber  — Consistent
-    Color(0xFF10B981), // green  — High Performer
-    Color(0xFF0E6C4A), // deep   — Elite
+    Color(0xFFEF4444), // red     Beginner
+    Color(0xFFF97316), // orange  Building
+    Color(0xFFF59E0B), // amber   Consistent
+    Color(0xFF10B981), // green   High Performer
+    Color(0xFF0E6C4A), // deep    Elite
   ];
 
   @override

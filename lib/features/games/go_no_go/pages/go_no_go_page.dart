@@ -416,7 +416,7 @@ class _GoNoGoPageState extends State<GoNoGoPage> with SingleTickerProviderStateM
                 Icon(Icons.science_outlined, color: AppColors.secondary, size: 18),
                 const SizedBox(width: 10),
                 Expanded(child: Text(
-                  'Commission errors reveal impulse control — the same faculty that helps you resist distractions and stick to your goals.',
+                  'Commission errors reveal impulse control  the same faculty that helps you resist distractions and stick to your goals.',
                   style: TextStyle(color: AppColors.onSurfaceVariant,
                       fontSize: 12, height: 1.5),
                 )),

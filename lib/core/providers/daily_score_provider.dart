@@ -4,7 +4,7 @@ import '../services/daily_score_service.dart';
 export '../services/daily_score_service.dart' show DailyScoreEntry;
 
 /// Provides daily score data to the widget tree.
-/// All persistence is server-side — no local SharedPreferences caching needed.
+/// All persistence is server-side  no local SharedPreferences caching needed.
 class DailyScoreProvider extends ChangeNotifier {
   double _todayScore = 0.0;
   List<DailyScoreEntry> _weeklyScores = List.generate(

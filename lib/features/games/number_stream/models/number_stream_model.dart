@@ -1,4 +1,4 @@
-/// Pure-Dart model — no Flutter dependency.
+/// Pure-Dart model  no Flutter dependency.
 /// Holds all game state for the Number Stream game.
 
 import 'dart:math';
@@ -130,7 +130,7 @@ class NumberStreamState {
 
   // ── Derived helpers ────────────────────────────────────────────────────────
 
-  /// Fall duration in milliseconds — decreases by 350 ms per level (floor 2 000).
+  /// Fall duration in milliseconds  decreases by 350 ms per level (floor 2 000).
   int get fallDurationMs {
     final ms = 5200 - ((level - 1) * 350);
     return ms < 2000 ? 2000 : ms;
@@ -149,7 +149,7 @@ class NumberStreamState {
 
 int _eqCounter = 0;
 
-/// Resets the equation ID counter — call this at the start of each new game.
+/// Resets the equation ID counter  call this at the start of each new game.
 void resetEqCounter() => _eqCounter = 0;
 
 StreamEquation generateEquation(int level) {
@@ -160,7 +160,7 @@ StreamEquation generateEquation(int level) {
   int a, b;
 
   if (level == 1) {
-    // Two-digit add/subtract — no more 3+2 trivia
+    // Two-digit add/subtract  no more 3+2 trivia
     op = rng.nextBool() ? MathOp.add : MathOp.subtract;
     a  = rng.nextInt(26) + 15;                          // 15–40
     b  = op == MathOp.subtract

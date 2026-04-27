@@ -165,7 +165,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
       }
     } catch (_) {}
 
-    // Poll interval constants — named so intent is clear
+    // Poll interval constants  named so intent is clear
     const _memberPollInterval = Duration(seconds: 4);
     const _chatPollInterval = Duration(milliseconds: 2500);
 
@@ -176,7 +176,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
         final room = await FocusRoomService.getRoom(widget.room.id);
         if (mounted) setState(() => _members = room.members);
       } catch (_) {
-        // Silently skip — transient network error; next tick will retry
+        // Silently skip  transient network error; next tick will retry
       } finally {
         _memberPollInFlight = false;
       }
@@ -199,7 +199,7 @@ class _FocusRoomSessionPageState extends State<FocusRoomSessionPage> {
           if (_showChat) _scrollToBottom();
         }
       } catch (_) {
-        // Silently skip — next tick will retry
+        // Silently skip  next tick will retry
       } finally {
         _chatPollInFlight = false;
       }

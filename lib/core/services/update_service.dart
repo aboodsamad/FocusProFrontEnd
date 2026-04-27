@@ -45,7 +45,7 @@ class UpdateService {
         _showUpdateDialog(context, latestTag, downloadUrl);
       }
     } catch (_) {
-      // Silent fail — never crash the app because of an update check
+      // Silent fail  never crash the app because of an update check
     }
   }
 
@@ -130,7 +130,7 @@ class UpdateService {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.of(context).pop();
-              // Skip canLaunchUrl — it fails silently on Android for https
+              // Skip canLaunchUrl  it fails silently on Android for https
               // when the query isn't whitelisted. Just launch directly.
               try {
                 await launchUrl(

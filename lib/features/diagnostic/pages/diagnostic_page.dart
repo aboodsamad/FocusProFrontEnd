@@ -285,7 +285,7 @@ class _DiagnosticPageState extends State<DiagnosticPage>
         const SizedBox(height: 12),
 
         Text(
-          'We measure your attention, screen habits,\nsleep and learning using validated\npsychological scales — not guesswork.',
+          'We measure your attention, screen habits,\nsleep and learning using validated\npsychological scales  not guesswork.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14, height: 1.7),
         ),
@@ -580,7 +580,7 @@ class _Orb extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Web-safe glass container — skips BackdropFilter on web (html renderer)
+// Web-safe glass container  skips BackdropFilter on web (html renderer)
 // ─────────────────────────────────────────────────────────────────────────────
 Widget _glassBox({
   required Widget child,
@@ -622,9 +622,9 @@ class _ResultDialog extends StatelessWidget {
   }
   String get _sub {
     if (score >= 80) return 'Your habits show strong attention capacity.';
-    if (score >= 65) return 'You have a solid base — small changes will go far.';
+    if (score >= 65) return 'You have a solid base  small changes will go far.';
     if (score >= 50) return 'FocusPro will help you build better habits.';
-    return "Don't worry — that's exactly why you're here.";
+    return "Don't worry  that's exactly why you're here.";
   }
   Color get _color {
     if (score >= 80) return const Color(0xFF34D399);

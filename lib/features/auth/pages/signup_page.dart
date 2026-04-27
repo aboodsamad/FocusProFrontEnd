@@ -171,7 +171,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to diagnostic — this sets the initial focus score
+        // Navigate to diagnostic  this sets the initial focus score
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
         );

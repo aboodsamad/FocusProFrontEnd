@@ -1,4 +1,4 @@
-<!-- Sideloaded APK — no Play Store. Uses PACKAGE_USAGE_STATS for screen tracking. -->
+<!-- Sideloaded APK  no Play Store. Uses PACKAGE_USAGE_STATS for screen tracking. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -14,7 +14,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Needed to resolve real app names for ALL installed apps (sideloaded — not Play Store) -->
+    <!-- Needed to resolve real app names for ALL installed apps (sideloaded  not Play Store) -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 

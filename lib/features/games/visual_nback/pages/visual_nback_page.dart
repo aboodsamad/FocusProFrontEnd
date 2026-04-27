@@ -413,7 +413,7 @@ class _VisualNBackPageState extends State<VisualNBackPage> {
                   Icon(Icons.science_outlined, color: AppColors.secondary, size: 18),
                   const SizedBox(width: 10),
                   Expanded(child: Text(
-                    'N-Back performance correlates with fluid intelligence — the ability to reason through new problems.',
+                    'N-Back performance correlates with fluid intelligence  the ability to reason through new problems.',
                     style: TextStyle(color: AppColors.onSurfaceVariant,
                         fontSize: 12, height: 1.5),
                   )),

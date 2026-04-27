@@ -9,7 +9,7 @@ class DailyScoreEntry {
 }
 
 /// Thin HTTP wrapper around the backend /daily-score endpoints.
-/// All persistence is server-side — SharedPreferences no longer needed.
+/// All persistence is server-side  SharedPreferences no longer needed.
 class DailyScoreService {
   // ── Read today's score ───────────────────────────────────────────────────────
 

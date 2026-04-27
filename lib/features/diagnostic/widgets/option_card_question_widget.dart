@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/diagnostic_question.dart';
 
-/// Glassmorphic option cards — web-safe (no BackdropFilter on web).
+/// Glassmorphic option cards  web-safe (no BackdropFilter on web).
 class OptionCardQuestionWidget extends StatefulWidget {
   final DiagnosticQuestion question;
   final void Function(DiagnosticAnswer answer) onAnswered;

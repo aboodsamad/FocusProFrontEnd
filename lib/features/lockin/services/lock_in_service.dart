@@ -60,7 +60,7 @@ class LockInService {
     }
   }
 
-  /// GET /lockin/active — returns null if no active session
+  /// GET /lockin/active  returns null if no active session
   static Future<LockInSessionModel?> getActiveSession() async {
     final headers = await _headers();
     try {

@@ -1291,7 +1291,7 @@ class _CompleteOverlay extends StatelessWidget {
 }
  
 // ─────────────────────────────────────────────────────────────────────────────
-// _GameOverOverlay — shown when wrong deliveries reach allowedMistakes
+// _GameOverOverlay  shown when wrong deliveries reach allowedMistakes
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _GameOverOverlay extends StatelessWidget {

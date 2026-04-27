@@ -33,7 +33,7 @@ void main() async {
     await dailyScoreProvider.init();
     // Start notification polling if already logged in
     NotificationService.init();
-    // Start screen-event syncer — uses PACKAGE_USAGE_STATS, no extra permission needed
+    // Start screen-event syncer  uses PACKAGE_USAGE_STATS, no extra permission needed
     final hasUsage = await AndroidLockInHelper.hasUsageStatsPermission();
     if (hasUsage) ScreenEventSyncer.instance.start();
   }

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/ai_question_model.dart';
 import '../services/ai_service.dart';
 
-/// Full-page retention test — Deep Focus design.
+/// Full-page retention test  Deep Focus design.
 class RetentionTestPage extends StatefulWidget {
   const RetentionTestPage({super.key});
 
@@ -524,9 +524,9 @@ class _ResultRow extends StatelessWidget {
         ]),
         if (!correct) ...[
           const SizedBox(height: 8),
-          Text('Your answer:    ${result.chosenAnswer} — ${question.optionText(result.chosenAnswer)}',
+          Text('Your answer:    ${result.chosenAnswer}  ${question.optionText(result.chosenAnswer)}',
               style: TextStyle(color: AppColors.error, fontSize: 12)),
-          Text('Correct answer: ${result.correctAnswer} — ${question.optionText(result.correctAnswer)}',
+          Text('Correct answer: ${result.correctAnswer}  ${question.optionText(result.correctAnswer)}',
               style: TextStyle(color: AppColors.secondary, fontSize: 12)),
         ],
       ]),

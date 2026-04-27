@@ -21,7 +21,7 @@ import '../../services/game_progress_service.dart';
 /// To add a new game:
 ///   1. Append a [GameItem] to [all].
 ///   2. Add a matching case in [GameRegistry.pageFor].
-///   That's it — the hub picks it up automatically.
+///   That's it  the hub picks it up automatically.
 
 class GameRegistry {
   GameRegistry._();
@@ -32,7 +32,7 @@ class GameRegistry {
     GameItem(
       id:         'memory_matrix',
       title:      'Memory Matrix',
-      description:'A grid lights up with a pattern — memorise it, then recreate it from memory. Patterns grow harder as you level up.',
+      description:'A grid lights up with a pattern  memorise it, then recreate it from memory. Patterns grow harder as you level up.',
       shortDesc:  'Memorise the grid pattern',
       category:   GameCategory.memory,
       difficulty: GameDifficulty.medium,
@@ -68,7 +68,7 @@ class GameRegistry {
     GameItem(
       id:         'color_match',
       title:      'Color Match',
-      description:'Tap the button whose color matches the meaning of the word — not the color the word is printed in. Classic Stroop effect.',
+      description:'Tap the button whose color matches the meaning of the word  not the color the word is printed in. Classic Stroop effect.',
       shortDesc:  'Word vs ink color challenge',
       category:   GameCategory.attention,
       difficulty: GameDifficulty.medium,
@@ -80,7 +80,7 @@ class GameRegistry {
     GameItem(
       id:         'number_stream',
       title:      'Number Stream',
-      description:'Equations fall from the top of the screen. Solve them before they hit the bottom — speed and accuracy both count.',
+      description:'Equations fall from the top of the screen. Solve them before they hit the bottom  speed and accuracy both count.',
       shortDesc:  'Solve falling equations',
       category:   GameCategory.speed,
       difficulty: GameDifficulty.medium,
@@ -104,7 +104,7 @@ class GameRegistry {
     GameItem(
       id:         'train_of_thought',
       title:      'Train of Thought',
-      description:'Trains speed toward stations — tap junctions to switch the tracks and route each train to its matching colored station before it crashes.',
+      description:'Trains speed toward stations  tap junctions to switch the tracks and route each train to its matching colored station before it crashes.',
       shortDesc:  'Route trains to their stations',
       category:   GameCategory.attention,
       difficulty: GameDifficulty.medium,
@@ -118,7 +118,7 @@ class GameRegistry {
       title:       'Visual N-Back',
       description: 'A cell lights up in a 3×3 grid. Remember which '
           'cell lit up 2 steps ago and judge if it matches now. '
-          'Tests working memory — the most important cognitive skill.',
+          'Tests working memory  the most important cognitive skill.',
       shortDesc:   '2-back working memory test',
       category:    GameCategory.memory,
       difficulty:  GameDifficulty.hard,
@@ -130,7 +130,7 @@ class GameRegistry {
       id:          'go_no_go',
       title:       'Go/No-Go',
       description: 'Tap the green circle fast. Never tap the red one. '
-          'Sounds easy — until the pace doubles. Measures impulse control '
+          'Sounds easy  until the pace doubles. Measures impulse control '
           'and response inhibition.',
       shortDesc:   'Tap Go, resist No-Go',
       category:    GameCategory.attention,
@@ -178,7 +178,7 @@ class GameRegistry {
   }
 
   /// Returns the Flutter [Widget] page for a given game id.
-  /// Import all game pages here — one place to maintain.
+  /// Import all game pages here  one place to maintain.
   static Widget? pageFor(String id) {
     switch (id) {
       case 'memory_matrix':

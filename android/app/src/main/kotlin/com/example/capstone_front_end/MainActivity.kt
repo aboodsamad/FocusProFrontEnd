@@ -152,7 +152,7 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Returns today's app usage totals — STRICTLY today (midnight 00:00 to now).
+     * Returns today's app usage totals  STRICTLY today (midnight 00:00 to now).
      *
      * Uses queryEvents() with MOVE_TO_FOREGROUND / MOVE_TO_BACKGROUND instead of
      * queryUsageStats(INTERVAL_DAILY) because Android's daily buckets can span

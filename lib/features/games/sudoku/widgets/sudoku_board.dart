@@ -2,7 +2,7 @@ import 'package:capstone_front_end/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colours — Deep Focus light theme
+// Colours  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kCellBase    = AppColors.surfaceContainerLowest;  // white

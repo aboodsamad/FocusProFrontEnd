@@ -8,8 +8,8 @@ import 'browser_notification.dart';
 /// Handles smart notifications for FocusPro.
 ///
 /// Priority order:
-/// 1. VAPID Web Push — works even when the browser tab is closed (if PWA installed)
-/// 2. Polling fallback — works when the tab is open (no extra setup needed)
+/// 1. VAPID Web Push  works even when the browser tab is closed (if PWA installed)
+/// 2. Polling fallback  works when the tab is open (no extra setup needed)
 class NotificationService {
   static Timer? _pollTimer;
   static bool _initialized = false;
@@ -24,7 +24,7 @@ class NotificationService {
     await BrowserNotification.requestPermission();
 
     if (BrowserNotification.permissionStatus != 'granted') {
-      debugPrint('Notification permission not granted — skipping push setup.');
+      debugPrint('Notification permission not granted  skipping push setup.');
       return;
     }
 
@@ -50,14 +50,14 @@ class NotificationService {
       if (keyResp.statusCode != 200) return;
       final vapidKey = (jsonDecode(keyResp.body) as Map<String, dynamic>)['key'] as String? ?? '';
       if (vapidKey.isEmpty) {
-        debugPrint('VAPID key not configured on backend — using polling only.');
+        debugPrint('VAPID key not configured on backend  using polling only.');
         return;
       }
 
       // Subscribe the browser to Web Push using the service worker
       final subscription = await BrowserNotification.subscribeToWebPush(vapidKey);
       if (subscription == null) {
-        debugPrint('Web push subscription failed — using polling only.');
+        debugPrint('Web push subscription failed  using polling only.');
         return;
       }
 
@@ -73,7 +73,7 @@ class NotificationService {
 
       if (subResp.statusCode == 200) {
         _pushSubscribed = true;
-        debugPrint('Web push subscription registered — background notifications active.');
+        debugPrint('Web push subscription registered  background notifications active.');
       }
     } catch (e) {
       debugPrint('Web push setup error: $e');

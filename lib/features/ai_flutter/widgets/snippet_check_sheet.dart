@@ -426,9 +426,9 @@ class _ResultRow extends StatelessWidget {
         ]),
         if (!correct) ...[
           const SizedBox(height: 8),
-          Text('Your answer:    ${result.chosenAnswer} — ${question.optionText(result.chosenAnswer)}',
+          Text('Your answer:    ${result.chosenAnswer}  ${question.optionText(result.chosenAnswer)}',
               style: const TextStyle(color: _red, fontSize: 12)),
-          Text('Correct answer: ${result.correctAnswer} — ${question.optionText(result.correctAnswer)}',
+          Text('Correct answer: ${result.correctAnswer}  ${question.optionText(result.correctAnswer)}',
               style: const TextStyle(color: _green, fontSize: 12)),
         ],
       ]),

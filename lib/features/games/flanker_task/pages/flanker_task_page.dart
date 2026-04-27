@@ -435,7 +435,7 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
-                    'Flanker Effect: ${fe}ms — lower is better',
+                    'Flanker Effect: ${fe}ms  lower is better',
                     style: const TextStyle(color: _kAccent, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),

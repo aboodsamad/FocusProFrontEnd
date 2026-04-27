@@ -148,7 +148,7 @@ class HabitService {
               return updated;
             }
           } catch (_) {}
-          // Response was log entry or empty — use optimistic result
+          // Response was log entry or empty  use optimistic result
         }
       } catch (_) {}
     }

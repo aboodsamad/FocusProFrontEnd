@@ -662,7 +662,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppColors.secondary, shape: BoxShape.circle)),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('Lock-in session active — tap to return',
+            child: Text('Lock-in session active  tap to return',
                 style: TextStyle(color: AppColors.secondary,
                     fontWeight: FontWeight.w600, fontSize: 13)),
           ),
@@ -826,7 +826,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Features Bento ────────────────────────────────────────────────────────
   Widget _buildFeaturesBento() {
     return Column(children: [
-      // Brain Games — full width
+      // Brain Games  full width
       GestureDetector(
         onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/games'); },
         child: Container(
@@ -878,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       const SizedBox(height: 8),
 
-      // Reader + Focus Rooms — half/half
+      // Reader + Focus Rooms  half/half
       Row(children: [
         Expanded(child: _buildSmallBentoCard(
           icon: Icons.menu_book_rounded,
@@ -899,7 +899,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       const SizedBox(height: 8),
 
-      // Wake-Up / Lock-In — full width dark green
+      // Wake-Up / Lock-In  full width dark green
       GestureDetector(
         onTap: () async {
           HapticFeedback.lightImpact();
@@ -1141,7 +1141,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 10),
-            // Goals list — up to 4 items
+            // Goals list  up to 4 items
             ...(_todayGoals.take(4).map((g) {
               final isDone = g.status == 'DONE';
               return Padding(
@@ -1368,7 +1368,7 @@ class _DeepFocusRingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - stroke) / 2;
 
-    // Track ring — white translucent on dark hero background
+    // Track ring  white translucent on dark hero background
     canvas.drawCircle(
       center, radius,
       Paint()
@@ -1377,7 +1377,7 @@ class _DeepFocusRingPainter extends CustomPainter {
         ..strokeWidth = stroke,
     );
 
-    // Progress arc — bright mint green
+    // Progress arc  bright mint green
     if (progress > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),

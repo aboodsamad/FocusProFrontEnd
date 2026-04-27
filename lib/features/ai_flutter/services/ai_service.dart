@@ -26,7 +26,7 @@ class AiService {
             .map((e) => AiQuestionModel.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-      print('AiService.getSnippetQuestions: status ${resp.statusCode} — ${resp.body}');
+      print('AiService.getSnippetQuestions: status ${resp.statusCode}  ${resp.body}');
       return [];
     } catch (e) {
       print('AiService.getSnippetQuestions error: $e');
@@ -52,7 +52,7 @@ class AiService {
         return SnippetCheckResult.fromJson(
             jsonDecode(resp.body) as Map<String, dynamic>);
       }
-      print('AiService.submitSnippetAnswers: status ${resp.statusCode} — ${resp.body}');
+      print('AiService.submitSnippetAnswers: status ${resp.statusCode}  ${resp.body}');
       return null;
     } catch (e) {
       print('AiService.submitSnippetAnswers error: $e');
@@ -80,7 +80,7 @@ class AiService {
             .map((e) => AiQuestionModel.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-      print('AiService.generateRetentionTest: status ${resp.statusCode} — ${resp.body}');
+      print('AiService.generateRetentionTest: status ${resp.statusCode}  ${resp.body}');
       return [];
     } catch (e) {
       print('AiService.generateRetentionTest error: $e');
@@ -106,7 +106,7 @@ class AiService {
         return RetentionTestResult.fromJson(
             jsonDecode(resp.body) as Map<String, dynamic>);
       }
-      print('AiService.submitRetentionTest: status ${resp.statusCode} — ${resp.body}');
+      print('AiService.submitRetentionTest: status ${resp.statusCode}  ${resp.body}');
       return null;
     } catch (e) {
       print('AiService.submitRetentionTest error: $e');

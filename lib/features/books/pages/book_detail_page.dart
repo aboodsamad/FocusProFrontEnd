@@ -210,7 +210,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     try {
       if (kIsWeb) {
-        // Flutter Web: use base64 data URI — the browser handles it natively
+        // Flutter Web: use base64 data URI  the browser handles it natively
         // and correctly reports duration, unlike StreamAudioSource on web.
         final base64Audio = base64Encode(bytes);
         await player.setUrl('data:audio/mpeg;base64,$base64Audio');
@@ -343,7 +343,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           _prefetchAudio(_currentIndex + 1);
           return;
         }
-        // Prefetch failed — fall through to direct fetch below
+        // Prefetch failed  fall through to direct fetch below
       }
 
       // ── 3. No cache, no in-flight prefetch → fetch directly ───────────────
@@ -362,7 +362,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       if (resp.statusCode == 503) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Server is warming up — please try again in a few seconds.'),
+            content: Text('Server is warming up  please try again in a few seconds.'),
             duration: Duration(seconds: 4),
           ),
         );
@@ -1518,7 +1518,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// _ReaderPage — single snippet page (dark green background)
+// _ReaderPage  single snippet page (dark green background)
 // ═════════════════════════════════════════════════════════════════════════════
 class _ReaderPage extends StatelessWidget {
   final BookSnippetModel snippet;
@@ -1822,7 +1822,7 @@ class _AudioCoverFallback extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// _BytesAudioSource — serves raw Uint8List bytes to just_audio
+// _BytesAudioSource  serves raw Uint8List bytes to just_audio
 // ═════════════════════════════════════════════════════════════════════════════
 class _BytesAudioSource extends StreamAudioSource {
   final Uint8List _bytes;

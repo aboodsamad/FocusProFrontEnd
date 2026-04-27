@@ -6,11 +6,11 @@ import '../../../core/constants/app_colors.dart';
 
 /// Used for attention dimension questions.
 ///
-/// Q5 (id=5): Reading Comprehension Task — user reads a passage, then answers
+/// Q5 (id=5): Reading Comprehension Task  user reads a passage, then answers
 ///             comprehension questions to behaviorally measure sustained attention.
 ///             Based on Prose Recall paradigm (Daneman & Carpenter, 1980) and
 ///             Gloria Mark's attention research (Mark et al., CHI 2008).
-/// Q6 (id=6): Re-read tracker — show text, user taps re-read, we count taps.
+/// Q6 (id=6): Re-read tracker  show text, user taps re-read, we count taps.
 ///             Measures working memory load during reading (Just & Carpenter, 1992).
 /// Q7–Q9:     Regular option cards (self-reported, ASRS-v1.1 adapted items).
 class AttentionTaskWidget extends StatefulWidget {
@@ -46,11 +46,11 @@ class _AttentionTaskWidgetState extends State<AttentionTaskWidget> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Q5 — Reading Comprehension Task
+// Q5  Reading Comprehension Task
 // Scientific basis: Prose Recall paradigm (Daneman & Carpenter, 1980,
 // Cognitive Psychology); attention measurement via reading comprehension
 // as used in cognitive assessments (Gloria Mark et al., CHI 2008).
-// The user reads a passage, then answers comprehension questions —
+// The user reads a passage, then answers comprehension questions 
 // a behaviorally validated measure of sustained reading attention and
 // working memory capacity, far more objective than self-report.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ class _ReadingComprehensionTaskState
 
   static const String _passage =
       'Every time you get a notification, your brain needs about 23 minutes '
-      'to fully get back into deep focus — even if you only glance at your '
+      'to fully get back into deep focus  even if you only glance at your '
       'phone for a second. The more you switch between tasks, the harder it '
       'becomes for your brain to stay focused for long periods of time.';
 
@@ -114,10 +114,10 @@ class _ReadingComprehensionTaskState
   ];
 
   int _toOptionIndex() {
-    if (_correctAnswers == 3) return 0; // A — 5 pts
-    if (_correctAnswers == 2) return 1; // B — 3 pts
-    if (_correctAnswers == 1) return 2; // C — 1 pt
-    return 3;                           // D — 0 pts
+    if (_correctAnswers == 3) return 0; // A  5 pts
+    if (_correctAnswers == 2) return 1; // B  3 pts
+    if (_correctAnswers == 1) return 2; // C  1 pt
+    return 3;                           // D  0 pts
   }
 
   void _onSelectOption(int idx) {
@@ -182,7 +182,7 @@ class _ReadingComprehensionTaskState
         ),
         const SizedBox(height: 14),
         const Text(
-          'Read carefully — questions follow',
+          'Read carefully  questions follow',
           style: TextStyle(
               color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
         ),
@@ -275,7 +275,7 @@ class _ReadingComprehensionTaskState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("I've read it — show questions",
+                  Text("I've read it  show questions",
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 15,
@@ -325,7 +325,7 @@ class _ReadingComprehensionTaskState
           }),
         ),
         const SizedBox(height: 6),
-        Text('Question ${_questionIndex + 1} of 3 — passage is now hidden',
+        Text('Question ${_questionIndex + 1} of 3  passage is now hidden',
             style: TextStyle(color: Colors.grey[600], fontSize: 11)),
         const SizedBox(height: 20),
         // Question card
@@ -490,7 +490,7 @@ class _ReadingComprehensionTaskState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Q6 — Re-read Tracker Task
+// Q6  Re-read Tracker Task
 // ─────────────────────────────────────────────────────────────────────────────
 class _RereadTrackerTask extends StatefulWidget {
   final void Function(int optionIndex) onDone;
@@ -505,11 +505,11 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
 
   static const String _passage =
       'Psychologist Mihaly Csikszentmihalyi identified a mental state called '
-      '"flow" — a peak condition of effortless, deep concentration during '
+      '"flow"  a peak condition of effortless, deep concentration during '
       'which productivity and creativity surge. Entering flow requires '
       'approximately 15 to 25 minutes of uninterrupted focus. Studies on '
-      'working memory (Baddeley, 2003) confirm that the phonological loop — '
-      'the brain system responsible for holding verbal information — has a '
+      'working memory (Baddeley, 2003) confirm that the phonological loop  '
+      'the brain system responsible for holding verbal information  has a '
       'limited capacity that becomes strained when reading without full '
       'attention, causing readers to lose track and re-read lines.';
 
@@ -557,7 +557,7 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
                         color: AppColors.primaryA, size: 16),
                   ),
                   const SizedBox(width: 10),
-                  const Text('Working Memory Task — read carefully',
+                  const Text('Working Memory Task  read carefully',
                       style: TextStyle(
                           color: AppColors.primaryA,
                           fontWeight: FontWeight.bold,
@@ -681,7 +681,7 @@ class _RereadTrackerTaskState extends State<_RereadTrackerTask> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Q7–Q9 — Regular Option Cards (auto-advance on tap)
+// Q7–Q9  Regular Option Cards (auto-advance on tap)
 // ─────────────────────────────────────────────────────────────────────────────
 class _OptionCards extends StatefulWidget {
   final DiagnosticQuestion question;

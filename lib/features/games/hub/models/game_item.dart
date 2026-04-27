@@ -26,13 +26,13 @@ class GameItem {
   final GameDifficulty difficulty;
   final GameStatus   status;
 
-  /// Hex color value — used in widgets for tinting.
+  /// Hex color value  used in widgets for tinting.
   final int colorValue;
 
   /// Icon shown on the game card (fallback when imageUrl is unavailable).
   final IconData icon;
 
-  /// Optional cover image URL — shown on game cards instead of the icon.
+  /// Optional cover image URL  shown on game cards instead of the icon.
   final String? imageUrl;
 
   const GameItem({

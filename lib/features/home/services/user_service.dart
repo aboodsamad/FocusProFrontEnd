@@ -47,7 +47,7 @@ class UserService {
       return 200;
     } catch (e) {
       print('fetchAndSaveProfile error: $e');
-      return null; // network/timeout error — keep current auth state
+      return null; // network/timeout error  keep current auth state
     }
   }
 

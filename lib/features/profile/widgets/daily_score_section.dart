@@ -140,7 +140,7 @@ class _TodayScoreCard extends StatelessWidget {
                 if (hasScore) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Keep it up — play a game or read a snippet!',
+                    'Keep it up  play a game or read a snippet!',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 11,

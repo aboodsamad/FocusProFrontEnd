@@ -12,7 +12,7 @@ import '../../services/game_progress_service.dart';
 import '../../services/game_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants — Deep Focus light theme
+// Design constants  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kBg      = AppColors.surface;

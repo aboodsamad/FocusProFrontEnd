@@ -60,7 +60,7 @@ class _CoachingPageState extends State<CoachingPage> {
     if (!mounted) return;
 
     if (goals.isNotEmpty) {
-      // Always restore session from the backend — this survives logout/login
+      // Always restore session from the backend  this survives logout/login
       // because the session is tied to the user account, not the local token.
       final session = await CoachingService.getTodaySession(token);
       if (!mounted) return;
@@ -80,7 +80,7 @@ class _CoachingPageState extends State<CoachingPage> {
         return;
       }
 
-      // Backend unreachable — fall back to SharedPreferences cache
+      // Backend unreachable  fall back to SharedPreferences cache
       final savedSession = prefs.getInt('coaching_session_$_todayKey');
       final savedMessages = _loadSavedMessages(prefs);
       setState(() {
@@ -94,7 +94,7 @@ class _CoachingPageState extends State<CoachingPage> {
       return;
     }
 
-    // No goals yet — show goal-setup screen
+    // No goals yet  show goal-setup screen
     setState(() {
       _goals = goals;
       _settingGoals = true;

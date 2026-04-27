@@ -209,7 +209,7 @@ class _DailyGamePageState extends State<DailyGamePage> {
           const Spacer(),
           Text(status.hasPlayed
               ? 'Your rank: #${status.userRank ?? '?'}'
-              : 'Your rank: —',
+              : 'Your rank: ',
               style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         ]),
         const SizedBox(height: 16),
@@ -257,7 +257,7 @@ class _DailyGamePageState extends State<DailyGamePage> {
       if (leaderboard.entries.isEmpty)
         Center(child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Text('No scores yet — be the first to play!',
+          child: Text('No scores yet  be the first to play!',
               style: TextStyle(color: Colors.grey[600], fontSize: 13)),
         ))
       else ...[

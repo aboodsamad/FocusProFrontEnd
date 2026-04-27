@@ -11,7 +11,7 @@ import '../../../../core/providers/daily_score_provider.dart';
 import '../../../../core/widgets/score_gain_toast.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design constants  — Deep Focus dark-canvas palette
+// Design constants   Deep Focus dark-canvas palette
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kBg        = AppColors.primary;               // #012D1D deep forest
@@ -263,7 +263,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   void _handleWrong() {
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
-    // No lives system — mistakes never end the game, session timer does.
+    // No lives system  mistakes never end the game, session timer does.
     setState(() => _game = _game.copyWith(streak: 0, mistakes: _game.mistakes + 1));
     Future.delayed(const Duration(milliseconds: 750), () {
       if (mounted) _nextEquation();
@@ -273,7 +273,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   void _handleMissed() {
     HapticFeedback.heavyImpact();
     _shakeCtrl.forward(from: 0);
-    // No lives system — mistakes never end the game, session timer does.
+    // No lives system  mistakes never end the game, session timer does.
     setState(() => _game = _game.copyWith(streak: 0, mistakes: _game.mistakes + 1, clearEquation: true));
     Future.delayed(const Duration(milliseconds: 550), () {
       if (mounted) _nextEquation();
@@ -403,7 +403,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
                       );
                     }),
                   ),
-                  // Answer grid — fixed height so it never causes overflow on rotation
+                  // Answer grid  fixed height so it never causes overflow on rotation
                   _buildAnswerSection(context),
                 ],
               ),
@@ -650,7 +650,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Answer section — fixed height so landscape rotation never overflows
+  // Answer section  fixed height so landscape rotation never overflows
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Wraps the answer grid in a fixed-height slot.
@@ -928,7 +928,7 @@ class _NumberStreamPageState extends State<NumberStreamPage>
       case 2: return 'Subtraction unlocked!';
       case 3: return 'Numbers getting bigger…';
       case 4: return 'Multiplication unlocked!';
-      case 5: return 'Mixed operations — stay sharp!';
+      case 5: return 'Mixed operations  stay sharp!';
       default: return 'Equations are falling faster!';
     }
   }

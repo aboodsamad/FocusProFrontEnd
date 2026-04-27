@@ -314,7 +314,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage>
     final levelComplete      = newMatricesInLevel >= MemoryMatrixState.matricesPerLevel;
 
     if (levelComplete) {
-      // Level complete — unlock next level, submit, return to roadmap
+      // Level complete  unlock next level, submit, return to roadmap
       _levelTimer?.cancel();
       final nextLevel = _game.level + 1;
 

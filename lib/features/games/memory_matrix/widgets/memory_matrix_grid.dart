@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../models/memory_matrix_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colors  (scoped to this file — same pattern as sudoku widgets)
+// Colors  (scoped to this file  same pattern as sudoku widgets)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _C {
   // Deep Focus dark-green palette (game stays dark, bg = AppColors.primary #012D1D)
   static const cellIdle   = Color(0xFF1B4332); // AppColors.primaryContainer
   static const cellBorder = Color(0xFF274E3D); // subtle edge
-  static const highlight  = Color(0xFFA0F4C8); // AppColors.secondaryContainer — mint glow
+  static const highlight  = Color(0xFFA0F4C8); // AppColors.secondaryContainer  mint glow
   static const selected   = Color(0xFF85D7AD); // AppColors.secondaryFixedDim
   static const success    = Color(0xFF0E6C4A); // AppColors.secondary
   static const missed     = Color(0xFFFFAB40); // keep amber for missed cells
@@ -115,7 +115,7 @@ class MemoryMatrixGrid extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _MemoryCell  (private — only used by MemoryMatrixGrid)
+// _MemoryCell  (private  only used by MemoryMatrixGrid)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MemoryCell extends StatelessWidget {

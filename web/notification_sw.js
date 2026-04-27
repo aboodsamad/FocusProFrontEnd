@@ -1,5 +1,5 @@
 // FocusPro push notification service worker.
-// Registered at scope '/' — handles all VAPID push events for the app.
+// Registered at scope '/'  handles all VAPID push events for the app.
 // Works for both in-app and background (tab closed) notifications.
 
 self.addEventListener('install', () => self.skipWaiting());

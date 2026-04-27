@@ -1,4 +1,4 @@
-/// Pure-Dart model — no Flutter dependency.
+/// Pure-Dart model  no Flutter dependency.
 /// Holds all game state for the Color Match (Stroop) game.
 
 import 'dart:math';
@@ -38,7 +38,7 @@ class ColorMatchRound {
   /// The text rendered on screen (e.g. "RED").
   final String word;
 
-  /// The colour the word is painted in — this is the correct answer.
+  /// The colour the word is painted in  this is the correct answer.
   final ColorEntry inkColor;
 
   /// Four shuffled button options shown to the player.
@@ -100,7 +100,7 @@ class ColorMatchState {
   static int timerForLevel(int level) =>
       (60 - (level - 1) * 3).clamp(30, 60);
 
-  /// Fraction of rounds that are congruent (word == ink) — easier.
+  /// Fraction of rounds that are congruent (word == ink)  easier.
   /// Starts at 40 % at level 1 and drops to 0 % by level 11.
   static double congruencyRateForLevel(int level) =>
       (0.40 - (level - 1) * 0.04).clamp(0.0, 0.40);

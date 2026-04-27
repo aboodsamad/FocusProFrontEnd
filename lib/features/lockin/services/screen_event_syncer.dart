@@ -6,7 +6,7 @@ import 'screen_event_service.dart';
 /// Every 10 minutes, reads today's app usage totals from Android
 /// UsageStatsManager and upserts them to the backend.
 ///
-/// Uses PACKAGE_USAGE_STATS permission — no AccessibilityService needed.
+/// Uses PACKAGE_USAGE_STATS permission  no AccessibilityService needed.
 /// One row per app per day on the server (no event spam).
 class ScreenEventSyncer {
   ScreenEventSyncer._();

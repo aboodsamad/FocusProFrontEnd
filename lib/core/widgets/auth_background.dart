@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 /// Plain surface-colored background shared by [LoginPage] and [SignupPage].
-/// No gradient — just a light #F8F9FA scaffold.
+/// No gradient  just a light #F8F9FA scaffold.
 class AuthBackground extends StatelessWidget {
   final Widget child;
 

@@ -90,7 +90,7 @@ class UserProvider extends ChangeNotifier {
       // by lower remote values, so this is safe to call anytime).
       await GameProgressService.syncFromBackend();
     } else if (status == 401 || status == 403) {
-      // Token is expired or invalid — log out so routing sends user to login
+      // Token is expired or invalid  log out so routing sends user to login
       await logout();
     }
     // null (network/timeout) or other status: keep current auth state
