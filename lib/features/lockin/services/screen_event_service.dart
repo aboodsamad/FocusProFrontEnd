@@ -7,7 +7,16 @@ import '../models/app_usage_stat_model.dart';
 
 class ScreenEventService {
   static const _dailyUsageEndpoint = '${AppConfig.baseUrl}/screen-events/daily-usage';
-  static const _summaryEndpoint    = '${AppConfig.baseUrl}/screen-events/summary';
+  static const _summaryBase        = '${AppConfig.baseUrl}/screen-events/summary';
+
+  /// Returns today's date in ISO format "yyyy-MM-dd" using the device's local timezone.
+  static String _todayIso() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
 
   /// Posts today's aggregated app-usage totals to the backend (upserted per app per day).
   static Future<bool> sendDailyUsage(List<AppUsageStatModel> stats) async {
@@ -23,6 +32,9 @@ class ScreenEventService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
+          // Include device local date so backend stores under the correct calendar day
+          // regardless of server timezone (Render runs UTC).
+          'usageDate': _todayIso(),
           'usageStats': stats
               .map((s) => {
                     'packageName': s.packageName,
@@ -52,8 +64,12 @@ class ScreenEventService {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) return [];
 
+      // Pass device local date so backend filters the correct day regardless of server timezone.
+      final uri = Uri.parse(_summaryBase).replace(
+        queryParameters: {'date': _todayIso()},
+      );
       final response = await http.get(
-        Uri.parse(_summaryEndpoint),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
