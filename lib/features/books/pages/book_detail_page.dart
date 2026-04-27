@@ -316,9 +316,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         _loading = false;
       });
       _enterCtrl.forward();
-      // Pre-fetch audio for first 2 snippets in background so play is instant
+      // Pre-fetch chapter 0 immediately; delay chapter 1 by 5 s so both
+      // requests never hit the backend at exactly the same time.
       _prefetchAudio(0);
-      if (snippets.length > 1) _prefetchAudio(1);
+      if (snippets.length > 1) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted && !_audioCache.containsKey(1)) _prefetchAudio(1);
+        });
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();

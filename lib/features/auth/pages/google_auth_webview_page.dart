@@ -44,7 +44,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
   // These are part of the normal OAuth redirect chain and should be followed.
   static const _passthroughDomains = [
     'accounts.google.com',
-    'LockedInbackend.onrender.com',
+    'focusprobackend.onrender.com',
     'oauth2.googleapis.com',
     'googleapis.com',
   ];
