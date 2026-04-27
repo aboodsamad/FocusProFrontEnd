@@ -73,9 +73,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
           },
         ),
       )
-      ..loadRequest(
-        Uri.parse('${AuthService.baseUrl}/oauth2/authorization/google'),
-      );
+      ..loadRequest(Uri.parse('${AuthService.baseUrl}/oauth2/authorization/google'));
   }
 
   // ── Navigation interceptor ────────────────────────────────────────────────
@@ -107,13 +105,11 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
       }
 
       // Exchange one-time code for JWT.
-      final tokenUrl =
-          Uri.parse('${AuthService.baseUrl}/user/oauth/token?code=$code');
+      final tokenUrl = Uri.parse('${AuthService.baseUrl}/user/oauth/token?code=$code');
       final resp = await http.get(tokenUrl);
 
       if (resp.statusCode != 200 || resp.body.trim().isEmpty) {
-        _failAndPop(
-            'Sign-in failed (${resp.statusCode}). Please try again.');
+        _failAndPop('Sign-in failed (${resp.statusCode}). Please try again.');
         return;
       }
 
@@ -160,13 +156,9 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
             await AuthService.activateConsent(token);
           }
         }
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)));
       } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
     } catch (e, st) {
       debugPrint('[GoogleAuthWebview] ERROR: $e\n$st');
@@ -196,9 +188,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
   void _failAndPop(String message) {
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
   }
 
   Future<bool?> _showConsentDialog() {
@@ -206,8 +196,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
@@ -218,20 +207,14 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
                 height: 64,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [AppColors.primaryA, AppColors.primaryB],
-                  ),
+                  gradient: LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
                 ),
-                child: const Icon(Icons.privacy_tip_outlined,
-                    color: Colors.white, size: 32),
+                child: const Icon(Icons.privacy_tip_outlined, color: Colors.white, size: 32),
               ),
               const SizedBox(height: 20),
               const Text(
                 'Data Usage Consent',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
               ),
               const SizedBox(height: 12),
               Text(
@@ -240,8 +223,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
                 'experience and improve the app.\n\nYour data is never sold '
                 'and is handled in accordance with our privacy policy.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 14, color: Colors.grey[600], height: 1.5),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -252,19 +234,15 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryA,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('I Agree',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text('I Agree', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text('Decline',
-                    style: TextStyle(color: Colors.grey[500])),
+                child: Text('Decline', style: TextStyle(color: Colors.grey[500])),
               ),
             ],
           ),
@@ -285,22 +263,14 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
         elevation: 0,
         title: const Text(
           'Sign in with Google',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: AppColors.onSurface,
-          ),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.onSurface),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
       ),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          if (_pageLoading)
-            const Center(child: CircularProgressIndicator()),
+          if (_pageLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );

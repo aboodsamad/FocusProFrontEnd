@@ -132,11 +132,9 @@ class _CoachingPageState extends State<CoachingPage> {
 
   Future<void> _persistMessages() async {
     final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(_messages.map((m) => {
-          'role': m.role,
-          'content': m.content,
-          'timestamp': m.timestamp.toIso8601String(),
-        }).toList());
+    final encoded = jsonEncode(
+      _messages.map((m) => {'role': m.role, 'content': m.content, 'timestamp': m.timestamp.toIso8601String()}).toList(),
+    );
     await prefs.setString('coaching_messages_$_todayKey', encoded);
     if (_sessionId != null) {
       await prefs.setInt('coaching_session_$_todayKey', _sessionId!);
@@ -169,10 +167,7 @@ class _CoachingPageState extends State<CoachingPage> {
   // ── Goal setup flow ───────────────────────────────────────────────────────
 
   Future<void> _submitGoals() async {
-    final texts = _goalControllers
-        .map((c) => c.text.trim())
-        .where((t) => t.isNotEmpty)
-        .toList();
+    final texts = _goalControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
     if (texts.isEmpty) return;
 
     setState(() => _sending = true);
@@ -184,13 +179,7 @@ class _CoachingPageState extends State<CoachingPage> {
       setState(() {
         _goals = response.updatedGoals;
         _sessionId = response.sessionId;
-        _messages = [
-          CoachingMessage(
-            role: 'ai',
-            content: response.reply,
-            timestamp: DateTime.now(),
-          )
-        ];
+        _messages = [CoachingMessage(role: 'ai', content: response.reply, timestamp: DateTime.now())];
         _settingGoals = false;
         _sending = false;
       });
@@ -199,9 +188,9 @@ class _CoachingPageState extends State<CoachingPage> {
     } else {
       setState(() => _sending = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not connect. Please try again.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not connect. Please try again.')));
       }
     }
   }
@@ -228,8 +217,7 @@ class _CoachingPageState extends State<CoachingPage> {
     _messageController.clear();
     _focusNode.requestFocus();
     setState(() {
-      _messages.add(CoachingMessage(
-          role: 'user', content: text, timestamp: DateTime.now()));
+      _messages.add(CoachingMessage(role: 'user', content: text, timestamp: DateTime.now()));
       _sending = true;
     });
     _scrollToBottom();
@@ -241,10 +229,7 @@ class _CoachingPageState extends State<CoachingPage> {
     if (response != null) {
       setState(() {
         _goals = response.updatedGoals;
-        _messages.add(CoachingMessage(
-            role: 'ai',
-            content: response.reply,
-            timestamp: DateTime.now()));
+        _messages.add(CoachingMessage(role: 'ai', content: response.reply, timestamp: DateTime.now()));
         _sending = false;
       });
       await _persistMessages();
@@ -278,10 +263,7 @@ class _CoachingPageState extends State<CoachingPage> {
       setState(() {
         _sessionId = response.sessionId;
         _goals = response.updatedGoals;
-        _messages.add(CoachingMessage(
-            role: 'ai',
-            content: response.reply,
-            timestamp: DateTime.now()));
+        _messages.add(CoachingMessage(role: 'ai', content: response.reply, timestamp: DateTime.now()));
         _sending = false;
       });
       await _persistMessages();
@@ -294,10 +276,7 @@ class _CoachingPageState extends State<CoachingPage> {
   // ── Add Reminder bottom sheet ─────────────────────────────────────────────
 
   Future<void> _showReminderSheet() async {
-    TimeOfDay selectedTime = TimeOfDay(
-      hour: (DateTime.now().hour + 1) % 24,
-      minute: 0,
-    );
+    TimeOfDay selectedTime = TimeOfDay(hour: (DateTime.now().hour + 1) % 24, minute: 0);
     final titleController = TextEditingController();
     bool saving = false;
 
@@ -305,155 +284,134 @@ class _CoachingPageState extends State<CoachingPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheet) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 24,
-              right: 24,
-              top: 24,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Add Reminder',
-                  style: TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                // Time picker row
-                const Text('Time',
-                    style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 13)),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: ctx,
-                      initialTime: selectedTime,
-                      builder: (c, child) => Theme(
-                        data: Theme.of(c).copyWith(
-                          colorScheme: const ColorScheme.dark(
-                            primary: AppColors.primary,
-                            onSurface: AppColors.onSurface,
-                            surface: AppColors.surfaceContainerHigh,
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Add Reminder',
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  // Time picker row
+                  const Text('Time', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: ctx,
+                        initialTime: selectedTime,
+                        builder: (c, child) => Theme(
+                          data: Theme.of(c).copyWith(
+                            colorScheme: const ColorScheme.dark(
+                              primary: AppColors.primary,
+                              onSurface: AppColors.onSurface,
+                              surface: AppColors.surfaceContainerHigh,
+                            ),
                           ),
+                          child: child!,
                         ),
-                        child: child!,
+                      );
+                      if (picked != null) setSheet(() => selectedTime = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
                       ),
-                    );
-                    if (picked != null) setSheet(() => selectedTime = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.4)),
-                    ),
-                    child: Row(children: [
-                      const Icon(Icons.access_time_rounded,
-                          color: AppColors.primary, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        selectedTime.format(ctx),
-                        style: const TextStyle(
-                            color: AppColors.onSurface,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            selectedTime.format(ctx),
+                            style: const TextStyle(
+                              color: AppColors.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.edit_outlined, color: AppColors.onSurfaceVariant, size: 16),
+                        ],
                       ),
-                      const Spacer(),
-                      const Icon(Icons.edit_outlined,
-                          color: AppColors.onSurfaceVariant, size: 16),
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Optional title
-                const Text('Message (optional)',
-                    style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 13)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: titleController,
-                  style: const TextStyle(color: AppColors.onSurface),
-                  maxLength: 80,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Time to work out!',
-                    hintStyle:
-                        const TextStyle(color: AppColors.onSurfaceVariant),
-                    filled: true,
-                    fillColor: AppColors.surfaceContainerHigh,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    counterStyle:
-                        const TextStyle(color: AppColors.onSurfaceVariant),
                   ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            setSheet(() => saving = true);
-                            final token =
-                                await AuthService.getToken() ?? '';
-                            final msg = titleController.text.trim();
-                            final ok = await CoachingService.addReminder(
-                              token,
-                              'LockedIn Reminder',
-                              msg.isEmpty ? 'Time to check your goals!' : msg,
-                              selectedTime,
-                            );
-                            if (!mounted) return;
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(ok
-                                    ? 'Reminder set for ${selectedTime.format(context)}'
-                                    : 'Could not save reminder. Try again.'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryContainer,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                  const SizedBox(height: 20),
+                  // Optional title
+                  const Text('Message (optional)', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: titleController,
+                    style: const TextStyle(color: AppColors.onSurface),
+                    maxLength: 80,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Time to work out!',
+                      hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerHigh,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      counterStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                     ),
-                    child: saving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Text('Set Reminder',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
-                ),
-              ],
-            ),
-          );
-        });
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setSheet(() => saving = true);
+                              final token = await AuthService.getToken() ?? '';
+                              final msg = titleController.text.trim();
+                              final ok = await CoachingService.addReminder(
+                                token,
+                                'LockedIn Reminder',
+                                msg.isEmpty ? 'Time to check your goals!' : msg,
+                                selectedTime,
+                              );
+                              if (!mounted) return;
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    ok
+                                        ? 'Reminder set for ${selectedTime.format(context)}'
+                                        : 'Could not save reminder. Try again.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryContainer,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Text('Set Reminder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
     titleController.dispose();
@@ -465,9 +423,7 @@ class _CoachingPageState extends State<CoachingPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -477,29 +433,24 @@ class _CoachingPageState extends State<CoachingPage> {
             children: [
               Text(
                 goal.goalText,
-                style: const TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
+                style: const TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               ...['PENDING', 'IN_PROGRESS', 'DONE', 'SKIPPED'].map((s) {
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(_statusIcon(s), color: _statusColor(s)),
-                  title: Text(_statusLabel(s),
-                      style: TextStyle(
-                          color: goal.status == s
-                              ? _statusColor(s)
-                              : AppColors.onSurface,
-                          fontWeight: goal.status == s
-                              ? FontWeight.bold
-                              : FontWeight.normal)),
+                  title: Text(
+                    _statusLabel(s),
+                    style: TextStyle(
+                      color: goal.status == s ? _statusColor(s) : AppColors.onSurface,
+                      fontWeight: goal.status == s ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                   onTap: () async {
                     Navigator.pop(context);
                     final token = await AuthService.getToken() ?? '';
-                    final updated =
-                        await CoachingService.updateGoalStatus(token, goal.id, s);
+                    final updated = await CoachingService.updateGoalStatus(token, goal.id, s);
                     if (!mounted) return;
                     if (updated != null) {
                       setState(() {
@@ -526,11 +477,10 @@ class _CoachingPageState extends State<CoachingPage> {
       return Container(
         color: AppColors.surface,
         child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary))
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
             : _settingGoals
-                ? _buildGoalSetupScreen()
-                : _buildChatScreen(),
+            ? _buildGoalSetupScreen()
+            : _buildChatScreen(),
       );
     }
     return Scaffold(
@@ -544,8 +494,7 @@ class _CoachingPageState extends State<CoachingPage> {
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
         ),
-        title: const Text('Daily Coach',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Daily Coach', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         actions: [
           if (!_settingGoals && !_loading)
@@ -557,11 +506,10 @@ class _CoachingPageState extends State<CoachingPage> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _settingGoals
-              ? _buildGoalSetupScreen()
-              : _buildChatScreen(),
+          ? _buildGoalSetupScreen()
+          : _buildChatScreen(),
     );
   }
 
@@ -576,10 +524,7 @@ class _CoachingPageState extends State<CoachingPage> {
           const SizedBox(height: 12),
           Text(
             'Set your goals for today',
-            style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 26,
-                fontWeight: FontWeight.w900),
+            style: TextStyle(color: AppColors.primary, fontSize: 26, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           Text(
@@ -590,43 +535,41 @@ class _CoachingPageState extends State<CoachingPage> {
           ...List.generate(_goalControllers.length, (i) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _goalControllers[i],
-                    style: const TextStyle(color: AppColors.onSurface),
-                    decoration: InputDecoration(
-                      hintText: 'Goal ${i + 1}',
-                      hintStyle:
-                          const TextStyle(color: AppColors.onSurfaceVariant),
-                      filled: true,
-                      fillColor: AppColors.surfaceContainerHigh,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _goalControllers[i],
+                      style: const TextStyle(color: AppColors.onSurface),
+                      decoration: InputDecoration(
+                        hintText: 'Goal ${i + 1}',
+                        hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerHigh,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
                     ),
                   ),
-                ),
-                if (_goalControllers.length > 1) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => _removeGoalField(i),
-                    icon: const Icon(Icons.remove_circle_outline,
-                        color: AppColors.error),
-                  ),
+                  if (_goalControllers.length > 1) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => _removeGoalField(i),
+                      icon: const Icon(Icons.remove_circle_outline, color: AppColors.error),
+                    ),
+                  ],
                 ],
-              ]),
+              ),
             );
           }),
           if (_goalControllers.length < 3)
             TextButton.icon(
               onPressed: _addGoalField,
               icon: const Icon(Icons.add, color: AppColors.secondary),
-              label: const Text('Add another goal',
-                  style: TextStyle(color: AppColors.secondary)),
+              label: const Text('Add another goal', style: TextStyle(color: AppColors.secondary)),
             ),
           const SizedBox(height: 32),
           SizedBox(
@@ -637,18 +580,15 @@ class _CoachingPageState extends State<CoachingPage> {
                 backgroundColor: AppColors.primaryContainer,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               child: _sending
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Text('Start my day',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Start my day', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ),
         ],
@@ -676,8 +616,7 @@ class _CoachingPageState extends State<CoachingPage> {
                 )
               : ListView.builder(
                   controller: _scrollController,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: _messages.length + (_sending ? 1 : 0),
                   itemBuilder: (_, i) {
                     if (i == _messages.length) {
@@ -697,25 +636,25 @@ class _CoachingPageState extends State<CoachingPage> {
     return Container(
       color: AppColors.tertiaryContainer,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(children: [
-        const Icon(Icons.nights_stay_outlined,
-            color: AppColors.onTertiaryContainer, size: 20),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Evening check-in ready',
-            style: TextStyle(
-                color: AppColors.onTertiaryContainer,
-                fontWeight: FontWeight.w600),
+      child: Row(
+        children: [
+          const Icon(Icons.nights_stay_outlined, color: AppColors.onTertiaryContainer, size: 20),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Evening check-in ready',
+              style: TextStyle(color: AppColors.onTertiaryContainer, fontWeight: FontWeight.w600),
+            ),
           ),
-        ),
-        TextButton(
-          onPressed: _sending ? null : _startEvening,
-          child: const Text('Reflect',
-              style: TextStyle(
-                  color: AppColors.primaryFixed, fontWeight: FontWeight.bold)),
-        ),
-      ]),
+          TextButton(
+            onPressed: _sending ? null : _startEvening,
+            child: const Text(
+              'Reflect',
+              style: TextStyle(color: AppColors.primaryFixed, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -745,21 +684,21 @@ class _CoachingPageState extends State<CoachingPage> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(_statusIcon(goal.status), color: color, size: 14),
-          const SizedBox(width: 6),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 120),
-            child: Text(
-              goal.goalText,
-              style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500),
-              overflow: TextOverflow.ellipsis,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_statusIcon(goal.status), color: color, size: 14),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                goal.goalText,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 12, fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -770,26 +709,21 @@ class _CoachingPageState extends State<CoachingPage> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
         children: [
           if (isAi) ...[
             CircleAvatar(
               radius: 16,
               backgroundColor: AppColors.primaryContainer,
-              child: const Icon(Icons.smart_toy_outlined,
-                  size: 16, color: Colors.white),
+              child: const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isAi
-                    ? AppColors.primaryFixed.withValues(alpha: 0.3)
-                    : AppColors.primaryContainer,
+                color: isAi ? AppColors.primaryFixed.withValues(alpha: 0.3) : AppColors.primaryContainer,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -799,11 +733,7 @@ class _CoachingPageState extends State<CoachingPage> {
               ),
               child: Text(
                 msg.content,
-                style: TextStyle(
-                  color: isAi ? AppColors.onSurface : Colors.white,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
+                style: TextStyle(color: isAi ? AppColors.onSurface : Colors.white, fontSize: 14, height: 1.4),
               ),
             ),
           ),
@@ -816,82 +746,65 @@ class _CoachingPageState extends State<CoachingPage> {
   Widget _buildTypingIndicator() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: AppColors.primaryContainer,
-          child:
-              const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.primaryFixed.withValues(alpha: 0.3),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomLeft: Radius.circular(4),
-              bottomRight: Radius.circular(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryContainer,
+            child: const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryFixed.withValues(alpha: 0.3),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(16),
+              ),
             ),
+            child: const SizedBox(width: 40, height: 16, child: _DotsIndicator()),
           ),
-          child: const SizedBox(
-            width: 40,
-            height: 16,
-            child: _DotsIndicator(),
-          ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
   Widget _buildInputBar() {
     return Container(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 8,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
+      padding: EdgeInsets.only(left: 12, right: 8, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, -2)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, -2))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              focusNode: _focusNode,
+              style: const TextStyle(color: AppColors.onSurface),
+              decoration: InputDecoration(
+                hintText: 'Message your coach…',
+                hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+                filled: true,
+                fillColor: AppColors.surfaceContainerHigh,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onSubmitted: (_) => _sendMessage(),
+              textInputAction: TextInputAction.send,
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _sending ? null : _sendMessage,
+            icon: Icon(Icons.send_rounded, color: _sending ? AppColors.onSurfaceVariant : AppColors.primary),
+          ),
         ],
       ),
-      child: Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _messageController,
-            focusNode: _focusNode,
-            style: const TextStyle(color: AppColors.onSurface),
-            decoration: InputDecoration(
-              hintText: 'Message your coach…',
-              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
-              filled: true,
-              fillColor: AppColors.surfaceContainerHigh,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            onSubmitted: (_) => _sendMessage(),
-            textInputAction: TextInputAction.send,
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _sending ? null : _sendMessage,
-          icon: Icon(
-            Icons.send_rounded,
-            color: _sending ? AppColors.onSurfaceVariant : AppColors.primary,
-          ),
-        ),
-      ]),
     );
   }
 
@@ -945,16 +858,13 @@ class _DotsIndicator extends StatefulWidget {
   State<_DotsIndicator> createState() => _DotsIndicatorState();
 }
 
-class _DotsIndicatorState extends State<_DotsIndicator>
-    with SingleTickerProviderStateMixin {
+class _DotsIndicatorState extends State<_DotsIndicator> with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
   }
 
   @override
@@ -977,8 +887,7 @@ class _DotsIndicatorState extends State<_DotsIndicator>
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Opacity(
                 opacity: opacity,
-                child: const CircleAvatar(
-                    radius: 4, backgroundColor: AppColors.primary),
+                child: const CircleAvatar(radius: 4, backgroundColor: AppColors.primary),
               ),
             );
           }),

@@ -15,14 +15,14 @@ import '../../services/game_service.dart';
 // Design constants  Deep Focus light theme
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _kBg      = AppColors.surface;
-const _kCard    = AppColors.surfaceContainerLowest;
-const _kBorder  = AppColors.outlineVariant;
-const _kAccent  = AppColors.secondary;
-const _kGold    = AppColors.primaryFixed;
-const _kWrong   = AppColors.error;
+const _kBg = AppColors.surface;
+const _kCard = AppColors.surfaceContainerLowest;
+const _kBorder = AppColors.outlineVariant;
+const _kAccent = AppColors.secondary;
+const _kGold = AppColors.primaryFixed;
+const _kWrong = AppColors.error;
 const _kCorrect = AppColors.secondary;
-const _kMuted   = AppColors.onSurfaceVariant;
+const _kMuted = AppColors.onSurfaceVariant;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -34,14 +34,10 @@ enum _Shape { circle, square, triangle, star }
 
 class _CardData {
   final _Shape shape;
-  final Color  color;
+  final Color color;
   final String colorName;
 
-  const _CardData({
-    required this.shape,
-    required this.color,
-    required this.colorName,
-  });
+  const _CardData({required this.shape, required this.color, required this.colorName});
 }
 
 /// Level-based match rule:
@@ -61,9 +57,9 @@ String _matchLabel(int level) {
 }
 
 const _kShapeColors = [
-  (name: 'Red',    color: Color(0xFFEF4444)),
-  (name: 'Blue',   color: Color(0xFF3B82F6)),
-  (name: 'Green',  color: Color(0xFF10B981)),
+  (name: 'Red', color: Color(0xFFEF4444)),
+  (name: 'Blue', color: Color(0xFF3B82F6)),
+  (name: 'Green', color: Color(0xFF10B981)),
   (name: 'Yellow', color: Color(0xFFFFD166)),
   (name: 'Purple', color: Color(0xFFA78BFA)),
   (name: 'Orange', color: Color(0xFFF97316)),
@@ -71,20 +67,20 @@ const _kShapeColors = [
 
 _CardData _randomCard([math.Random? rng]) {
   rng ??= math.Random();
-  final col   = _kShapeColors[rng.nextInt(_kShapeColors.length)];
+  final col = _kShapeColors[rng.nextInt(_kShapeColors.length)];
   final shape = _Shape.values[rng.nextInt(_Shape.values.length)];
   return _CardData(shape: shape, color: col.color, colorName: col.name);
 }
 
 class _GameState {
-  final _Phase     phase;
-  final int        level;
-  final int        score;
-  final int        streak;
-  final int        bestStreak;
-  final int        countdown;
-  final int        mistakes;
-  final int        correct;
+  final _Phase phase;
+  final int level;
+  final int score;
+  final int streak;
+  final int bestStreak;
+  final int countdown;
+  final int mistakes;
+  final int correct;
   final _CardData? currentCard;
   final _CardData? previousCard;
 
@@ -102,14 +98,14 @@ class _GameState {
   });
 
   factory _GameState.initial(int level) => _GameState(
-    phase:      _Phase.idle,
-    level:      level,
-    score:      0,
-    streak:     0,
+    phase: _Phase.idle,
+    level: level,
+    score: 0,
+    streak: 0,
     bestStreak: 0,
-    countdown:  3,
-    mistakes:   0,
-    correct:    0,
+    countdown: 3,
+    mistakes: 0,
+    correct: 0,
   );
 
   bool? get isMatch {
@@ -124,29 +120,28 @@ class _GameState {
   }
 
   _GameState copyWith({
-    _Phase?    phase,
-    int?       level,
-    int?       score,
-    int?       streak,
-    int?       bestStreak,
-    int?       countdown,
-    int?       mistakes,
-    int?       correct,
+    _Phase? phase,
+    int? level,
+    int? score,
+    int? streak,
+    int? bestStreak,
+    int? countdown,
+    int? mistakes,
+    int? correct,
     _CardData? currentCard,
     _CardData? previousCard,
-  }) =>
-      _GameState(
-        phase:        phase        ?? this.phase,
-        level:        level        ?? this.level,
-        score:        score        ?? this.score,
-        streak:       streak       ?? this.streak,
-        bestStreak:   bestStreak   ?? this.bestStreak,
-        countdown:    countdown    ?? this.countdown,
-        mistakes:     mistakes     ?? this.mistakes,
-        correct:      correct      ?? this.correct,
-        currentCard:  currentCard  ?? this.currentCard,
-        previousCard: previousCard ?? this.previousCard,
-      );
+  }) => _GameState(
+    phase: phase ?? this.phase,
+    level: level ?? this.level,
+    score: score ?? this.score,
+    streak: streak ?? this.streak,
+    bestStreak: bestStreak ?? this.bestStreak,
+    countdown: countdown ?? this.countdown,
+    mistakes: mistakes ?? this.mistakes,
+    correct: correct ?? this.correct,
+    currentCard: currentCard ?? this.currentCard,
+    previousCard: previousCard ?? this.previousCard,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,59 +156,50 @@ class SpeedMatchPage extends StatefulWidget {
   State<SpeedMatchPage> createState() => _SpeedMatchPageState();
 }
 
-class _SpeedMatchPageState extends State<SpeedMatchPage>
-    with TickerProviderStateMixin {
-
+class _SpeedMatchPageState extends State<SpeedMatchPage> with TickerProviderStateMixin {
   late _GameState _game;
-  DateTime?       _gameStartTime;
-  bool            _resultSubmitted = false;
+  DateTime? _gameStartTime;
+  bool _resultSubmitted = false;
 
   static int _bestScore = 0;
 
   // ── 60-second session timer ──────────────────────────────────────────────
   Timer? _sessionTimer;
-  int    _sessionSecondsLeft = 60;
+  int _sessionSecondsLeft = 60;
 
   // ── Per-card shrinking timer ─────────────────────────────────────────────
   late AnimationController _cardTimerCtrl;
-  Timer?                   _cardTimeoutTimer;
+  Timer? _cardTimeoutTimer;
 
   // ── Feedback flash ───────────────────────────────────────────────────────
-  bool                    _feedbackShowing   = false;
-  bool                    _lastAnswerCorrect = false;
+  bool _feedbackShowing = false;
+  bool _lastAnswerCorrect = false;
   late AnimationController _feedbackCtrl;
-  late Animation<double>  _feedbackOpacity;
+  late Animation<double> _feedbackOpacity;
 
   // ── Level-complete fade ──────────────────────────────────────────────────
   late AnimationController _levelCompleteCtrl;
-  late Animation<double>  _levelCompleteFade;
+  late Animation<double> _levelCompleteFade;
 
   // ── Countdown pulse ──────────────────────────────────────────────────────
   late AnimationController _cdCtrl;
-  late Animation<double>  _cdScale;
+  late Animation<double> _cdScale;
 
   @override
   void initState() {
     super.initState();
     _game = _GameState.initial(widget.startLevel);
 
-    _cardTimerCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 3));
+    _cardTimerCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3));
 
-    _feedbackCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _feedbackOpacity = CurvedAnimation(
-        parent: _feedbackCtrl, curve: Curves.easeOut);
+    _feedbackCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _feedbackOpacity = CurvedAnimation(parent: _feedbackCtrl, curve: Curves.easeOut);
 
-    _levelCompleteCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 450));
-    _levelCompleteFade = CurvedAnimation(
-        parent: _levelCompleteCtrl, curve: Curves.easeOut);
+    _levelCompleteCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+    _levelCompleteFade = CurvedAnimation(parent: _levelCompleteCtrl, curve: Curves.easeOut);
 
-    _cdCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(
-        CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
+    _cdCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _cdScale = Tween<double>(begin: 0.75, end: 1.0).animate(CurvedAnimation(parent: _cdCtrl, curve: Curves.elasticOut));
   }
 
   @override
@@ -233,7 +219,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   Duration _cardDuration() {
     final baseSecs = (3.0 - (widget.startLevel - 1) * 0.22).clamp(0.8, 3.0);
-    final reduced  = (baseSecs - _game.score * 0.04).clamp(0.6, baseSecs);
+    final reduced = (baseSecs - _game.score * 0.04).clamp(0.6, baseSecs);
     return Duration(milliseconds: (reduced * 1000).round());
   }
 
@@ -247,8 +233,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     _cardTimerCtrl.stop();
     _resultSubmitted = false;
     setState(() {
-      _game = _GameState.initial(widget.startLevel)
-          .copyWith(phase: _Phase.countdown, countdown: 3);
+      _game = _GameState.initial(widget.startLevel).copyWith(phase: _Phase.countdown, countdown: 3);
       _feedbackShowing = false;
     });
     _runCountdown();
@@ -270,7 +255,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     _sessionSecondsLeft = 60;
     _sessionTimer?.cancel();
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       final remaining = _sessionSecondsLeft - 1;
       if (remaining <= 0) {
         t.cancel();
@@ -282,10 +270,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     });
     final firstCard = _randomCard();
     setState(() {
-      _game = _game.copyWith(
-        phase:       _Phase.playing,
-        currentCard: firstCard,
-      );
+      _game = _game.copyWith(phase: _Phase.playing, currentCard: firstCard);
       _feedbackShowing = false;
     });
     _startCardTimer();
@@ -329,28 +314,27 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
     final correct = !timedOut && (tappedYes == _game.isMatch);
 
     setState(() {
-      _feedbackShowing   = true;
+      _feedbackShowing = true;
       _lastAnswerCorrect = correct;
     });
     _feedbackCtrl.forward(from: 0);
 
     if (correct) {
       final newStreak = _game.streak + 1;
-      setState(() => _game = _game.copyWith(
-        score:      _game.score + 1,
-        streak:     newStreak,
-        bestStreak: newStreak > _game.bestStreak ? newStreak : _game.bestStreak,
-        correct:    _game.correct + 1,
-      ));
+      setState(
+        () => _game = _game.copyWith(
+          score: _game.score + 1,
+          streak: newStreak,
+          bestStreak: newStreak > _game.bestStreak ? newStreak : _game.bestStreak,
+          correct: _game.correct + 1,
+        ),
+      );
       Future.delayed(const Duration(milliseconds: 380), () {
         if (mounted) _nextCard();
       });
     } else {
       HapticFeedback.heavyImpact();
-      setState(() => _game = _game.copyWith(
-        streak:   0,
-        mistakes: _game.mistakes + 1,
-      ));
+      setState(() => _game = _game.copyWith(streak: 0, mistakes: _game.mistakes + 1));
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) _nextCard();
       });
@@ -360,10 +344,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   void _nextCard() {
     if (!mounted) return;
     setState(() {
-      _game = _game.copyWith(
-        previousCard: _game.currentCard,
-        currentCard:  _randomCard(),
-      );
+      _game = _game.copyWith(previousCard: _game.currentCard, currentCard: _randomCard());
       _feedbackShowing = false;
     });
     _startCardTimer();
@@ -391,20 +372,17 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   }
 
   Future<void> _submitResult() async {
-    final timePlayed = _gameStartTime != null
-        ? DateTime.now().difference(_gameStartTime!).inSeconds
-        : 0;
+    final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     final int total = _game.correct + _game.mistakes;
     final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
-    final int normalizedScore =
-        (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
+    final int normalizedScore = (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
     final result = await GameService.submitResult(
-      gameType:          'speed_match',
-      score:             normalizedScore,
+      gameType: 'speed_match',
+      score: normalizedScore,
       timePlayedSeconds: timePlayed,
-      completed:         true,
-      levelReached:      widget.startLevel + 1,
-      mistakes:          _game.mistakes,
+      completed: true,
+      levelReached: widget.startLevel + 1,
+      mistakes: _game.mistakes,
     );
     if (result != null && mounted) {
       context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
@@ -496,8 +474,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
         animation: _cardTimerCtrl,
         builder: (_, __) {
           final fraction = (1.0 - _cardTimerCtrl.value).clamp(0.0, 1.0);
-          final barColor = fraction > 0.55 ? _kAccent
-              : fraction > 0.28 ? _kGold
+          final barColor = fraction > 0.55
+              ? _kAccent
+              : fraction > 0.28
+              ? _kGold
               : _kWrong;
           return ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -524,8 +504,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
       case _Phase.playing:
         return _buildPlayScreen();
       case _Phase.levelComplete:
-        return FadeTransition(
-            opacity: _levelCompleteFade, child: _buildLevelCompleteScreen());
+        return FadeTransition(opacity: _levelCompleteFade, child: _buildLevelCompleteScreen());
     }
   }
 
@@ -533,27 +512,33 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
   Widget _buildIdleScreen() {
     final criterion = _matchLabel(widget.startLevel);
-    final cardMs    = (3.0 - (widget.startLevel - 1) * 0.22).clamp(0.8, 3.0);
-    final cardSec   = cardMs.toStringAsFixed(1);
+    final cardMs = (3.0 - (widget.startLevel - 1) * 0.22).clamp(0.8, 3.0);
+    final cardSec = cardMs.toStringAsFixed(1);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
           Container(
-            width: 90, height: 90,
+            width: 90,
+            height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(
-                  colors: [_kAccent.withOpacity(0.28), _kAccent.withOpacity(0.04)]),
+              gradient: RadialGradient(colors: [_kAccent.withOpacity(0.28), _kAccent.withOpacity(0.04)]),
               border: Border.all(color: _kAccent.withOpacity(0.35), width: 1.5),
             ),
             child: const Icon(Icons.bolt_rounded, color: _kAccent, size: 42),
           ),
           const SizedBox(height: 18),
-          const Text('Speed Match',
-              style: TextStyle(color: AppColors.onSurface, fontSize: 28,
-                  fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          const Text(
+            'Speed Match',
+            style: TextStyle(
+              color: AppColors.onSurface,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
           const SizedBox(height: 10),
           Text(
             'Does this card match the previous one?\nTap YES or NO before time runs out!',
@@ -575,27 +560,18 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _ExampleCard(
-                        shape: _Shape.circle,
-                        color: const Color(0xFFEF4444),
-                        label: 'Previous'),
-                    const Icon(Icons.arrow_forward_rounded,
-                        color: _kMuted, size: 20),
-                    _ExampleCard(
-                        shape: _Shape.circle,
-                        color: const Color(0xFFEF4444),
-                        label: 'Current'),
+                    _ExampleCard(shape: _Shape.circle, color: const Color(0xFFEF4444), label: 'Previous'),
+                    const Icon(Icons.arrow_forward_rounded, color: _kMuted, size: 20),
+                    _ExampleCard(shape: _Shape.circle, color: const Color(0xFFEF4444), label: 'Current'),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check_circle_rounded,
-                        color: _kCorrect, size: 16),
+                    const Icon(Icons.check_circle_rounded, color: _kCorrect, size: 16),
                     const SizedBox(width: 6),
-                    Text('Match by $criterion → tap YES',
-                        style: const TextStyle(color: _kMuted, fontSize: 12)),
+                    Text('Match by $criterion → tap YES', style: const TextStyle(color: _kMuted, fontSize: 12)),
                   ],
                 ),
               ],
@@ -612,13 +588,17 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _kGold.withOpacity(0.3)),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
-                const SizedBox(width: 6),
-                Text('Best: $_bestScore cards',
-                    style: const TextStyle(color: _kGold, fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-              ]),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Best: $_bestScore cards',
+                    style: const TextStyle(color: _kGold, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
           ] else
@@ -630,12 +610,9 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             spacing: 10,
             runSpacing: 10,
             children: [
-              _InfoChip(icon: Icons.bar_chart_rounded,
-                  label: 'Level ${widget.startLevel}'),
-              _InfoChip(icon: Icons.compare_arrows_rounded,
-                  label: 'Match: $criterion'),
-              _InfoChip(icon: Icons.speed_rounded,
-                  label: '${cardSec}s per card'),
+              _InfoChip(icon: Icons.bar_chart_rounded, label: 'Level ${widget.startLevel}'),
+              _InfoChip(icon: Icons.compare_arrows_rounded, label: 'Match: $criterion'),
+              _InfoChip(icon: Icons.speed_rounded, label: '${cardSec}s per card'),
               _InfoChip(icon: Icons.timer_rounded, label: '60s session'),
             ],
           ),
@@ -651,17 +628,19 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(
-                      color: AppColors.primary.withOpacity(0.38),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10)),
+                  BoxShadow(color: AppColors.primary.withOpacity(0.38), blurRadius: 24, offset: const Offset(0, 10)),
                 ],
               ),
               child: const Center(
-                child: Text('Start',
-                    style: TextStyle(color: AppColors.onPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 17, letterSpacing: 0.6)),
+                child: Text(
+                  'Start',
+                  style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    letterSpacing: 0.6,
+                  ),
+                ),
               ),
             ),
           ),
@@ -681,14 +660,11 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             scale: _cdScale,
             child: Text(
               '${_game.countdown}',
-              style: const TextStyle(
-                  color: _kAccent, fontSize: 96,
-                  fontWeight: FontWeight.w800, letterSpacing: -4),
+              style: const TextStyle(color: _kAccent, fontSize: 96, fontWeight: FontWeight.w800, letterSpacing: -4),
             ),
           ),
           const SizedBox(height: 8),
-          const Text('Get ready…',
-              style: TextStyle(color: _kMuted, fontSize: 16)),
+          const Text('Get ready…', style: TextStyle(color: _kMuted, fontSize: 16)),
         ],
       ),
     );
@@ -697,7 +673,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   // ── Play screen ──────────────────────────────────────────────────────────
 
   Widget _buildPlayScreen() {
-    final card        = _game.currentCard;
+    final card = _game.currentCard;
     if (card == null) return const SizedBox.shrink();
     final isFirstCard = _game.previousCard == null;
 
@@ -710,8 +686,7 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
             Text('Match by: ', style: TextStyle(color: _kMuted, fontSize: 13)),
             Text(
               _matchLabel(widget.startLevel),
-              style: const TextStyle(
-                  color: _kAccent, fontSize: 13, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: _kAccent, fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -724,27 +699,26 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
               children: [
                 Text(
                   isFirstCard ? 'Memorise this card!' : 'Does it match?',
-                  style: TextStyle(
-                      color: _kMuted, fontSize: 12, letterSpacing: 0.3),
+                  style: TextStyle(color: _kMuted, fontSize: 12, letterSpacing: 0.3),
                 ),
                 const SizedBox(height: 10),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   transitionBuilder: (child, anim) {
-                    final scale = Tween<double>(begin: 0.82, end: 1.0).animate(
-                        CurvedAnimation(
-                            parent: anim, curve: Curves.elasticOut));
+                    final scale = Tween<double>(
+                      begin: 0.82,
+                      end: 1.0,
+                    ).animate(CurvedAnimation(parent: anim, curve: Curves.elasticOut));
                     return ScaleTransition(
-                        scale: scale,
-                        child: FadeTransition(opacity: anim, child: child));
+                      scale: scale,
+                      child: FadeTransition(opacity: anim, child: child),
+                    );
                   },
                   child: _ShapeCard(
                     key: ValueKey(_game.score * 100 + card.shape.index),
                     card: card,
                     size: 136,
-                    feedbackColor: _feedbackShowing
-                        ? (_lastAnswerCorrect ? _kCorrect : _kWrong)
-                        : null,
+                    feedbackColor: _feedbackShowing ? (_lastAnswerCorrect ? _kCorrect : _kWrong) : null,
                   ),
                 ),
               ],
@@ -762,29 +736,30 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                     border: Border.all(color: _kBorder),
                   ),
                   child: const Center(
-                    child: Text('Memorise this card!',
-                        style: TextStyle(color: _kMuted, fontSize: 15,
-                            fontWeight: FontWeight.w500)),
+                    child: Text(
+                      'Memorise this card!',
+                      style: TextStyle(color: _kMuted, fontSize: 15, fontWeight: FontWeight.w500),
+                    ),
                   ),
                 )
               : Row(
                   children: [
                     Expanded(
                       child: _AnswerButton(
-                        label:   'YES',
-                        color:   _kCorrect,
-                        icon:    Icons.check_rounded,
-                        onTap:   _onYes,
+                        label: 'YES',
+                        color: _kCorrect,
+                        icon: Icons.check_rounded,
+                        onTap: _onYes,
                         enabled: !_feedbackShowing,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _AnswerButton(
-                        label:   'NO',
-                        color:   _kWrong,
-                        icon:    Icons.close_rounded,
-                        onTap:   _onNo,
+                        label: 'NO',
+                        color: _kWrong,
+                        icon: Icons.close_rounded,
+                        onTap: _onNo,
                         enabled: !_feedbackShowing,
                       ),
                     ),
@@ -798,8 +773,8 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
   // ── Level complete screen ────────────────────────────────────────────────
 
   Widget _buildLevelCompleteScreen() {
-    final nextLevel  = widget.startLevel + 1;
-    final isNewBest  = _game.score > 0 && _game.score >= _bestScore;
+    final nextLevel = widget.startLevel + 1;
+    final isNewBest = _game.score > 0 && _game.score >= _bestScore;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -807,7 +782,8 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 90, height: 90,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _kAccent.withOpacity(0.12),
@@ -816,17 +792,23 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
               child: const Icon(Icons.check_rounded, color: _kAccent, size: 44),
             ),
             const SizedBox(height: 20),
-            const Text('Level Complete!',
-                style: TextStyle(color: AppColors.onSurface, fontSize: 30,
-                    fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+            const Text(
+              'Level Complete!',
+              style: TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text('Level ${widget.startLevel} cleared',
-                style: const TextStyle(color: _kMuted, fontSize: 15)),
+            Text('Level ${widget.startLevel} cleared', style: const TextStyle(color: _kMuted, fontSize: 15)),
             if (nextLevel <= 10) ...[
               const SizedBox(height: 4),
-              Text('Unlocked Level $nextLevel!',
-                  style: const TextStyle(color: _kAccent, fontSize: 15,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                'Unlocked Level $nextLevel!',
+                style: const TextStyle(color: _kAccent, fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             ],
             if (isNewBest) ...[
               const SizedBox(height: 8),
@@ -837,28 +819,27 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: _kGold.withOpacity(0.4)),
                 ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.emoji_events_rounded, color: _kGold, size: 14),
-                  SizedBox(width: 5),
-                  Text('New Best!',
-                      style: TextStyle(color: _kGold, fontSize: 12,
-                          fontWeight: FontWeight.w700)),
-                ]),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.emoji_events_rounded, color: _kGold, size: 14),
+                    SizedBox(width: 5),
+                    Text(
+                      'New Best!',
+                      style: TextStyle(color: _kGold, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 32),
-            _StatRow(label: 'Cards Matched',
-                value: '${_game.score}', valueColor: _kAccent),
+            _StatRow(label: 'Cards Matched', value: '${_game.score}', valueColor: _kAccent),
             const SizedBox(height: 8),
-            _StatRow(label: 'Best Streak',
-                value: '×${_game.bestStreak}', valueColor: _kGold),
+            _StatRow(label: 'Best Streak', value: '×${_game.bestStreak}', valueColor: _kGold),
             const SizedBox(height: 8),
-            _StatRow(label: 'Accuracy',
-                value: '${_game.accuracy}%',
-                valueColor: AppColors.onTertiaryContainer),
+            _StatRow(label: 'Accuracy', value: '${_game.accuracy}%', valueColor: AppColors.onTertiaryContainer),
             const SizedBox(height: 8),
-            _StatRow(label: 'Mistakes',
-                value: '${_game.mistakes}', valueColor: _kWrong),
+            _StatRow(label: 'Mistakes', value: '${_game.mistakes}', valueColor: _kWrong),
           ],
         ),
       ),
@@ -872,15 +853,10 @@ class _SpeedMatchPageState extends State<SpeedMatchPage>
 
 class _ShapeCard extends StatelessWidget {
   final _CardData card;
-  final double    size;
-  final Color?    feedbackColor;
+  final double size;
+  final Color? feedbackColor;
 
-  const _ShapeCard({
-    super.key,
-    required this.card,
-    required this.size,
-    required this.feedbackColor,
-  });
+  const _ShapeCard({super.key, required this.card, required this.size, required this.feedbackColor});
 
   @override
   Widget build(BuildContext context) {
@@ -893,17 +869,9 @@ class _ShapeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: _kCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor.withOpacity(hasFeedback ? 0.85 : 1.0),
-          width: hasFeedback ? 2.5 : 1.5,
-        ),
+        border: Border.all(color: borderColor.withOpacity(hasFeedback ? 0.85 : 1.0), width: hasFeedback ? 2.5 : 1.5),
         boxShadow: hasFeedback
-            ? [
-                BoxShadow(
-                    color: feedbackColor!.withOpacity(0.28),
-                    blurRadius: 22,
-                    spreadRadius: 2),
-              ]
+            ? [BoxShadow(color: feedbackColor!.withOpacity(0.28), blurRadius: 22, spreadRadius: 2)]
             : null,
       ),
       child: Center(
@@ -922,7 +890,7 @@ class _ShapeCard extends StatelessWidget {
 
 class _ShapePainter extends CustomPainter {
   final _Shape shape;
-  final Color  color;
+  final Color color;
 
   const _ShapePainter({required this.shape, required this.color});
 
@@ -947,14 +915,11 @@ class _ShapePainter extends CustomPainter {
         break;
 
       case _Shape.square:
-        final s    = r * 1.32;
+        final s = r * 1.32;
         final rect = Rect.fromCenter(center: c, width: s, height: s);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(rect, const Radius.circular(10)), glow);
-        final inner = Rect.fromCenter(
-            center: c, width: s * 0.84, height: s * 0.84);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(inner, const Radius.circular(8)), fill);
+        canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(10)), glow);
+        final inner = Rect.fromCenter(center: c, width: s * 0.84, height: s * 0.84);
+        canvas.drawRRect(RRect.fromRectAndRadius(inner, const Radius.circular(8)), fill);
         break;
 
       case _Shape.triangle:
@@ -983,17 +948,19 @@ class _ShapePainter extends CustomPainter {
     final path = Path();
     for (int i = 0; i < points * 2; i++) {
       final angle = (i * math.pi / points) - math.pi / 2;
-      final rad   = i.isEven ? outerR : innerR;
-      final x     = center.dx + rad * math.cos(angle);
-      final y     = center.dy + rad * math.sin(angle);
-      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+      final rad = i.isEven ? outerR : innerR;
+      final x = center.dx + rad * math.cos(angle);
+      final y = center.dy + rad * math.sin(angle);
+      if (i == 0)
+        path.moveTo(x, y);
+      else
+        path.lineTo(x, y);
     }
     return path..close();
   }
 
   @override
-  bool shouldRepaint(covariant _ShapePainter old) =>
-      old.shape != shape || old.color != color;
+  bool shouldRepaint(covariant _ShapePainter old) => old.shape != shape || old.color != color;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1002,37 +969,33 @@ class _ShapePainter extends CustomPainter {
 
 class _ExampleCard extends StatelessWidget {
   final _Shape shape;
-  final Color  color;
+  final Color color;
   final String label;
 
-  const _ExampleCard({
-    required this.shape,
-    required this.color,
-    required this.label,
-  });
+  const _ExampleCard({required this.shape, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          Container(
-            width: 64, height: 64,
-            decoration: BoxDecoration(
-              color: _kCard,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kBorder),
-            ),
-            child: Center(
-              child: CustomPaint(
-                size: const Size(34, 34),
-                painter: _ShapePainter(shape: shape, color: color),
-              ),
-            ),
+    children: [
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Center(
+          child: CustomPaint(
+            size: const Size(34, 34),
+            painter: _ShapePainter(shape: shape, color: color),
           ),
-          const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(color: _kMuted, fontSize: 10)),
-        ],
-      );
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(label, style: const TextStyle(color: _kMuted, fontSize: 10)),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1040,11 +1003,11 @@ class _ExampleCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AnswerButton extends StatelessWidget {
-  final String       label;
-  final Color        color;
-  final IconData     icon;
+  final String label;
+  final Color color;
+  final IconData icon;
   final VoidCallback onTap;
-  final bool         enabled;
+  final bool enabled;
 
   const _AnswerButton({
     required this.label,
@@ -1056,37 +1019,32 @@ class _AnswerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 160),
-          opacity: enabled ? 1.0 : 0.45,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.40)),
-              boxShadow: [
-                BoxShadow(
-                    color: color.withOpacity(0.14),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6)),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(width: 8),
-                Text(label,
-                    style: TextStyle(
-                        color: color, fontSize: 17,
-                        fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-              ],
-            ),
-          ),
+    onTap: enabled ? onTap : null,
+    child: AnimatedOpacity(
+      duration: const Duration(milliseconds: 160),
+      opacity: enabled ? 1.0 : 0.45,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.40)),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.14), blurRadius: 16, offset: const Offset(0, 6))],
         ),
-      );
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(color: color, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 1.5),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1099,18 +1057,18 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kBorder),
-          ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.onSurface, size: 16),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorder),
+      ),
+      child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 16),
+    ),
+  );
 }
 
 class _ScoreChip extends StatelessWidget {
@@ -1120,33 +1078,35 @@ class _ScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _kBorder),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: _kCard,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _kBorder),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.star_rounded, color: _kGold, size: 14),
+        const SizedBox(width: 5),
+        Text(
+          '$score',
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 13, fontWeight: FontWeight.w700),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.star_rounded, color: _kGold, size: 14),
-          const SizedBox(width: 5),
-          Text('$score',
-              style: const TextStyle(color: AppColors.onSurface,
-                  fontSize: 13, fontWeight: FontWeight.w700)),
-          if (streak > 1) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.20),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text('×$streak',
-                  style: const TextStyle(color: _kAccent, fontSize: 11,
-                      fontWeight: FontWeight.w700)),
+        if (streak > 1) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(color: _kAccent.withOpacity(0.20), borderRadius: BorderRadius.circular(8)),
+            child: Text(
+              '×$streak',
+              style: const TextStyle(color: _kAccent, fontSize: 11, fontWeight: FontWeight.w700),
             ),
-          ],
-        ]),
-      );
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _SessionTimerChip extends StatelessWidget {
@@ -1156,8 +1116,10 @@ class _SessionTimerChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = (secondsLeft / 60).clamp(0.0, 1.0);
-    final color = fraction > 0.5 ? _kAccent
-        : fraction > 0.25 ? _kGold
+    final color = fraction > 0.5
+        ? _kAccent
+        : fraction > 0.25
+        ? _kGold
         : _kWrong;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1166,57 +1128,63 @@ class _SessionTimerChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.45)),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.timer_rounded, color: color, size: 14),
-        const SizedBox(width: 5),
-        Text('${secondsLeft}s',
-            style: TextStyle(color: color, fontSize: 13,
-                fontWeight: FontWeight.w700)),
-      ]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_rounded, color: color, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            '${secondsLeft}s',
+            style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _InfoChip extends StatelessWidget {
   final IconData icon;
-  final String   label;
+  final String label;
   const _InfoChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _kBorder),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: _kCard,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _kBorder),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: _kAccent, size: 14),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.onSurface, fontSize: 12, fontWeight: FontWeight.w600),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: _kAccent, size: 14),
-          const SizedBox(width: 6),
-          Text(label,
-              style: const TextStyle(color: AppColors.onSurface,
-                  fontSize: 12, fontWeight: FontWeight.w600)),
-        ]),
-      );
+      ],
+    ),
+  );
 }
 
 class _StatRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color  valueColor;
-  const _StatRow(
-      {required this.label, required this.value, required this.valueColor});
+  final Color valueColor;
+  const _StatRow({required this.label, required this.value, required this.valueColor});
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(color: _kMuted, fontSize: 14)),
-          Text(value,
-              style: TextStyle(
-                  color: valueColor, fontSize: 14,
-                  fontWeight: FontWeight.w700)),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(label, style: const TextStyle(color: _kMuted, fontSize: 14)),
+      Text(
+        value,
+        style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
 }

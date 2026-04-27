@@ -17,12 +17,7 @@ class LockInPage extends StatefulWidget {
   final int? initialPrepMinutes;
   final int? initialDurationMinutes;
 
-  const LockInPage({
-    super.key,
-    this.triggerScheduleId,
-    this.initialPrepMinutes,
-    this.initialDurationMinutes,
-  });
+  const LockInPage({super.key, this.triggerScheduleId, this.initialPrepMinutes, this.initialDurationMinutes});
 
   @override
   State<LockInPage> createState() => _LockInPageState();
@@ -113,8 +108,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
 
   Future<void> _doStartLockIn(int prep, int duration, {int? scheduleId}) async {
     try {
-      final session = await LockInService.startLockIn(prep, duration,
-          scheduleId: scheduleId);
+      final session = await LockInService.startLockIn(prep, duration, scheduleId: scheduleId);
       if (!mounted) return;
       await AndroidLockInHelper.startScreenPin();
       await AndroidLockInHelper.acquireWakeLock();
@@ -122,9 +116,9 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
       _startPrepFromSession(session);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not start session. Check your connection.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not start session. Check your connection.')));
       }
     }
   }
@@ -211,8 +205,10 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('End your lock-in early?',
-            style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'End your lock-in early?',
+          style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'Your screen pin will be released and the session will end.',
           style: TextStyle(color: AppColors.onSurfaceVariant),
@@ -220,8 +216,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -255,9 +250,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
 
     // Load summary data
     final goals = await _loadGoals();
-    final stats = _hasUsagePermission
-        ? await AndroidLockInHelper.getAppUsageToday()
-        : <AppUsageStatModel>[];
+    final stats = _hasUsagePermission ? await AndroidLockInHelper.getAppUsageToday() : <AppUsageStatModel>[];
 
     if (mounted) {
       setState(() {
@@ -324,8 +317,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
         backgroundColor: _dark,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Wake-Up Mode',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Wake-Up Mode', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -341,15 +333,11 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.alarm_rounded,
-                      color: AppColors.secondary, size: 48),
+                  Icon(Icons.alarm_rounded, color: AppColors.secondary, size: 48),
                   const SizedBox(height: 16),
                   const Text(
                     'Start your morning lock-in',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -378,10 +366,10 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                     labelFn: (v) => v == 60
                         ? '1hr'
                         : v == 90
-                            ? '1.5hr'
-                            : v == 120
-                                ? '2hr'
-                                : '${v}m',
+                        ? '1.5hr'
+                        : v == 120
+                        ? '2hr'
+                        : '${v}m',
                     onSelect: (v) => setState(() => _durationMinutes = v),
                   ),
                   const SizedBox(height: 16),
@@ -389,36 +377,31 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   // Usage stats permission banner
                   if (!_hasUsagePermission)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Row(children: [
-                        const Icon(Icons.info_outline,
-                            color: Color(0xFFD97706), size: 16),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Grant usage access to see your screen time',
-                            style: TextStyle(
-                                color: Color(0xFF92400E), fontSize: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 16),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Grant usage access to see your screen time',
+                              style: TextStyle(color: Color(0xFF92400E), fontSize: 12),
+                            ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed:
-                              AndroidLockInHelper.requestUsageStatsPermission,
-                          style: TextButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8)),
-                          child: const Text('Grant',
-                              style: TextStyle(
-                                  color: Color(0xFFD97706),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12)),
-                        ),
-                      ]),
+                          TextButton(
+                            onPressed: AndroidLockInHelper.requestUsageStatsPermission,
+                            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                            child: const Text(
+                              'Grant',
+                              style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   const SizedBox(height: 24),
 
@@ -437,11 +420,10 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Center(
-                        child: Text('Start Lock-In',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Start Lock-In',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ),
@@ -464,8 +446,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
+        Text(label, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
         const SizedBox(height: 8),
         Row(
           children: options.map((opt) {
@@ -476,27 +457,18 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                 onTap: () => onSelect(opt),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: active
-                        ? AppColors.secondary.withValues(alpha: 0.2)
-                        : AppColors.lockInBorder,
+                    color: active ? AppColors.secondary.withValues(alpha: 0.2) : AppColors.lockInBorder,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: active
-                          ? AppColors.secondary
-                          : const Color(0xFF374151),
-                    ),
+                    border: Border.all(color: active ? AppColors.secondary : const Color(0xFF374151)),
                   ),
                   child: Text(
                     labelFn(opt),
                     style: TextStyle(
-                      color:
-                          active ? AppColors.secondary : AppColors.lockInMuted,
+                      color: active ? AppColors.secondary : AppColors.lockInMuted,
                       fontSize: 13,
-                      fontWeight:
-                          active ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -513,8 +485,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
   Widget _buildPrep() {
     final mins = _prepRemaining.inMinutes;
     final secs = _prepRemaining.inSeconds % 60;
-    final timeStr =
-        '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    final timeStr = '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
 
     return Scaffold(
       backgroundColor: _dark,
@@ -525,10 +496,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
             children: [
               const Text(
                 'Get ready...',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Text(
@@ -552,8 +520,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   foregroundColor: AppColors.lockInMuted,
                   side: const BorderSide(color: Color(0xFF374151)),
                   shape: StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: const Text('Skip prep'),
               ),
@@ -569,8 +536,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
   Widget _buildActive() {
     final mins = _sessionRemaining.inMinutes;
     final secs = _sessionRemaining.inSeconds % 60;
-    final timeStr =
-        '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    final timeStr = '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
 
     return Scaffold(
       backgroundColor: _dark,
@@ -581,71 +547,51 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
             bottom: false,
             child: Container(
               color: AppColors.lockInCard,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(children: [
-                if (_offline)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Text('Offline',
-                        style: TextStyle(
-                            color: Color(0xFFFBBF24),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  if (_offline)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Text(
+                        'Offline',
+                        style: TextStyle(color: Color(0xFFFBBF24), fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
                   ),
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
-                    shape: BoxShape.circle,
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Lock-In Active',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Lock-In Active',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  timeStr,
-                  style: const TextStyle(
-                      color: Color(0xFF9CA3AF),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600),
-                ),
-              ]),
+                  const Spacer(),
+                  Text(
+                    timeStr,
+                    style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
           ),
 
           // CoachingPage embedded (no AppBar)
-          Expanded(
-            child: CoachingPage(embedded: true),
-          ),
+          Expanded(child: CoachingPage(embedded: true)),
 
           // Bottom persistent "End Session" bar
           Container(
             color: AppColors.lockInCard,
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 8,
-              bottom: MediaQuery.of(context).padding.bottom + 8,
-            ),
+            padding: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: _confirmEndEarly,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                  ),
-                  child: const Text('End Session',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                  child: const Text('End Session', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
               ],
             ),
@@ -666,15 +612,11 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF10B981), size: 64),
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 64),
               const SizedBox(height: 16),
               Text(
                 _endedEarly ? 'Session ended early' : 'Session complete',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 32),
 
@@ -685,10 +627,11 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   child: Text(
                     "Today's Goals",
                     style: TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8),
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -697,8 +640,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
               ],
 
               // Screen time section
-              if (_hasUsagePermission && _usageStats.isNotEmpty)
-                _buildScreenTimeSection(),
+              if (_hasUsagePermission && _usageStats.isNotEmpty) _buildScreenTimeSection(),
 
               const SizedBox(height: 32),
 
@@ -717,11 +659,10 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Center(
-                    child: Text('Done',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Done',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ),
@@ -762,33 +703,29 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.lockInBorder),
         ),
-        child: Row(children: [
-          Icon(statusIcon, color: statusColor, size: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(goal.goalText,
-                style: const TextStyle(color: Colors.white, fontSize: 14)),
-          ),
-        ]),
+        child: Row(
+          children: [
+            Icon(statusIcon, color: statusColor, size: 18),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(goal.goalText, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildScreenTimeSection() {
     final top5 = _usageStats.take(5).toList();
-    final maxMinutes =
-        top5.isEmpty ? 1 : top5.map((s) => s.totalMinutesToday).reduce((a, b) => a > b ? a : b);
+    final maxMinutes = top5.isEmpty ? 1 : top5.map((s) => s.totalMinutesToday).reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Your screen time today',
-          style: TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8),
+          style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.8),
         ),
         const SizedBox(height: 10),
         ...top5.map((stat) {
@@ -798,17 +735,18 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(stat.appName,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 13),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  Text('${stat.totalMinutesToday}m',
-                      style: const TextStyle(
-                          color: Color(0xFF9CA3AF), fontSize: 12)),
-                ]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        stat.appName,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text('${stat.totalMinutesToday}m', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),

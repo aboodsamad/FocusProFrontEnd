@@ -42,10 +42,12 @@ class NotificationService {
 
     try {
       // Fetch VAPID public key from backend
-      final keyResp = await http.get(
-        Uri.parse('${AuthService.baseUrl}/notifications/vapid-public-key'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final keyResp = await http
+          .get(
+            Uri.parse('${AuthService.baseUrl}/notifications/vapid-public-key'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (keyResp.statusCode != 200) return;
       final vapidKey = (jsonDecode(keyResp.body) as Map<String, dynamic>)['key'] as String? ?? '';
@@ -62,14 +64,13 @@ class NotificationService {
       }
 
       // Send subscription to backend
-      final subResp = await http.post(
-        Uri.parse('${AuthService.baseUrl}/notifications/web-push-subscribe'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(subscription),
-      ).timeout(const Duration(seconds: 10));
+      final subResp = await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/notifications/web-push-subscribe'),
+            headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+            body: jsonEncode(subscription),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (subResp.statusCode == 200) {
         _pushSubscribed = true;
@@ -104,18 +105,17 @@ class NotificationService {
     if (token == null) return;
 
     try {
-      final resp = await http.get(
-        Uri.parse('${AuthService.baseUrl}/notifications/pending'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final resp = await http
+          .get(Uri.parse('${AuthService.baseUrl}/notifications/pending'), headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 10));
 
       if (resp.statusCode != 200) return;
 
       final notifications = jsonDecode(resp.body) as List<dynamic>;
       for (final n in notifications) {
-        final id    = n['id'] as int?;
+        final id = n['id'] as int?;
         final title = n['title'] as String? ?? 'LockedIn';
-        final msg   = n['message'] as String? ?? '';
+        final msg = n['message'] as String? ?? '';
 
         BrowserNotification.show(title, msg);
         if (id != null) _acknowledge(id, token);
@@ -127,10 +127,12 @@ class NotificationService {
 
   static Future<void> _acknowledge(int id, String token) async {
     try {
-      await http.post(
-        Uri.parse('${AuthService.baseUrl}/notifications/$id/acknowledge'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 5));
+      await http
+          .post(
+            Uri.parse('${AuthService.baseUrl}/notifications/$id/acknowledge'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 

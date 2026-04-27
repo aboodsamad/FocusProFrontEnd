@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LockedIn**  a Flutter application for cognitive focus training. Features include cognitive games, daily habits, focus rooms (real-time multiplayer), book reading with AI-generated retention tests, a diagnostic assessment, and a focus score dashboard.
+**LockedIn** a Flutter application for cognitive focus training. Features include cognitive games, daily habits, focus rooms (real-time multiplayer), book reading with AI-generated retention tests, a diagnostic assessment, and a focus score dashboard.
 
 ## Commands
 
@@ -34,13 +34,14 @@ flutter pub get
 ## Design Source
 
 All screen designs are Stitch (PNG frames) located at:
+
 ```
 ../stitch pages/stitch pages/<screen_name>/
 ```
 
 Available design folders: `add_habit_flow`, `book_detail`, `book_reader`, `color_match`, `create_room_flow`, `dashboard`, `deep_focus`, `diagnostic_attention_task`, `diagnostic_intro`, `diagnostic_results`, `diagnostic_self_report`, `focus_rooms`, `games_hub`, `habits`, `level_roadmap`, `live_session`, `login`, `memory_matrix`, `my_library`, `number_stream`, `onboarding_quiz`, `pattern_trail`, `profile`, `retention_test`, `sign_up`, `speed_match`, `sudoku`, `train_of_thought`.
 
-**When implementing or modifying any screen, read ALL images in the corresponding design folder first.** Match the design exactly  colors, spacing, font sizes, and layout. Extract any new colors into `AppColors` (`core/constants/app_colors.dart`) rather than hardcoding them inline.
+**When implementing or modifying any screen, read ALL images in the corresponding design folder first.** Match the design exactly colors, spacing, font sizes, and layout. Extract any new colors into `AppColors` (`core/constants/app_colors.dart`) rather than hardcoding them inline.
 
 ## Architecture
 
@@ -73,6 +74,7 @@ lib/
 ```
 
 Each feature follows a consistent internal layout:
+
 ```
 feature/
   models/      # Plain Dart data classes with fromJson/toJson
@@ -85,8 +87,9 @@ feature/
 ### State Management
 
 Provider pattern with two global providers initialized in `main()`:
-- `UserProvider`  authentication state, user profile, focus score. Loads from SharedPreferences first (instant), then refreshes from API in background.
-- `HabitProvider`  daily habits list with optimistic updates.
+
+- `UserProvider` authentication state, user profile, focus score. Loads from SharedPreferences first (instant), then refreshes from API in background.
+- `HabitProvider` daily habits list with optimistic updates.
 
 Services are stateless static classes; only providers hold mutable state.
 
@@ -106,6 +109,7 @@ Services are stateless static classes; only providers hold mutable state.
 ### Games System
 
 `lib/features/games/hub/models/game_registry.dart` is the single source of truth for all games. To add a new game:
+
 1. Append a `GameItem` to `GameRegistry.all`.
 2. Add a case in `GameRegistry.pageFor` (and `GameRegistry.levelPageFor` if it has levels).
 
@@ -116,15 +120,16 @@ Games with a level roadmap (10 levels each): `memory_matrix`, `number_stream`, `
 ### Platform Conditional Code
 
 `url_helper.dart` uses a conditional export to swap implementations:
-- `url_helper_stub.dart`  no-op stubs for mobile/desktop
-- `url_helper_web.dart`  uses `dart:html` to read `window.location`
+
+- `url_helper_stub.dart` no-op stubs for mobile/desktop
+- `url_helper_web.dart` uses `dart:html` to read `window.location`
 
 Use the same pattern for any `dart:html`-dependent code.
 
 ## Implementation Rules
 
 - **Design fidelity**: Always read the Stitch design images before writing any UI code. Match colors, spacing, font sizes, and layout exactly.
-- **Colors**: New colors go in `core/constants/app_colors.dart` as static constants  never hardcode hex values inline.
+- **Colors**: New colors go in `core/constants/app_colors.dart` as static constants never hardcode hex values inline.
 - **State management**: Provider only. Do not introduce Riverpod, Bloc, or GetX.
 - **Widget placement**: Every new widget for a screen belongs in that feature's own `widgets/` subfolder.
 - **Post-implementation**: Run `flutter analyze` after every screen implementation and fix all warnings before considering the task done.

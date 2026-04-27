@@ -4,9 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static String get baseUrl => kIsWeb
-      ? 'https://LockedInbackend.onrender.com'
-      : 'https://LockedInbackend.onrender.com';
+  static String get baseUrl => kIsWeb ? 'https://LockedInbackend.onrender.com' : 'https://LockedInbackend.onrender.com';
 
   // ── Token storage ──────────────────────────────────────────────────────────
   static Future<void> saveToken(String token) async {
@@ -30,13 +28,9 @@ class AuthService {
     print('[Consent] Calling PUT $url');
     print('[Consent] Token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) : token}...');
     try {
-      final resp = await http.put(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 8));
+      final resp = await http
+          .put(url, headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 8));
       print('[Consent] Response status: ${resp.statusCode}');
       print('[Consent] Response body: ${resp.body}');
     } catch (e) {
@@ -49,23 +43,19 @@ class AuthService {
     try {
       final token = await getToken();
       if (token != null) {
-        await http.post(
-          Uri.parse('$baseUrl/user/logout'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ).timeout(const Duration(seconds: 5));
+        await http
+            .post(
+              Uri.parse('$baseUrl/user/logout'),
+              headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+            )
+            .timeout(const Duration(seconds: 5));
       }
     } catch (_) {}
     await clearToken(); // always clear locally regardless of server response
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  static Future<Map<String, dynamic>> login(
-    String username,
-    String password,
-  ) async {
+  static Future<Map<String, dynamic>> login(String username, String password) async {
     await clearToken(); // clear any old token BEFORE logging in
     final url = Uri.parse('$baseUrl/user/login');
     try {
@@ -87,18 +77,12 @@ class AuthService {
   }
 
   // ── Sign Up ────────────────────────────────────────────────────────────────
-  static Future<Map<String, dynamic>> signup(
-    Map<String, dynamic> signupData,
-  ) async {
+  static Future<Map<String, dynamic>> signup(Map<String, dynamic> signupData) async {
     await clearToken(); // clear any old token BEFORE signing up
     final url = Uri.parse('$baseUrl/user/register');
     try {
       final resp = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(signupData),
-          )
+          .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(signupData))
           .timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200 || resp.statusCode == 201) {
@@ -135,9 +119,7 @@ class AuthService {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map) {
-        raw = decoded['message']?.toString() ??
-            decoded['error']?.toString() ??
-            body;
+        raw = decoded['message']?.toString() ?? decoded['error']?.toString() ?? body;
       }
     } catch (_) {}
 

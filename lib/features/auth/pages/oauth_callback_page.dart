@@ -52,7 +52,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
   void _handleCallback() async {
     try {
-      final hashPart   = getLocationHash();
+      final hashPart = getLocationHash();
       final searchPart = getLocationSearch();
       print('OAuth callback  hash: $hashPart  search: $searchPart');
 
@@ -101,13 +101,17 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
       final isNewUser = focusScore == null || focusScore == 0.0;
       final hasConsented = profile?['consentUsage'] == true;
-      print('[OAuth] isNewUser: $isNewUser, hasConsented: $hasConsented → routing to ${isNewUser ? "DiagnosticPage" : "HomeScreen"}');
+      print(
+        '[OAuth] isNewUser: $isNewUser, hasConsented: $hasConsented → routing to ${isNewUser ? "DiagnosticPage" : "HomeScreen"}',
+      );
 
       if (!mounted) return;
 
       // Notify the provider so the rest of the app sees the user as logged in.
       await Provider.of<UserProvider>(context, listen: false).reloadAfterLogin();
-      print('[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}');
+      print(
+        '[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}',
+      );
       await Provider.of<DailyScoreProvider>(context, listen: false).init();
       await Provider.of<HabitProvider>(context, listen: false).load();
 
@@ -132,13 +136,9 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
             print('[OAuth] Consent activated');
           }
         }
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)));
       } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
     } catch (e, st) {
       print('[OAuth] ERROR: $e');
@@ -163,9 +163,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primaryA, AppColors.primaryB],
-                  ),
+                  gradient: const LinearGradient(colors: [AppColors.primaryA, AppColors.primaryB]),
                 ),
                 child: const Icon(Icons.privacy_tip_outlined, color: Colors.white, size: 32),
               ),
@@ -208,8 +206,6 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

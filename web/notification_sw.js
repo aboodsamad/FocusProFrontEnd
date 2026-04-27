@@ -2,40 +2,44 @@
 // Registered at scope '/'  handles all VAPID push events for the app.
 // Works for both in-app and background (tab closed) notifications.
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) =>
+  event.waitUntil(self.clients.claim()),
+);
 
 // Receive push from backend (VAPID) and show browser notification
-self.addEventListener('push', function (event) {
+self.addEventListener("push", function (event) {
   if (!event.data) return;
 
   let data;
   try {
     data = event.data.json();
   } catch (_) {
-    data = { title: 'LockedIn', body: event.data.text() };
+    data = { title: "LockedIn", body: event.data.text() };
   }
 
-  const title = data.title || 'LockedIn';
+  const title = data.title || "LockedIn";
   const options = {
-    body: data.body || '',
-    icon: '/icons/Icon-192.png',
+    body: data.body || "",
+    icon: "/icons/Icon-192.png",
     requireInteraction: false,
-    data: { url: '/' },
+    data: { url: "/" },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Open the app when user taps notification
-self.addEventListener('notificationclick', function (event) {
+self.addEventListener("notificationclick", function (event) {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if ('focus' in client) return client.focus();
-      }
-      return clients.openWindow('/');
-    })
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if ("focus" in client) return client.focus();
+        }
+        return clients.openWindow("/");
+      }),
   );
 });

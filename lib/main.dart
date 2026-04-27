@@ -38,11 +38,13 @@ void main() async {
     if (hasUsage) ScreenEventSyncer.instance.start();
   }
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ),
+  );
 
   runApp(
     MultiProvider(
@@ -73,11 +75,7 @@ class _MyAppState extends State<MyApp> {
     _triggerChannel.setMethodCallHandler((call) async {
       if (call.method == 'onLockInTrigger') {
         final scheduleId = call.arguments as int?;
-        _navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (_) => LockInPage(triggerScheduleId: scheduleId),
-          ),
-        );
+        _navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => LockInPage(triggerScheduleId: scheduleId)));
       }
     });
   }
@@ -98,24 +96,18 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       initialRoute: initialRoute,
       onGenerateRoute: (settings) {
-        final hash   = getLocationHash();
+        final hash = getLocationHash();
         final search = getLocationSearch();
         // Detect OAuth redirect regardless of where the token/callback lands:
         // – hash contains "/oauth-callback"  (#/oauth-callback?token=…)
         // – hash contains "token=" directly  (#token=…)
         // – query string contains "token="   (?token=…)
-        if (hash.contains('/oauth-callback') ||
-            hash.contains('token=') ||
-            search.contains('token=')) {
-          return MaterialPageRoute(
-            builder: (_) => OAuthCallbackPage(),
-          );
+        if (hash.contains('/oauth-callback') || hash.contains('token=') || search.contains('token=')) {
+          return MaterialPageRoute(builder: (_) => OAuthCallbackPage());
         }
         // Helper: redirect to login if not authenticated
         MaterialPageRoute authGate(Widget Function() page) {
-          return MaterialPageRoute(
-            builder: (_) => userProvider.isLoggedIn ? page() : LoginPage(),
-          );
+          return MaterialPageRoute(builder: (_) => userProvider.isLoggedIn ? page() : LoginPage());
         }
 
         switch (settings.name) {
