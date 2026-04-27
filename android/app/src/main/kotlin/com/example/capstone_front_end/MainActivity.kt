@@ -105,7 +105,36 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    // ── Usage stats (existing — daily totals) ─────────────────────────────────
+    // ── App name cache (fixes Android 11+ package visibility) ────────────────
+    //
+    // getApplicationInfo(pkg, 0) throws NameNotFoundException for apps not declared
+    // in <queries>, so we pre-build a full map from getInstalledApplications() once.
+    // QUERY_ALL_PACKAGES permission (added to manifest) makes this return every app.
+
+    private val appNameCache: Map<String, String> by lazy { buildAppNameCache() }
+
+    @Suppress("DEPRECATION")
+    private fun buildAppNameCache(): Map<String, String> {
+        return try {
+            packageManager
+                .getInstalledApplications(PackageManager.GET_META_DATA)
+                .associate { info ->
+                    info.packageName to packageManager.getApplicationLabel(info).toString()
+                }
+        } catch (_: Exception) { emptyMap() }
+    }
+
+    /** Returns the human-readable app name for [pkg], falling back to the package name. */
+    private fun resolveAppName(pkg: String): String {
+        appNameCache[pkg]?.let { return it }
+        return try {
+            @Suppress("DEPRECATION")
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (_: PackageManager.NameNotFoundException) { pkg }
+    }
+
+    // ── Usage stats ───────────────────────────────────────────────────────────
 
     private fun hasUsageStatsPermission(): Boolean {
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -122,27 +151,63 @@ class MainActivity : FlutterActivity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
+    /**
+     * Returns today's app usage totals — STRICTLY today (midnight 00:00 to now).
+     *
+     * Uses queryEvents() with MOVE_TO_FOREGROUND / MOVE_TO_BACKGROUND instead of
+     * queryUsageStats(INTERVAL_DAILY) because Android's daily buckets can span
+     * midnight and accumulate yesterday's usage into today's numbers.
+     * This implementation resets exactly at midnight every day.
+     */
     private fun getAppUsageToday(): String {
         val usageManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val cal = Calendar.getInstance().apply {
+
+        // Today's midnight in the device's local timezone
+        val midnight = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            set(Calendar.SECOND, 0);      set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val now = System.currentTimeMillis()
+
+        val usageEvents = usageManager.queryEvents(midnight, now)
+        val event = UsageEvents.Event()
+
+        // pkg → timestamp when the app last moved to foreground
+        val foregroundStartMs = HashMap<String, Long>()
+        // pkg → total foreground milliseconds today
+        val totalTimeMs = HashMap<String, Long>()
+
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+            when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    foregroundStartMs[pkg] = event.timeStamp
+                }
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    // If we have no FOREGROUND event for this app (it was open since before
+                    // midnight), count from midnight so we don't under-report.
+                    val start = foregroundStartMs.remove(pkg) ?: midnight
+                    totalTimeMs[pkg] = (totalTimeMs[pkg] ?: 0L) + (event.timeStamp - start)
+                }
+            }
         }
-        val stats = usageManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY, cal.timeInMillis, System.currentTimeMillis())
+
+        // Apps still in the foreground right now: count up to "now"
+        for ((pkg, start) in foregroundStartMs) {
+            totalTimeMs[pkg] = (totalTimeMs[pkg] ?: 0L) + (now - start)
+        }
+
         val json = JSONArray()
-        stats.filter { it.totalTimeInForeground > 0 }
-            .sortedByDescending { it.totalTimeInForeground }
+        totalTimeMs.entries
+            .filter { it.value > 0 }
+            .sortedByDescending { it.value }
             .take(20)
-            .forEach { stat ->
-                val appName = try {
-                    val info = packageManager.getApplicationInfo(stat.packageName, 0)
-                    packageManager.getApplicationLabel(info).toString()
-                } catch (_: PackageManager.NameNotFoundException) { stat.packageName }
+            .forEach { (pkg, timeMs) ->
                 json.put(JSONObject().apply {
-                    put("packageName", stat.packageName)
-                    put("appName", appName)
-                    put("totalMinutesToday", stat.totalTimeInForeground / 60000)
+                    put("packageName", pkg)
+                    put("appName", resolveAppName(pkg))
+                    put("totalMinutesToday", timeMs / 60000)
                 })
             }
         return json.toString()
@@ -174,14 +239,9 @@ class MainActivity : FlutterActivity() {
         }
         if (lastPkg.isEmpty()) return null
 
-        val appName = try {
-            val info = packageManager.getApplicationInfo(lastPkg, 0)
-            packageManager.getApplicationLabel(info).toString()
-        } catch (_: PackageManager.NameNotFoundException) { lastPkg }
-
         return JSONObject().apply {
             put("packageName", lastPkg)
-            put("appName", appName)
+            put("appName", resolveAppName(lastPkg))
             put("activityName", lastCls)
         }.toString()
     }
@@ -208,17 +268,12 @@ class MainActivity : FlutterActivity() {
             val pkg = event.packageName ?: continue
             if (pkg == "com.android.systemui") continue
 
-            val appName = try {
-                val info = packageManager.getApplicationInfo(pkg, 0)
-                packageManager.getApplicationLabel(info).toString()
-            } catch (_: PackageManager.NameNotFoundException) { pkg }
-
             val timestamp = Instant.ofEpochMilli(event.timeStamp)
                 .atZone(zone).toLocalDateTime().format(formatter)
 
             json.put(JSONObject().apply {
                 put("packageName", pkg)
-                put("appName", appName)
+                put("appName", resolveAppName(pkg))
                 put("activityName", event.className ?: "")
                 put("startedAt", timestamp)
             })
