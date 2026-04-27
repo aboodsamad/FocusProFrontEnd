@@ -3,6 +3,7 @@ import 'dart:io' show Directory, File;
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:capstone_front_end/core/services/auth_service.dart';
+import 'package:capstone_front_end/core/utils/url_helper.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +42,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   // ── TTS ───────────────────────────────────────────────────────────────────
   AudioPlayer? _audioPlayer;
   File? _tempAudioFile;          // temp file used on native; deleted on dispose/replace
+  String? _webBlobUrl;           // blob:// URL created for web playback; revoked on dispose/replace
   StreamSubscription? _durationSub;
   StreamSubscription? _positionSub;
   StreamSubscription? _playingSub;
@@ -109,6 +111,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     // Clean up any temp file written for native playback
     try { _tempAudioFile?.deleteSync(); } catch (_) {}
     _tempAudioFile = null;
+    // Release blob URL allocated for web playback
+    if (_webBlobUrl != null) {
+      revokeAudioBlobUrl(_webBlobUrl!);
+      _webBlobUrl = null;
+    }
   }
 
   Future<void> _onAudioEnded() async {
@@ -210,10 +217,13 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
     try {
       if (kIsWeb) {
-        // Flutter Web: use base64 data URI  the browser handles it natively
-        // and correctly reports duration, unlike StreamAudioSource on web.
-        final base64Audio = base64Encode(bytes);
-        await player.setUrl('data:audio/mpeg;base64,$base64Audio');
+        // Flutter Web: create a blob:// URL from raw bytes so the browser
+        // treats the audio as a same-origin local resource.  This is more
+        // reliable than a data: URI (no 100 MB size limit, better autoplay
+        // compatibility, and correct duration reporting).
+        final blobUrl = createAudioBlobUrl(bytes);
+        _webBlobUrl = blobUrl;
+        await player.setUrl(blobUrl);
       } else {
         // Android / iOS: write bytes to a real temp file so that ExoPlayer /
         // AVPlayer can seek the file and report the correct duration.
@@ -230,7 +240,15 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
       await player.play();
     } catch (e) {
       debugPrint('just_audio playback error: $e');
-      if (mounted) setState(() { _ttsPlaying = false; _ttsLoading = false; });
+      if (mounted) {
+        setState(() { _ttsPlaying = false; _ttsLoading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Playback failed. Tap the page first, then press play.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
       for (final c in _barCtrls) c.stop();
     }
   }
@@ -307,6 +325,56 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     }
   }
 
+  /// Fetches TTS bytes from the backend, auto-retrying once if the server
+  /// returns 503 (render.com free tier wakes up in ~20 s).
+  /// Returns null and shows a SnackBar on unrecoverable failure.
+  Future<Uint8List?> _fetchTtsBytes(String text) async {
+    const retryDelay = Duration(seconds: 20);
+    for (int attempt = 0; attempt < 2; attempt++) {
+      final token = await AuthService.getToken() ?? '';
+      final resp = await http.post(
+        Uri.parse('${AuthService.baseUrl}/tts'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'text': text}),
+      ).timeout(const Duration(seconds: 120));
+
+      if (!mounted) return null;
+
+      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+        return resp.bodyBytes;
+      }
+
+      if (resp.statusCode == 503 && attempt == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server is warming up — retrying in 20 s…'),
+            duration: Duration(seconds: 20),
+          ),
+        );
+        await Future.delayed(retryDelay);
+        if (!mounted) return null;
+        continue;
+      }
+
+      // Non-retryable error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            resp.statusCode == 503
+                ? 'Server unavailable. Please try again in a minute.'
+                : 'Audio unavailable (${resp.statusCode}). Please try again.',
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return null;
+    }
+    return null;
+  }
+
   Future<void> _ttsPlay() async {
     if (_currentText.isEmpty || !mounted) return;
     _disposeAudioPlayer();
@@ -346,41 +414,9 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         // Prefetch failed  fall through to direct fetch below
       }
 
-      // ── 3. No cache, no in-flight prefetch → fetch directly ───────────────
-      final token = await AuthService.getToken() ?? '';
-      final resp = await http.post(
-        Uri.parse('${AuthService.baseUrl}/tts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'text': _currentText}),
-      ).timeout(const Duration(seconds: 120));
-
-      if (!mounted) return;
-
-      if (resp.statusCode == 503) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Server is warming up  please try again in a few seconds.'),
-            duration: Duration(seconds: 4),
-          ),
-        );
-        return;
-      }
-
-      if (resp.statusCode != 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Audio unavailable (${resp.statusCode}). Please try again.'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-
-      final bytes = resp.bodyBytes;
-      if (bytes.isEmpty) return;
+      // ── 3. No cache, no in-flight prefetch → fetch directly (with retry) ──
+      final bytes = await _fetchTtsBytes(_currentText);
+      if (!mounted || bytes == null) return;
 
       _audioCache[_currentIndex] = bytes;
       await _playBytes(bytes);
