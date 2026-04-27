@@ -41,6 +41,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
 
   // ── TTS ───────────────────────────────────────────────────────────────────
   AudioPlayer? _audioPlayer;
+  WebAudioProxy? _webAudio;      // web-native HTMLAudioElement wrapper (replaces just_audio on web)
   File? _tempAudioFile;          // temp file used on native; deleted on dispose/replace
   String? _webBlobUrl;           // blob:// URL created for web playback; revoked on dispose/replace
   StreamSubscription? _durationSub;
@@ -100,6 +101,10 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   void _disposeAudioPlayer() {
+    // Web: stop native HTMLAudioElement proxy
+    _webAudio?.dispose();
+    _webAudio = null;
+    // Mobile: stop just_audio
     _durationSub?.cancel();
     _positionSub?.cancel();
     _playingSub?.cancel();
@@ -175,10 +180,44 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     super.dispose();
   }
 
-  /// Play raw MP3 bytes using just_audio (works on Android/iOS/desktop).
+  /// Play raw MP3 bytes.
+  /// On web, uses the browser's native HTMLAudioElement via WebAudioProxy to
+  /// avoid MissingPluginException from just_audio's native method channel.
+  /// On mobile/desktop, uses just_audio with a temp file for correct seeking.
   Future<void> _playBytes(Uint8List bytes) async {
     _disposeAudioPlayer();
 
+    if (kIsWeb) {
+      final blobUrl = createAudioBlobUrl(bytes);
+      _webBlobUrl = blobUrl;
+
+      final proxy = createWebAudioProxy();
+      _webAudio = proxy;
+
+      proxy.onDuration = (dur) {
+        if (!mounted) return;
+        setState(() => _audioDuration = dur);
+      };
+      proxy.onPosition = (pos, progress) {
+        if (!mounted) return;
+        setState(() { _audioPosition = pos; _ttsProgress = progress; });
+      };
+      proxy.onPlaying = (playing) {
+        if (!mounted) return;
+        setState(() => _ttsPlaying = playing);
+        if (playing) {
+          for (final c in _barCtrls) c.repeat(reverse: true);
+        } else if (!_speedChanging) {
+          for (final c in _barCtrls) c.stop();
+        }
+      };
+      proxy.onEnded = () => _onAudioEnded();
+
+      proxy.play(blobUrl, _ttsSpeed);
+      return;
+    }
+
+    // ── Mobile / desktop: use just_audio ─────────────────────────────────────
     final player = AudioPlayer();
     _audioPlayer = player;
 
@@ -216,26 +255,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     });
 
     try {
-      if (kIsWeb) {
-        // Flutter Web: create a blob:// URL from raw bytes so the browser
-        // treats the audio as a same-origin local resource.  This is more
-        // reliable than a data: URI (no 100 MB size limit, better autoplay
-        // compatibility, and correct duration reporting).
-        final blobUrl = createAudioBlobUrl(bytes);
-        _webBlobUrl = blobUrl;
-        await player.setUrl(blobUrl);
-      } else {
-        // Android / iOS: write bytes to a real temp file so that ExoPlayer /
-        // AVPlayer can seek the file and report the correct duration.
-        // StreamAudioSource is served over a local HTTP stream which often
-        // causes ExoPlayer to report duration = null (shows as 0:00).
-        final tempDir  = Directory.systemTemp;
-        final tempFile = File(
-            '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3');
-        await tempFile.writeAsBytes(bytes, flush: true);
-        _tempAudioFile = tempFile;
-        await player.setAudioSource(AudioSource.uri(Uri.file(tempFile.path)));
-      }
+      // Write bytes to a real temp file so ExoPlayer / AVPlayer can seek and
+      // report the correct duration (StreamAudioSource often shows 0:00).
+      final tempDir  = Directory.systemTemp;
+      final tempFile = File(
+          '${tempDir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3');
+      await tempFile.writeAsBytes(bytes, flush: true);
+      _tempAudioFile = tempFile;
+      await player.setAudioSource(AudioSource.uri(Uri.file(tempFile.path)));
       await player.setSpeed(_ttsSpeed);
       await player.play();
     } catch (e) {
@@ -443,6 +470,12 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Future<void> _ttsPauseResume() async {
+    if (kIsWeb) {
+      final proxy = _webAudio;
+      if (proxy == null) { await _ttsPlay(); return; }
+      if (proxy.isPlaying) { proxy.pause(); } else { proxy.resume(); }
+      return;
+    }
     final player = _audioPlayer;
     if (player == null) {
       await _ttsPlay();
@@ -456,23 +489,23 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
   }
 
   Future<void> _seekRelative(int seconds) async {
-    final player = _audioPlayer;
-    if (player == null || _audioDuration == Duration.zero) return;
+    if (_audioDuration == Duration.zero) return;
     final target = _audioPosition + Duration(seconds: seconds);
     final clamped = target < Duration.zero
         ? Duration.zero
         : target > _audioDuration
             ? _audioDuration
             : target;
-    await player.seek(clamped);
+    if (kIsWeb) { _webAudio?.seek(clamped); return; }
+    await _audioPlayer?.seek(clamped);
   }
 
   Future<void> _seekTo(double fraction) async {
-    final player = _audioPlayer;
-    if (player == null || _audioDuration == Duration.zero) return;
+    if (_audioDuration == Duration.zero) return;
     final pos = Duration(
         milliseconds: (fraction * _audioDuration.inMilliseconds).round());
-    await player.seek(pos);
+    if (kIsWeb) { _webAudio?.seek(pos); return; }
+    await _audioPlayer?.seek(pos);
   }
 
   String _formatDuration(Duration d) {
@@ -490,7 +523,11 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     _ttsSpeed = speed;
     _speedChanging = true;
     if (mounted) setState(() {});
-    await _audioPlayer?.setSpeed(speed);
+    if (kIsWeb) {
+      _webAudio?.setSpeed(speed);
+    } else {
+      await _audioPlayer?.setSpeed(speed);
+    }
     _speedChanging = false;
   }
 
@@ -1857,26 +1894,6 @@ class _AudioCoverFallback extends StatelessWidget {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// _BytesAudioSource  serves raw Uint8List bytes to just_audio
-// ═════════════════════════════════════════════════════════════════════════════
-class _BytesAudioSource extends StreamAudioSource {
-  final Uint8List _bytes;
-  _BytesAudioSource(this._bytes) : super(tag: 'BytesAudioSource');
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    start ??= 0;
-    end ??= _bytes.length;
-    return StreamAudioResponse(
-      sourceLength: _bytes.length,
-      contentLength: end - start,
-      offset: start,
-      stream: Stream.value(_bytes.sublist(start, end)),
-      contentType: 'audio/mpeg',
-    );
-  }
-}
 
 class _BookCoverFallback extends StatelessWidget {
   final Color color;
