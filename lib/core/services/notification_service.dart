@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import 'browser_notification.dart';
 
-/// Handles smart notifications for FocusPro.
+/// Handles smart notifications for LockedIn.
 ///
 /// Priority order:
 /// 1. VAPID Web Push  works even when the browser tab is closed (if PWA installed)
@@ -114,7 +114,7 @@ class NotificationService {
       final notifications = jsonDecode(resp.body) as List<dynamic>;
       for (final n in notifications) {
         final id    = n['id'] as int?;
-        final title = n['title'] as String? ?? 'FocusPro';
+        final title = n['title'] as String? ?? 'LockedIn';
         final msg   = n['message'] as String? ?? '';
 
         BrowserNotification.show(title, msg);

@@ -11,11 +11,11 @@ import '../models/game_registry.dart';
 class _ScienceInfo {
   final String whatItIs;
   final String targets;
-  final String whyInFocusPro;
+  final String whyInLockedIn;
   const _ScienceInfo({
     required this.whatItIs,
     required this.targets,
-    required this.whyInFocusPro,
+    required this.whyInLockedIn,
   });
 }
 
@@ -27,7 +27,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Your hippocampus holds the image while your prefrontal cortex '
         'keeps it alive long enough to act on it.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is basically the N-back task in disguise  the single most '
         'studied working memory exercise in neuroscience, replicated across '
         '24 brain-imaging studies.',
@@ -39,7 +39,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'The front of your brain works overtime here  planning ahead, '
         'holding constraints in mind, and catching your own mistakes.',
-    whyInFocusPro:
+    whyInLockedIn:
         'Brain scans taken while people solve Sudoku show clear spikes in '
         'prefrontal activity  the same region that suffers most when '
         'you\'re stressed or sleep-deprived.',
@@ -51,7 +51,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'The part of your brain that detects conflict and the one that '
         'processes where things are both have to fire together, fast.',
-    whyInFocusPro:
+    whyInLockedIn:
         'The ACTIVE trial  the longest brain-training study ever run  '
         'found that this exact type of speed training kept paying off '
         'a full decade later.',
@@ -63,7 +63,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'You\'re forcing your brain to suppress the obvious answer and pick '
         'the correct one instead  that\'s pure inhibitory control.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is the Stroop task, and it\'s been used in research for '
         'nearly a century. It\'s the go-to test for attention and impulse '
         'control, especially in ADHD studies.',
@@ -75,7 +75,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Both sides of your prefrontal cortex light up  one for the '
         'math, one for keeping track of what\'s already gone.',
-    whyInFocusPro:
+    whyInLockedIn:
         'After just 4 weeks of this kind of training, brain scans showed '
         'measurable growth in working memory and processing speed '
         '(Nouchi et al., PLOS ONE, 2013).',
@@ -87,7 +87,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'Spatial memory lives in the hippocampus; keeping the sequence '
         'straight pulls in your right frontal and parietal regions too.',
-    whyInFocusPro:
+    whyInLockedIn:
         'This is a direct version of the Corsi Block test  a staple of '
         'clinical neuropsychology since the 1970s, still used today to '
         'assess memory and brain injury.',
@@ -99,7 +99,7 @@ const _scienceMap = <String, _ScienceInfo>{
     targets:
         'You\'re constantly switching between tasks and tracking multiple '
         'things at once, which hammers your prefrontal and parietal cortex.',
-    whyInFocusPro:
+    whyInLockedIn:
         'Managing several moving objects simultaneously is one of the '
         'clearest ways to stress-test executive attention  the skill '
         'that tends to slip first under fatigue or distraction.',
@@ -203,8 +203,8 @@ void _showInfoSheet(BuildContext context, GameItem game, Color color) {
           const SizedBox(height: 16),
           _InfoSection(
             emoji: '🔬',
-            label: "Why it's in FocusPro",
-            body: info.whyInFocusPro,
+            label: "Why it's in LockedIn",
+            body: info.whyInLockedIn,
           ),
 
           const SizedBox(height: 28),

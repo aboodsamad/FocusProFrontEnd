@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io' show Directory, File;
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'package:capstone_front_end/core/services/auth_service.dart';
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/services/auth_service.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -672,7 +672,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text('FocusPro', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Manrope')),
+            child: Text('LockedIn', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Manrope')),
           ),
           if (_snippets.isNotEmpty) ...[
             GestureDetector(

@@ -44,7 +44,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
   // These are part of the normal OAuth redirect chain and should be followed.
   static const _passthroughDomains = [
     'accounts.google.com',
-    'focusprobackend.onrender.com',
+    'LockedInbackend.onrender.com',
     'oauth2.googleapis.com',
     'googleapis.com',
   ];
@@ -235,7 +235,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'FocusPro collects focus-related data (session activity, '
+                'LockedIn collects focus-related data (session activity, '
                 'diagnostic results, and usage patterns) to personalise your '
                 'experience and improve the app.\n\nYour data is never sold '
                 'and is handled in accordance with our privacy policy.',

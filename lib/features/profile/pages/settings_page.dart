@@ -364,7 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _toggleRow(
             icon: Icons.bar_chart_rounded,
             label: 'Usage analytics',
-            subtitle: 'Anonymous data to improve FocusPro',
+            subtitle: 'Anonymous data to improve LockedIn',
             value: _analytics,
             onChanged: (v) => setState(() => _analytics = v),
           ),

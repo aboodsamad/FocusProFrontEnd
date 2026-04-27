@@ -21,7 +21,7 @@
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
-        android:label="FocusPro"
+        android:label="LockedIn"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -56,7 +56,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="com.example.capstone_front_end.LOCK_IN_ALARM"/>
+                <action android:name="com.example.LockedIn.LOCK_IN_ALARM"/>
             </intent-filter>
         </receiver>
 

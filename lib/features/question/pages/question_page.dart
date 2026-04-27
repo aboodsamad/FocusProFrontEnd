@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../models/question.dart';
@@ -175,7 +175,7 @@ class _QuestionPageState extends State<QuestionPage>
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
             child: Row(children: [
-              Text('FocusPro',
+              Text('LockedIn',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w900,

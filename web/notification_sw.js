@@ -1,4 +1,4 @@
-// FocusPro push notification service worker.
+// LockedIn push notification service worker.
 // Registered at scope '/'  handles all VAPID push events for the app.
 // Works for both in-app and background (tab closed) notifications.
 
@@ -13,10 +13,10 @@ self.addEventListener('push', function (event) {
   try {
     data = event.data.json();
   } catch (_) {
-    data = { title: 'FocusPro', body: event.data.text() };
+    data = { title: 'LockedIn', body: event.data.text() };
   }
 
-  const title = data.title || 'FocusPro';
+  const title = data.title || 'LockedIn';
   const options = {
     body: data.body || '',
     icon: '/icons/Icon-192.png',

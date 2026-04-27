@@ -323,7 +323,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'FocusPro',
+                          'LockedIn',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,

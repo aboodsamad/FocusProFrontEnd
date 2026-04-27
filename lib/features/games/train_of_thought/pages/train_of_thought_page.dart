@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';

@@ -17,7 +17,7 @@ import '../../services/game_progress_service.dart';
 // GameRegistry
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Single source of truth for every game in FocusPro.
+/// Single source of truth for every game in LockedIn.
 /// To add a new game:
 ///   1. Append a [GameItem] to [all].
 ///   2. Add a matching case in [GameRegistry.pageFor].

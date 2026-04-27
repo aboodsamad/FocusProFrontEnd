@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import 'core/services/notification_service.dart';
 import 'features/home/providers/user_provider.dart';
 import 'features/habits/providers/habit_provider.dart';
@@ -64,7 +64,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  static const _triggerChannel = MethodChannel('focuspro/lockin_trigger');
+  static const _triggerChannel = MethodChannel('LockedIn/lockin_trigger');
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override

@@ -10,7 +10,7 @@ class UpdateService {
   static const String _currentVersion = '1.5';
 
   static const String _owner = 'aboodsamad';
-  static const String _repo  = 'FocusProFrontEnd';
+  static const String _repo  = 'LockedInFrontEnd';
 
   static const String _apiUrl =
       'https://api.github.com/repos/$_owner/$_repo/releases/latest';
@@ -108,7 +108,7 @@ class UpdateService {
           ],
         ),
         content: Text(
-          'FocusPro v$version is ready to install with new features and fixes.\n\nTap Update to download the new APK.',
+          'LockedIn v$version is ready to install with new features and fixes.\n\nTap Update to download the new APK.',
           style: const TextStyle(
               color: Color(0xFF9CA3AF), fontSize: 13, height: 1.5),
         ),

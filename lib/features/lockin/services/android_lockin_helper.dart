@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/app_usage_stat_model.dart';
 
 class AndroidLockInHelper {
-  static const _channel = MethodChannel('focuspro/lockin');
+  static const _channel = MethodChannel('LockedIn/lockin');
 
   // ── Usage access permission ───────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────

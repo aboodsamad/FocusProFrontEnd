@@ -623,7 +623,7 @@ class _ResultDialog extends StatelessWidget {
   String get _sub {
     if (score >= 80) return 'Your habits show strong attention capacity.';
     if (score >= 65) return 'You have a solid base  small changes will go far.';
-    if (score >= 50) return 'FocusPro will help you build better habits.';
+    if (score >= 50) return 'LockedIn will help you build better habits.';
     return "Don't worry  that's exactly why you're here.";
   }
   Color get _color {

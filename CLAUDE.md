@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**FocusPro**  a Flutter application for cognitive focus training. Features include cognitive games, daily habits, focus rooms (real-time multiplayer), book reading with AI-generated retention tests, a diagnostic assessment, and a focus score dashboard.
+**LockedIn**  a Flutter application for cognitive focus training. Features include cognitive games, daily habits, focus rooms (real-time multiplayer), book reading with AI-generated retention tests, a diagnostic assessment, and a focus score dashboard.
 
 ## Commands
 
@@ -99,7 +99,7 @@ Services are stateless static classes; only providers hold mutable state.
 
 ### Backend
 
-- Base URL: `https://focusprobackend.onrender.com` (defined in `core/constants/app_config.dart` and mirrored in `AuthService.baseUrl`).
+- Base URL: `https://LockedInbackend.onrender.com` (defined in `core/constants/app_config.dart` and mirrored in `AuthService.baseUrl`).
 - REST for all data operations; WebSocket (STOMP over `wss://`) for Focus Rooms real-time events via `stomp_dart_client`.
 - WebSocket URL is derived by replacing `https://` with `wss://` and appending `/ws`.
 

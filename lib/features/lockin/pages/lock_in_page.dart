@@ -354,7 +354,7 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'FocusPro will pin to your screen while you set your goals and focus',
+                    'LockedIn will pin to your screen while you set your goals and focus',
                     style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
                     textAlign: TextAlign.center,
                   ),

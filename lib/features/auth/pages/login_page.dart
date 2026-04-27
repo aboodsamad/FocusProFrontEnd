@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -201,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   // ── App header ───────────────────────────────────────────
                   const Text(
-                    'FocusPro',
+                    'LockedIn',
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,

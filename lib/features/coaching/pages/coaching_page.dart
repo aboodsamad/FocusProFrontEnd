@@ -417,7 +417,7 @@ class _CoachingPageState extends State<CoachingPage> {
                             final msg = titleController.text.trim();
                             final ok = await CoachingService.addReminder(
                               token,
-                              'FocusPro Reminder',
+                              'LockedIn Reminder',
                               msg.isEmpty ? 'Time to check your goals!' : msg,
                               selectedTime,
                             );

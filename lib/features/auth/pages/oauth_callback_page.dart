@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:capstone_front_end/core/utils/url_helper.dart';
+import 'package:LockedIn/core/utils/url_helper.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../features/home/services/user_service.dart';
@@ -176,7 +176,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'FocusPro collects focus-related data (session activity, diagnostic results, and usage patterns) to personalise your experience and improve the app.\n\nYour data is never sold and is handled in accordance with our privacy policy.',
+                'LockedIn collects focus-related data (session activity, diagnostic results, and usage patterns) to personalise your experience and improve the app.\n\nYour data is never sold and is handled in accordance with our privacy policy.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),

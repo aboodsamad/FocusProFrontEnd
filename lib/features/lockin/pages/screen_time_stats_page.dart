@@ -150,7 +150,7 @@ class _ScreenTimeStatsPageState extends State<ScreenTimeStatsPage> {
         packageName.contains('photos')) {
       return Icons.photo_camera_rounded;
     }
-    if (packageName.contains('focuspro') || packageName.contains('capstone')) {
+    if (packageName.contains('LockedIn') || packageName.contains('capstone')) {
       return Icons.psychology_rounded;
     }
     return Icons.apps_rounded;

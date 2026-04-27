@@ -199,7 +199,7 @@ class _ToastBody extends StatelessWidget {
                   color: Colors.white.withOpacity(0.65), size: 16),
               const SizedBox(height: 2),
               Text(
-                'FocusPro',
+                'LockedIn',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.5),
                   fontSize: 9,

@@ -1,5 +1,5 @@
-import 'package:capstone_front_end/core/services/auth_service.dart';
-import 'package:capstone_front_end/core/constants/app_colors.dart';
+import 'package:LockedIn/core/services/auth_service.dart';
+import 'package:LockedIn/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../models/ai_question_model.dart';
 import '../services/ai_service.dart';
@@ -97,7 +97,7 @@ class _RetentionTestPageState extends State<RetentionTestPage>
             Icon(Icons.spa_outlined, color: AppColors.primaryContainer, size: 20),
             const SizedBox(width: 8),
             Text(
-              'FocusPro',
+              'LockedIn',
               style: TextStyle(
                 color: AppColors.primaryContainer,
                 fontWeight: FontWeight.w900,
