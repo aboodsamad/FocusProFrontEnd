@@ -365,28 +365,22 @@ class _CreateScheduleSheetState extends State<_CreateScheduleSheet> {
             const SizedBox(height: 20),
 
             // Duration
-            _SheetSelectorRow(
+            _ManualMinutePicker(
               label: 'Focus duration',
-              options: const [30, 60, 90, 120],
-              selected: _duration,
-              labelFn: (v) => v == 60
-                  ? '1hr'
-                  : v == 90
-                      ? '1.5hr'
-                      : v == 120
-                          ? '2hr'
-                          : '${v}m',
-              onSelect: (v) => setState(() => _duration = v),
+              value: _duration,
+              min: 5,
+              max: 480,
+              onChanged: (v) => setState(() => _duration = v),
             ),
             const SizedBox(height: 16),
 
             // Prep timer
-            _SheetSelectorRow(
+            _ManualMinutePicker(
               label: 'Prep timer',
-              options: const [5, 10, 15],
-              selected: _prep,
-              labelFn: (v) => '${v}m',
-              onSelect: (v) => setState(() => _prep = v),
+              value: _prep,
+              min: 1,
+              max: 60,
+              onChanged: (v) => setState(() => _prep = v),
             ),
             const SizedBox(height: 20),
 
@@ -524,6 +518,170 @@ class _TypeChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Manual minute picker (replaces preset chips) ──────────────────────────────
+class _ManualMinutePicker extends StatefulWidget {
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final void Function(int) onChanged;
+
+  const _ManualMinutePicker({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.min = 1,
+    this.max = 480,
+  });
+
+  @override
+  State<_ManualMinutePicker> createState() => _ManualMinutePickerState();
+}
+
+class _ManualMinutePickerState extends State<_ManualMinutePicker> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value.toString());
+  }
+
+  @override
+  void didUpdateWidget(_ManualMinutePicker old) {
+    super.didUpdateWidget(old);
+    // Keep field in sync if parent state changes externally
+    if (old.value != widget.value) {
+      final cur = int.tryParse(_ctrl.text) ?? widget.value;
+      if (cur != widget.value) {
+        _ctrl.text = widget.value.toString();
+        _ctrl.selection =
+            TextSelection.collapsed(offset: _ctrl.text.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _increment() {
+    final cur = int.tryParse(_ctrl.text) ?? widget.value;
+    final next = (cur + 5).clamp(widget.min, widget.max);
+    _ctrl.text = next.toString();
+    _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+    widget.onChanged(next);
+  }
+
+  void _decrement() {
+    final cur = int.tryParse(_ctrl.text) ?? widget.value;
+    final next = (cur - 5).clamp(widget.min, widget.max);
+    _ctrl.text = next.toString();
+    _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+    widget.onChanged(next);
+  }
+
+  void _onSubmit(String raw) {
+    final parsed = int.tryParse(raw.trim());
+    if (parsed == null) {
+      _ctrl.text = widget.value.toString();
+      return;
+    }
+    final clamped = parsed.clamp(widget.min, widget.max);
+    _ctrl.text = clamped.toString();
+    _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+    widget.onChanged(clamped);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label,
+            style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1F2937),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: AppColors.secondary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Decrement
+              GestureDetector(
+                onTap: _decrement,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374151),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.remove,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Text field
+              SizedBox(
+                width: 72,
+                child: TextField(
+                  controller: _ctrl,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    isDense: true,
+                    suffix: Text(' min',
+                        style:
+                            TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                  ),
+                  onSubmitted: _onSubmit,
+                  onEditingComplete: () {
+                    _onSubmit(_ctrl.text);
+                    FocusScope.of(context).unfocus();
+                  },
+                  onTapOutside: (_) {
+                    _onSubmit(_ctrl.text);
+                    FocusScope.of(context).unfocus();
+                  },
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Increment
+              GestureDetector(
+                onTap: _increment,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.add,
+                      color: AppColors.secondary, size: 18),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

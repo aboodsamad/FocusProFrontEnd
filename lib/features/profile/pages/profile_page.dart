@@ -13,6 +13,7 @@ import '../services/activity_log_service.dart';
 import '../widgets/daily_score_section.dart';
 import '../widgets/long_term_score_card.dart';
 import '../../lockin/pages/screen_time_stats_page.dart';
+import 'settings_page.dart';
 
 // ── Category definition ────────────────────────────────────────────────────────
 class _Category {
@@ -119,6 +120,11 @@ class _ProfilePageState extends State<ProfilePage>
   bool _logsLoading = true;
   _TimeFilter _timeFilter = _TimeFilter.all;
 
+  // ── Real usage stats ───────────────────────────────────────────────────────
+  int? _gamesPlayed;
+  int? _focusMinutes;
+  int? _booksExplored;
+
   // ── AI history state ───────────────────────────────────────────────────────
   List<_SnippetHistoryItem> _aiHistory = [];
   bool   _aiHistoryLoading = true;
@@ -143,6 +149,26 @@ class _ProfilePageState extends State<ProfilePage>
 
     _loadLogs();
     _loadAiHistory();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final token = await AuthService.getToken();
+    if (token == null) return;
+    try {
+      final resp = await http.get(
+        Uri.parse('${AuthService.baseUrl}/user/stats'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200 && mounted) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        setState(() {
+          _gamesPlayed   = (data['gamesPlayed']   as num?)?.toInt() ?? 0;
+          _focusMinutes  = (data['focusMinutes']  as num?)?.toInt() ?? 0;
+          _booksExplored = (data['booksExplored'] as num?)?.toInt() ?? 0;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadLogs() async {
@@ -303,7 +329,9 @@ class _ProfilePageState extends State<ProfilePage>
           const Spacer(),
           // Settings button  modern icon
           GestureDetector(
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
             child: Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
@@ -404,6 +432,14 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   // ── Stat Cards ──────────────────────────────────────────────────────────────
+  String _formatFocusTime(int? minutes) {
+    if (minutes == null) return '…';
+    if (minutes < 60) return '${minutes}m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '${h}h' : '${h}h ${m}m';
+  }
+
   Widget _buildStatCards() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
@@ -412,7 +448,7 @@ class _ProfilePageState extends State<ProfilePage>
           _StatCard(
             icon: Icons.timer_outlined,
             iconColor: AppColors.secondary,
-            value: '24h',
+            value: _formatFocusTime(_focusMinutes),
             label: 'FOCUS TIME',
           ),
           const SizedBox(height: 12),
@@ -420,15 +456,15 @@ class _ProfilePageState extends State<ProfilePage>
             icon: Icons.extension_outlined,
             iconColor: AppColors.onTertiaryContainer,
             iconBg: AppColors.tertiaryContainer,
-            value: '15',
+            value: _gamesPlayed?.toString() ?? '…',
             label: 'GAMES PLAYED',
           ),
           const SizedBox(height: 12),
           _StatCard(
             icon: Icons.menu_book_outlined,
             iconColor: AppColors.secondary,
-            value: '8',
-            label: 'BOOKS READ',
+            value: _booksExplored?.toString() ?? '…',
+            label: 'BOOKS EXPLORED',
           ),
         ],
       ),

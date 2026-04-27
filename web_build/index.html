@@ -113,6 +113,19 @@
       };
     </script>
 
+    <!--
+      Audio unlock: browsers block HTMLAudioElement.play() until the user
+      has interacted with the page.  We prime the audio engine on the very
+      first pointer-down (which covers both mouse clicks and touch taps)
+      so that subsequent just_audio calls succeed without a NotAllowedError.
+    -->
+    <script>
+      document.addEventListener('pointerdown', function() {
+        var a = new Audio();
+        a.play().then(function() { a.pause(); }).catch(function() {});
+      }, { once: true, capture: true });
+    </script>
+
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>
