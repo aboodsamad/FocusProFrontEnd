@@ -176,6 +176,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     context.read<DailyScoreProvider>().reset();
     if (!mounted) return;
+    context.read<HabitProvider>().reset();
+    if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_front_end/core/utils/url_helper.dart';
@@ -8,9 +9,11 @@ import '../../../core/services/notification_service.dart';
 import '../../home/pages/home_page.dart';
 import '../../home/providers/user_provider.dart';
 import '../../../core/providers/daily_score_provider.dart';
+import '../../habits/providers/habit_provider.dart';
 import '../../lockin/services/screen_event_syncer.dart';
 import '../../lockin/services/android_lockin_helper.dart';
 import './signup_page.dart';
+import './google_auth_webview_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -63,6 +66,7 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) {
           await context.read<UserProvider>().reloadAfterLogin();
           await context.read<DailyScoreProvider>().init();
+          await context.read<HabitProvider>().load();
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -436,9 +440,23 @@ class _LoginPageState extends State<LoginPage> {
                             height: 48,
                             child: OutlinedButton(
                               onPressed: () {
-                                openUrl(
-                                  '${AuthService.baseUrl}/oauth2/authorization/google',
-                                );
+                                if (kIsWeb) {
+                                  // Web: open in same browser tab so the OAuth
+                                  // redirect lands back on OAuthCallbackPage.
+                                  openUrl(
+                                    '${AuthService.baseUrl}/oauth2/authorization/google',
+                                  );
+                                } else {
+                                  // Android / iOS: drive the whole OAuth flow
+                                  // inside an in-app WebView so the callback
+                                  // can be intercepted without deep-link setup.
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const GoogleAuthWebviewPage(),
+                                    ),
+                                  );
+                                }
                               },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: AppColors.surfaceContainerLowest,

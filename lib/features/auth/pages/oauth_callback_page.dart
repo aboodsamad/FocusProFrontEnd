@@ -8,6 +8,7 @@ import '../../../features/home/services/user_service.dart';
 import '../../../features/home/providers/user_provider.dart';
 import '../../../features/home/pages/home_page.dart';
 import '../../../core/providers/daily_score_provider.dart';
+import '../../../features/habits/providers/habit_provider.dart';
 import '../../../features/diagnostic/pages/diagnostic_page.dart';
 import '../widgets/complete_profile_dialog.dart';
 
@@ -108,6 +109,7 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
       await Provider.of<UserProvider>(context, listen: false).reloadAfterLogin();
       print('[OAuth] UserProvider reloaded, isLoggedIn: ${Provider.of<UserProvider>(context, listen: false).isLoggedIn}');
       await Provider.of<DailyScoreProvider>(context, listen: false).init();
+      await Provider.of<HabitProvider>(context, listen: false).load();
 
       if (!mounted) return;
 

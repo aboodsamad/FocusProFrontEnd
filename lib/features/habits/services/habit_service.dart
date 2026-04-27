@@ -21,7 +21,14 @@ import '../models/habit.dart';
 ///   POST   /habits/{id}/log → upsert today's habit_log
 ///                             body: { "completed": bool, "timeSpentMinutes": int }
 class HabitService {
-  static const String _prefsKey = 'local_habits';
+  /// Cache key scoped to the current user so two accounts on the same device
+  /// never see each other's locally-cached habits.
+  static Future<String> get _prefsKey async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+    return userId != null ? 'local_habits_$userId' : 'local_habits';
+  }
+
   static String get _baseHabits => '${AuthService.baseUrl}/habits';
 
   // ── GET all habits ────────────────────────────────────────────────────────
@@ -167,7 +174,7 @@ class HabitService {
   // ── Local storage helpers ─────────────────────────────────────────────────
   static Future<List<Habit>> _loadLocally() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsKey);
+    final raw = prefs.getString(await _prefsKey);
     if (raw == null) return [];
     try {
       final list = jsonDecode(raw) as List<dynamic>;
@@ -182,7 +189,7 @@ class HabitService {
   static Future<void> _saveLocally(List<Habit> habits) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _prefsKey, jsonEncode(habits.map((h) => h.toJson()).toList()));
+        await _prefsKey, jsonEncode(habits.map((h) => h.toJson()).toList()));
   }
 
   static Future<void> _upsertLocally(Habit habit) async {

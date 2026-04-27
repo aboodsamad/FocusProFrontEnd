@@ -15,6 +15,14 @@ class HabitProvider extends ChangeNotifier {
   int get doneCount => _habits.where((h) => h.doneToday).length;
   int get totalCount => _habits.length;
 
+  // ── Reset (call on logout so stale data is never shown on the next login) ──
+  void reset() {
+    _habits = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   Future<void> load() async {
     _isLoading = true;
