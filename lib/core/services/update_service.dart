@@ -10,7 +10,7 @@ class UpdateService {
   static const String _currentVersion = '1.5';
 
   static const String _owner = 'aboodsamad';
-  static const String _repo = 'LockedInFrontEnd';
+  static const String _repo = 'FocusProFrontEnd';
 
   static const String _apiUrl = 'https://api.github.com/repos/$_owner/$_repo/releases/latest';
 

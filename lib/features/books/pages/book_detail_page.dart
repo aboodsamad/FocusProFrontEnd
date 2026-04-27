@@ -316,9 +316,14 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         _loading = false;
       });
       _enterCtrl.forward();
-      // Pre-fetch audio for first 2 snippets in background so play is instant
+      // Pre-fetch chapter 0 immediately; delay chapter 1 by 5 s so both
+      // requests never hit the backend at exactly the same time.
       _prefetchAudio(0);
-      if (snippets.length > 1) _prefetchAudio(1);
+      if (snippets.length > 1) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted && !_audioCache.containsKey(1)) _prefetchAudio(1);
+        });
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -368,20 +373,54 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     }
   }
 
-  /// Fetches TTS bytes from the backend, auto-retrying once if the server
-  /// returns 503 (render.com free tier wakes up in ~20 s).
-  /// Returns null and shows a SnackBar on unrecoverable failure.
+  /// Fetches TTS bytes from the backend with up to 3 attempts.
+  /// 503 = backend is generating (Google TTS in progress) or warming up —
+  /// we wait progressively longer before each retry.
   Future<Uint8List?> _fetchTtsBytes(String text) async {
-    const retryDelay = Duration(seconds: 20);
-    for (int attempt = 0; attempt < 2; attempt++) {
-      final token = await AuthService.getToken() ?? '';
-      final resp = await http
-          .post(
-            Uri.parse('${AuthService.baseUrl}/tts'),
-            headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-            body: jsonEncode({'text': text}),
-          )
-          .timeout(const Duration(seconds: 120));
+    const retryDelays = [Duration(seconds: 15), Duration(seconds: 25)];
+    const maxAttempts = 3;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      http.Response resp;
+      try {
+        final token = await AuthService.getToken() ?? '';
+        resp = await http
+            .post(
+              Uri.parse('${AuthService.baseUrl}/tts'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({'text': text}),
+            )
+            .timeout(const Duration(seconds: 90));
+      } catch (e) {
+        // Network / timeout error
+        if (!mounted) return null;
+        if (attempt < maxAttempts - 1) {
+          final wait = retryDelays[attempt];
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Connection issue — retrying in ${wait.inSeconds} s…'),
+                duration: wait,
+              ),
+            );
+          }
+          await Future.delayed(wait);
+          if (!mounted) return null;
+          continue;
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Audio unavailable. Check your connection and try again.'),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return null;
+      }
 
       if (!mounted) return null;
 
@@ -389,26 +428,39 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
         return resp.bodyBytes;
       }
 
-      if (resp.statusCode == 503 && attempt == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Server is warming up — retrying in 20 s…'), duration: Duration(seconds: 20)),
-        );
-        await Future.delayed(retryDelay);
+      if (resp.statusCode == 503 && attempt < maxAttempts - 1) {
+        final wait = retryDelays[attempt];
+        final isFirst = attempt == 0;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isFirst
+                    ? 'Generating audio — ready in ~${wait.inSeconds} s…'
+                    : 'Still preparing — almost there…',
+              ),
+              duration: wait,
+            ),
+          );
+        }
+        await Future.delayed(wait);
         if (!mounted) return null;
         continue;
       }
 
-      // Non-retryable error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            resp.statusCode == 503
-                ? 'Server unavailable. Please try again in a minute.'
-                : 'Audio unavailable (${resp.statusCode}). Please try again.',
+      // Final failure or non-retryable status
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              resp.statusCode == 503
+                  ? 'Audio is taking too long. Please try again in a moment.'
+                  : 'Audio unavailable (${resp.statusCode}). Please try again.',
+            ),
+            duration: const Duration(seconds: 4),
           ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
       return null;
     }
     return null;
