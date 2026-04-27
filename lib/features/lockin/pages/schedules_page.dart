@@ -554,7 +554,6 @@ class _ManualMinutePickerState extends State<_ManualMinutePicker> {
   @override
   void didUpdateWidget(_ManualMinutePicker old) {
     super.didUpdateWidget(old);
-    // Keep field in sync if parent state changes externally
     if (old.value != widget.value) {
       final cur = int.tryParse(_ctrl.text) ?? widget.value;
       if (cur != widget.value) {
@@ -571,24 +570,16 @@ class _ManualMinutePickerState extends State<_ManualMinutePicker> {
     super.dispose();
   }
 
-  void _increment() {
+  void _adjust(int delta) {
     final cur = int.tryParse(_ctrl.text) ?? widget.value;
-    final next = (cur + 5).clamp(widget.min, widget.max);
+    final next = (cur + delta).clamp(widget.min, widget.max);
     _ctrl.text = next.toString();
     _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
     widget.onChanged(next);
   }
 
-  void _decrement() {
-    final cur = int.tryParse(_ctrl.text) ?? widget.value;
-    final next = (cur - 5).clamp(widget.min, widget.max);
-    _ctrl.text = next.toString();
-    _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
-    widget.onChanged(next);
-  }
-
-  void _onSubmit(String raw) {
-    final parsed = int.tryParse(raw.trim());
+  void _commit() {
+    final parsed = int.tryParse(_ctrl.text.trim());
     if (parsed == null) {
       _ctrl.text = widget.value.toString();
       return;
@@ -607,75 +598,77 @@ class _ManualMinutePickerState extends State<_ManualMinutePicker> {
         Text(widget.label,
             style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
         const SizedBox(height: 8),
+        // Full-width row: label side + stepper side
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF1F2937),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: AppColors.secondary.withValues(alpha: 0.3)),
+            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Decrement
-              GestureDetector(
-                onTap: _decrement,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF374151),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.remove,
-                      color: Colors.white, size: 18),
-                ),
-              ),
-              const SizedBox(width: 4),
-              // Text field
-              SizedBox(
-                width: 72,
+              // Minutes display / input (left, expands)
+              Expanded(
                 child: TextField(
                   controller: _ctrl,
                   keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8),
                     isDense: true,
-                    suffix: Text(' min',
-                        style:
-                            TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '0',
+                    hintStyle: TextStyle(color: Color(0xFF6B7280)),
+                    suffixText: ' min',
+                    suffixStyle:
+                        TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
                   ),
-                  onSubmitted: _onSubmit,
+                  onSubmitted: (_) {
+                    _commit();
+                    FocusScope.of(context).unfocus();
+                  },
                   onEditingComplete: () {
-                    _onSubmit(_ctrl.text);
+                    _commit();
                     FocusScope.of(context).unfocus();
                   },
                   onTapOutside: (_) {
-                    _onSubmit(_ctrl.text);
+                    _commit();
                     FocusScope.of(context).unfocus();
                   },
                 ),
               ),
-              const SizedBox(width: 4),
-              // Increment
+              const SizedBox(width: 12),
+              // − button
               GestureDetector(
-                onTap: _increment,
+                onTap: () => _adjust(-5),
                 child: Container(
-                  width: 36,
-                  height: 36,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF374151),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.remove, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // + button
+              GestureDetector(
+                onTap: () => _adjust(5),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.add,
-                      color: AppColors.secondary, size: 18),
+                      color: AppColors.secondary, size: 20),
                 ),
               ),
             ],
