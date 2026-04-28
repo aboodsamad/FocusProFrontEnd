@@ -129,24 +129,20 @@ class _GamesHubPageState extends State<GamesHubPage>
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color:        AppColors.secondaryContainer,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.videogame_asset_rounded,
-                  color: AppColors.onSecondaryContainer, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                '${GameRegistry.hubGames.length} playable',
-                style: const TextStyle(
-                  color:      AppColors.onSecondaryContainer,
-                  fontSize:   11,
-                  fontWeight: FontWeight.w600,
-                ),
+            child: RichText(
+              text: const TextSpan(
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                children: [
+                  TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                  TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+                ],
               ),
-            ]),
+            ),
           ),
         ],
       ),

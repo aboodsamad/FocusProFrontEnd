@@ -711,13 +711,20 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(children: [
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-            children: [
-              TextSpan(text: 'Locked', style: TextStyle(color: AppColors.primary)),
-              TextSpan(text: 'In', style: TextStyle(color: AppColors.secondary)),
-            ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: RichText(
+            text: const TextSpan(
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+              children: [
+                TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+              ],
+            ),
           ),
         ),
         const Spacer(),

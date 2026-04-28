@@ -158,16 +158,23 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // ── App header ───────────────────────────────────────────
-                  const Text(
-                    'LockedIn',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
                       color: AppColors.primary,
-                      letterSpacing: -0.5,
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                    child: RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        children: [
+                          TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                          TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   const Text(
                     'Reclaim your mental clarity.',
                     style: TextStyle(fontSize: 15, color: AppColors.onSurfaceVariant),

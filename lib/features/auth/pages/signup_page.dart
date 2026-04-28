@@ -256,29 +256,19 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                       children: [
                         // ── App logo & name ──────────────────────────────
                         Container(
-                          width: 60,
-                          height: 60,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryContainer,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.18),
-                                blurRadius: 12,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.center_focus_strong, color: AppColors.onPrimary, size: 30),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'LockedIn',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
                             color: AppColors.primary,
-                            letterSpacing: -0.5,
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: RichText(
+                            text: const TextSpan(
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                              children: [
+                                TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                                TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),

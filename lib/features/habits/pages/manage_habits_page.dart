@@ -224,14 +224,35 @@ class _HabitsAppBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                height: 1.15,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    height: 1.15,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                      children: [
+                        TextSpan(text: 'Locked', style: TextStyle(color: Colors.white)),
+                        TextSpan(text: 'In', style: TextStyle(color: AppColors.secondaryFixed)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
