@@ -327,7 +327,20 @@ class _SnippetCheckSheetState extends State<_SnippetCheckSheet>
 
         _GradientButton(
           label: r.passed ? 'Continue Reading' : 'Review & Try Again',
-          onTap: () => Navigator.pop(context, r.passed),
+          onTap: () {
+            if (r.passed) {
+              Navigator.pop(context, true);
+            } else {
+              // Reset state and load fresh questions from the server
+              setState(() {
+                _result = null;
+                _answers.clear();
+                _currentIndex = 0;
+              });
+              _fadeCtrl.reset();
+              _loadQuestions();
+            }
+          },
         ),
 
         if (!r.passed) ...[
