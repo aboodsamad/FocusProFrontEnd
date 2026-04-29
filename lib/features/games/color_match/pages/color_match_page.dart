@@ -193,6 +193,8 @@ class _ColorMatchPageState extends State<ColorMatchPage> with TickerProviderStat
   Future<void> _submitResult() async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     final int total = _game.correct + _game.mistakes;
+    // Capture provider before async gap so addPoints works even if user backs out
+    final provider = mounted ? context.read<DailyScoreProvider>() : null;
     final result = await GameService.submitResult(
       gameType: 'color_match',
       timePlayedSeconds: timePlayed,
@@ -202,9 +204,9 @@ class _ColorMatchPageState extends State<ColorMatchPage> with TickerProviderStat
       correct: _game.correct,
       total: total,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Color Match');
+    if (result != null) {
+      provider?.addPoints(result.focusScoreGained);
+      if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Color Match');
     }
   }
 
