@@ -350,7 +350,7 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
 
   Future<void> _submitGameResult() async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
-
+    final provider = mounted ? context.read<DailyScoreProvider>() : null;
     final result = await GameService.submitResult(
       gameType: 'memory_matrix',
       timePlayedSeconds: timePlayed,
@@ -358,9 +358,9 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
       levelReached: _game.level,
       mistakes: _game.mistakes,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Memory Matrix');
+    if (result != null) {
+      provider?.addPoints(result.focusScoreGained);
+      if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Memory Matrix');
     }
   }
 

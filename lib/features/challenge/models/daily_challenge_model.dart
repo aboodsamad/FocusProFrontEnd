@@ -11,6 +11,7 @@ class DailyChallengeModel {
   final String? expiresAt;
   final bool isExpired;
   final bool isCompleted;
+  final int progress;
 
   const DailyChallengeModel({
     required this.id,
@@ -25,6 +26,7 @@ class DailyChallengeModel {
     this.expiresAt,
     required this.isExpired,
     required this.isCompleted,
+    this.progress = 0,
   });
 
   // Handles int, double, or string representations of the book id
@@ -53,6 +55,7 @@ class DailyChallengeModel {
       expiresAt: json['expiresAt']?.toString(),
       isExpired: json['expired'] as bool? ?? false,
       isCompleted: json['completed'] as bool? ?? (json['completedAt'] != null),
+      progress: (json['progress'] as num?)?.toInt() ?? 0,
     );
   }
 }
