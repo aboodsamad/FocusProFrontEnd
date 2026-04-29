@@ -206,28 +206,6 @@ class _SudokuHomePageState extends State<SudokuHomePage> with SingleTickerProvid
     return true;
   }
 
-  /// Normalized score 0-1000: accuracy × time efficiency × difficulty.
-  /// Not completed → small partial score based on difficulty only.
-  int _calculateNormalizedScore() {
-    if (!gameWon) {
-      // Partial credit for attempting: 0 / 100 / 150 for easy/medium/hard
-      final partial = difficulty == 'Easy'
-          ? 0
-          : difficulty == 'Medium'
-          ? 100
-          : 150;
-      return partial;
-    }
-    final diffMult = difficulty == 'Easy'
-        ? 1.0
-        : difficulty == 'Medium'
-        ? 1.5
-        : 2.0;
-    final accuracyFact = (1.0 - mistakes * 0.1).clamp(0.2, 1.0);
-    final timeEff = (1.0 - seconds / 1200.0).clamp(0.3, 1.0);
-    return (accuracyFact * timeEff * diffMult * 600).round().clamp(0, 1000);
-  }
-
   void _onWin() {
     gameWon = true;
     _stopTimer();
@@ -238,7 +216,6 @@ class _SudokuHomePageState extends State<SudokuHomePage> with SingleTickerProvid
   Future<void> _submitResult() async {
     final result = await GameService.submitResult(
       gameType: 'sudoku',
-      score: _calculateNormalizedScore(),
       timePlayedSeconds: seconds,
       completed: gameWon,
       mistakes: mistakes,

@@ -25,11 +25,12 @@ class GameResultResponse {
 class GameService {
   static Future<GameResultResponse?> submitResult({
     required String gameType,
-    required int score,
     required int timePlayedSeconds,
     required bool completed,
     int levelReached = 0,
     int mistakes = 0,
+    int correct = 0,
+    int total = 0,
   }) async {
     final token = await AuthService.getToken();
     if (token == null) return null;
@@ -43,12 +44,13 @@ class GameService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'gameType':           gameType,
-          'score':              score,
-          'timePlayedSeconds':  timePlayedSeconds,
-          'completed':          completed,
-          'levelReached':       levelReached,
-          'mistakes':           mistakes,
+          'gameType':          gameType,
+          'timePlayedSeconds': timePlayedSeconds,
+          'completed':         completed,
+          'levelReached':      levelReached,
+          'mistakes':          mistakes,
+          'correct':           correct,
+          'total':             total,
         }),
       ).timeout(const Duration(seconds: 10));
 

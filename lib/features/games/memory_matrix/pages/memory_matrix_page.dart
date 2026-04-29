@@ -351,12 +351,8 @@ class _MemoryMatrixPageState extends State<MemoryMatrixPage> with TickerProvider
   Future<void> _submitGameResult() async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
 
-    final double accuracyFactor = (1.0 - (_game.mistakes / 10.0).clamp(0.0, 1.0));
-    final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
-
     final result = await GameService.submitResult(
       gameType: 'memory_matrix',
-      score: normalizedScore,
       timePlayedSeconds: timePlayed,
       completed: true,
       levelReached: _game.level,

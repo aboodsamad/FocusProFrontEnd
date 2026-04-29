@@ -374,15 +374,14 @@ class _SpeedMatchPageState extends State<SpeedMatchPage> with TickerProviderStat
   Future<void> _submitResult() async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
     final int total = _game.correct + _game.mistakes;
-    final double accuracyRate = total > 0 ? _game.correct / total : 0.5;
-    final int normalizedScore = (accuracyRate * widget.startLevel * 100).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType: 'speed_match',
-      score: normalizedScore,
       timePlayedSeconds: timePlayed,
       completed: true,
       levelReached: widget.startLevel + 1,
       mistakes: _game.mistakes,
+      correct: _game.correct,
+      total: total,
     );
     if (result != null && mounted) {
       context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);

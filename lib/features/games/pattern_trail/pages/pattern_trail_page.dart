@@ -354,27 +354,18 @@ class _PatternTrailPageState extends State<PatternTrailPage> with TickerProvider
 
   Future<void> _submitResult({required bool completed}) async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
-    final double accuracyFactor = (1.0 - (_game.mistakes * 0.08).clamp(0.0, 1.0));
-    final int normalizedScore = (_game.level * 50 + (accuracyFactor * 150)).round().clamp(0, 1000);
-    final double localFocusPoints = (normalizedScore / 70.0 * accuracyFactor).clamp(0.8, 10.0);
-
     final result = await GameService.submitResult(
       gameType: 'pattern_trail',
-      score: normalizedScore,
       timePlayedSeconds: timePlayed,
       completed: completed,
       levelReached: completed ? _game.level + 1 : _game.level,
       mistakes: _game.mistakes,
     );
 
-    if (!mounted) return;
-
-    final double pointsToAdd = (result != null && result.focusScoreGained > 0)
-        ? result.focusScoreGained
-        : localFocusPoints;
-
-    context.read<DailyScoreProvider>().addPoints(pointsToAdd);
-    ScoreGainToast.show(context, pointsToAdd, source: 'Pattern Trail');
+    if (result != null && mounted) {
+      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
+      ScoreGainToast.show(context, result.focusScoreGained, source: 'Pattern Trail');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

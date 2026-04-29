@@ -282,11 +282,8 @@ class _NumberStreamPageState extends State<NumberStreamPage> with TickerProvider
   Future<void> _submitResult() async {
     final secs = _startTime != null ? DateTime.now().difference(_startTime!).inSeconds : 0;
     // Normalized score 0-1000: level contribution + accuracy
-    final double accuracyFactor = (1.0 - (_game.mistakes * 0.05).clamp(0.0, 1.0));
-    final int normalizedScore = (_game.level * 80 + accuracyFactor * 200).round().clamp(0, 1000);
     final result = await GameService.submitResult(
       gameType: 'number_stream',
-      score: normalizedScore,
       timePlayedSeconds: secs,
       completed: true,
       levelReached: _game.level,

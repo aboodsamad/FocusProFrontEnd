@@ -205,18 +205,15 @@ class _FlankerTaskPageState extends State<FlankerTaskPage> {
     setState(() => _submitting = true);
     final elapsed = _secondsElapsed;
     final completed = _round >= _totalRounds;
-    // Normalized score 0-1000: accuracy × 900 + completion bonus 100
     final int total = _totalCorrect + _totalWrong;
-    final double accuracyRate = total > 0 ? _totalCorrect / total : 0.5;
-    final int completionBonus = completed ? 100 : 0;
-    final int normalizedScore = (accuracyRate * 900 + completionBonus).round().clamp(0, 1000);
     await GameService.submitResult(
       gameType: 'flanker_task',
-      score: normalizedScore,
       timePlayedSeconds: elapsed,
       completed: completed,
       levelReached: _totalCorrect,
       mistakes: _totalWrong,
+      correct: _totalCorrect,
+      total: total,
     );
     widget.onScoreSubmitted?.call(_score, elapsed, completed, _totalCorrect, _totalWrong);
     if (mounted) Navigator.pop(context);
