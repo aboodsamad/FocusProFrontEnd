@@ -803,19 +803,6 @@ class _FocusRoomsPageState extends State<FocusRoomsPage> {
                 color: AppColors.onSurfaceVariant, size: 18),
           ),
         ),
-        const SizedBox(width: 8),
-        // Settings
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.outlineVariant),
-          ),
-          child: const Icon(Icons.settings_outlined,
-              color: AppColors.onSurfaceVariant, size: 18),
-        ),
       ]),
     );
   }

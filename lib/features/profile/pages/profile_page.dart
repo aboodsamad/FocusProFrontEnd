@@ -327,7 +327,7 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
           const Spacer(),
-          // Settings button  modern icon
+          // Settings button
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -339,7 +339,7 @@ class _ProfilePageState extends State<ProfilePage>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.outlineVariant),
               ),
-              child: const Icon(Icons.tune_rounded,
+              child: const Icon(Icons.settings_rounded,
                   color: AppColors.primary, size: 20),
             ),
           ),
