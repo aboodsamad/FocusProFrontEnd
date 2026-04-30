@@ -366,9 +366,16 @@ class _PatternTrailPageState extends State<PatternTrailPage> with TickerProvider
       total: _game.sequenceLength,
     );
 
-    if (result != null) {
+    if (result != null && result.focusScoreGained > 0) {
       provider?.addPoints(result.focusScoreGained);
       if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Pattern Trail');
+    } else {
+      // Backend recorded the result but returned 0 for focusScoreGained — refresh
+      // the daily score directly so the UI updates without requiring a reload.
+      final gained = await provider?.refreshTodayScore() ?? 0.0;
+      if (gained > 0 && mounted) {
+        ScoreGainToast.show(context, gained, source: 'Pattern Trail');
+      }
     }
   }
 

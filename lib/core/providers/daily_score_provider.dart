@@ -52,4 +52,15 @@ class DailyScoreProvider extends ChangeNotifier {
     _weeklyScores = await DailyScoreService.getWeeklyScores();
     notifyListeners();
   }
+
+  /// Fetches the latest today score from the backend and notifies listeners.
+  /// Returns the amount the score changed (positive = gained points).
+  /// Used as a fallback when the game API returns focusScoreGained = 0
+  /// but the backend still recorded the result.
+  Future<double> refreshTodayScore() async {
+    final old = _todayScore;
+    _todayScore = await DailyScoreService.getTodayScore();
+    if (_todayScore != old) notifyListeners();
+    return _todayScore - old;
+  }
 }

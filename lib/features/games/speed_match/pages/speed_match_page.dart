@@ -385,9 +385,16 @@ class _SpeedMatchPageState extends State<SpeedMatchPage> with TickerProviderStat
       correct: _game.correct,
       total: total,
     );
-    if (result != null) {
+    if (result != null && result.focusScoreGained > 0) {
       provider?.addPoints(result.focusScoreGained);
       if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Speed Match');
+    } else {
+      // Backend recorded the result but returned 0 for focusScoreGained — refresh
+      // the daily score directly so the UI updates without requiring a reload.
+      final gained = await provider?.refreshTodayScore() ?? 0.0;
+      if (gained > 0 && mounted) {
+        ScoreGainToast.show(context, gained, source: 'Speed Match');
+      }
     }
   }
 
