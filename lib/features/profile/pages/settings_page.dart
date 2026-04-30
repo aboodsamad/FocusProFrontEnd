@@ -19,9 +19,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   // Focus defaults — must match the button sets in lock_in_page.dart
   // duration: [30, 60, 90, 120]   break/prep: [5, 10, 15]
-  int _defaultDuration = 60;
-  int _defaultBreak    = 5;
-
   // Notifications
   bool _notifySchedule = true;
   bool _notifyHabits   = true;
@@ -39,8 +36,6 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     setState(() {
-      _defaultDuration = p.getInt('default_duration') ?? 60;
-      _defaultBreak    = p.getInt('default_break')    ?? 5;
       _notifySchedule  = p.getBool('notify_schedule') ?? true;
       _notifyHabits    = p.getBool('notify_habits')   ?? true;
     });
@@ -49,8 +44,6 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _save() async {
     setState(() => _saving = true);
     final p = await SharedPreferences.getInstance();
-    await p.setInt('default_duration', _defaultDuration);
-    await p.setInt('default_break',    _defaultBreak);
     await p.setBool('notify_schedule', _notifySchedule);
     await p.setBool('notify_habits',   _notifyHabits);
 
@@ -552,8 +545,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 24),
                   _buildSecurity(),
                   const SizedBox(height: 24),
-                  _buildFocusDefaults(),
-                  const SizedBox(height: 24),
                   _buildNotifications(),
                   const SizedBox(height: 32),
                   _buildSignOut(),
@@ -763,40 +754,6 @@ class _SettingsPageState extends State<SettingsPage> {
             label: 'Change Password',
             subtitle: 'Update your account password',
             onTap: _changePassword,
-          ),
-        ]),
-      ],
-    );
-  }
-
-  // ── Focus defaults ─────────────────────────────────────────────────────────
-  Widget _buildFocusDefaults() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Focus Session', Icons.timer_outlined),
-        _card([
-          _stepperRow(
-            icon: Icons.play_circle_outline_rounded,
-            label: 'Session length',
-            subtitle: 'Default duration when starting a session',
-            value: _defaultDuration,
-            unit: 'min',
-            step: 30,
-            min: 30,
-            max: 120,
-            onChanged: (v) => setState(() => _defaultDuration = v),
-          ),
-          _stepperRow(
-            icon: Icons.coffee_outlined,
-            label: 'Prep / break length',
-            subtitle: 'Warm-up time before the session locks in',
-            value: _defaultBreak,
-            unit: 'min',
-            step: 5,
-            min: 5,
-            max: 15,
-            onChanged: (v) => setState(() => _defaultBreak = v),
           ),
         ]),
       ],

@@ -479,10 +479,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Score block card ──────────────────────────────────────────────────────
   Widget _buildScoreBlock() {
     final dailyScore = context.watch<DailyScoreProvider>().todayScore;
-    // Cap the bar at 50 pts = 100%; each game/snippet earns ~5–15 pts
-    const barMax = 50.0;
-    final mood = dailyScore >= 30 ? 'Crushing it today 🔥'
-        : dailyScore >= 10 ? 'Building momentum'
+    // Bar represents the full 0–100 daily score range
+    const barMax = 100.0;
+    final mood = dailyScore >= 70 ? 'Crushing it today 🔥'
+        : dailyScore >= 30 ? 'Building momentum'
         : "Let's get started";
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -1181,16 +1181,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Habits card ───────────────────────────────────────────────────────────
+  // ── Habits card ────────────────────────────────────────────────────────────────────────
   Widget _buildHabitsCard() {
     return Consumer<HabitProvider>(
       builder: (context, provider, _) {
-        final done      = provider.doneCount;
-        final total     = provider.totalCount;
-        final remaining = total - done;
-        // Day-of-week squares: fill first `done` squares
-        final dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-        final today = DateTime.now().weekday - 1; // 0=Mon
+        final habits   = provider.habits;
+        final done     = provider.doneCount;
+        final total    = provider.totalCount;
+        final allDone  = total > 0 && done == total;
+        final progress = total > 0 ? done / total : 0.0;
 
         return GestureDetector(
           onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
@@ -1198,74 +1197,187 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.outlineVariant),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
+              border: Border.all(
+                color: allDone
+                    ? AppColors.secondary.withOpacity(0.4)
+                    : AppColors.outlineVariant,
+              ),
+              boxShadow: [BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
                   blurRadius: 8, offset: const Offset(0, 2))],
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row
+                Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: allDone
+                          ? AppColors.secondary.withOpacity(0.15)
+                          : AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      allDone ? Icons.celebration_rounded : Icons.checklist_rounded,
+                      color: allDone ? AppColors.secondary : AppColors.primary,
+                      size: 18,
+                    ),
                   ),
-                  child: const Icon(Icons.task_alt_rounded,
-                      color: AppColors.secondary, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Daily Habits', style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface)),
-                  Text(
-                    provider.isLoading ? 'Loading…'
-                        : (remaining == 0 && total > 0) ? 'All done today!'
-                        : '$remaining remaining today',
-                    style: const TextStyle(fontSize: 11, color: AppColors.outline),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Daily Habits',
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700,
+                                color: AppColors.onSurface)),
+                        if (!provider.isLoading && total > 0)
+                          Text(
+                            allDone ? 'All done — great work! 🎉' : '$done of $total completed',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: allDone ? AppColors.secondary : AppColors.onSurfaceVariant,
+                                fontWeight: allDone ? FontWeight.w600 : FontWeight.normal),
+                          ),
+                      ],
+                    ),
                   ),
-                ])),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.outlineVariant, size: 18),
-              ]),
-              if (total > 0) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: List.generate(7, (i) {
-                    final filled = i <= today && (today - i) < _streakDays;
-                    final isToday = i == today;
-                    return Expanded(child: Column(children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: filled
-                              ? AppColors.primary
-                              : AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(6),
-                          border: isToday && !filled
-                              ? Border.all(color: AppColors.secondary, width: 1.5)
-                              : null,
+                  if (!provider.isLoading && total > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: allDone
+                            ? AppColors.secondary.withOpacity(0.12)
+                            : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: allDone
+                              ? AppColors.secondary.withOpacity(0.3)
+                              : AppColors.outlineVariant,
                         ),
-                        child: filled
-                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                            : null,
                       ),
-                      const SizedBox(height: 4),
-                      Text(dayLabels[i], style: const TextStyle(
-                          fontSize: 9, color: AppColors.outline)),
-                    ]));
+                      child: Text(
+                        '$done/$total',
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold,
+                            color: allDone ? AppColors.secondary : AppColors.onSurfaceVariant),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppColors.outlineVariant, size: 18),
+                ]),
+
+                // Progress bar
+                if (!provider.isLoading && total > 0) ...[
+                  const SizedBox(height: 12),
+                  LayoutBuilder(builder: (ctx, box) {
+                    return Stack(children: [
+                      Container(
+                        width: box.maxWidth, height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        width: box.maxWidth * progress,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: allDone ? AppColors.secondary : AppColors.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ]);
                   }),
-                ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Individual habits (first 4)
+                if (!provider.isLoading && total > 0)
+                  ...habits.take(4).map((h) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(
+                          color: h.doneToday
+                              ? AppColors.secondary.withOpacity(0.12)
+                              : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: h.doneToday
+                                ? AppColors.secondary.withOpacity(0.35)
+                                : AppColors.outlineVariant,
+                          ),
+                        ),
+                        child: Icon(
+                          h.doneToday ? Icons.check_rounded : h.icon,
+                          size: 14,
+                          color: h.doneToday ? AppColors.secondary : AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          h.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: h.doneToday ? AppColors.onSurfaceVariant : AppColors.onSurface,
+                            decoration: h.doneToday ? TextDecoration.lineThrough : null,
+                            decorationColor: AppColors.onSurfaceVariant,
+                            fontWeight: h.doneToday ? FontWeight.normal : FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (h.streak > 1)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('🔥', style: TextStyle(fontSize: 11)),
+                          const SizedBox(width: 2),
+                          Text('${h.streak}',
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600)),
+                        ]),
+                    ]),
+                  )),
+
+                // "+X more" footer
+                if (!provider.isLoading && total > 4)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '+${total - 4} more habits',
+                      style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                    ),
+                  ),
+
+                // Empty state
+                if (!provider.isLoading && total == 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 4),
+                    child: Row(children: [
+                      const Icon(Icons.add_circle_outline_rounded,
+                          color: AppColors.primary, size: 16),
+                      const SizedBox(width: 8),
+                      const Text('Tap to add your first habit',
+                          style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                    ]),
+                  ),
               ],
-            ]),
+            ),
           ),
         );
       },
     );
-  }
+  
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

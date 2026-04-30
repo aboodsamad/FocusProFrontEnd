@@ -1602,8 +1602,6 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
                               fontFamily: 'Manrope',
                             ),
                           ),
-                          if (s.durationSeconds != null)
-                            Text(s.durationLabel, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11)),
                         ],
                       ),
                     ),

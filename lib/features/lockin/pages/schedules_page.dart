@@ -220,7 +220,7 @@ class _CreateScheduleSheet extends StatefulWidget {
 }
 
 class _CreateScheduleSheetState extends State<_CreateScheduleSheet> {
-  String _type = 'WAKEUP';
+  String _type = 'FOCUS_BLOCK';
   TimeOfDay _time = const TimeOfDay(hour: 7, minute: 0);
   int _duration = 60;
   int _prep = 5;
@@ -295,24 +295,7 @@ class _CreateScheduleSheetState extends State<_CreateScheduleSheet> {
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
 
-            // Type selector
-            const Text('Type',
-                style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
-            const SizedBox(height: 8),
-            Row(children: [
-              _TypeChip(
-                label: 'Wake-Up',
-                selected: _type == 'WAKEUP',
-                onTap: () => setState(() => _type = 'WAKEUP'),
-              ),
-              const SizedBox(width: 8),
-              _TypeChip(
-                label: 'Focus Block',
-                selected: _type == 'FOCUS_BLOCK',
-                onTap: () => setState(() => _type = 'FOCUS_BLOCK'),
-              ),
-            ]),
-            const SizedBox(height: 20),
+            const SizedBox(height: 0),
 
             // Time picker
             const Text('Time',
