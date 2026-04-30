@@ -123,7 +123,7 @@ class _ProfilePageState extends State<ProfilePage>
   // ── Real usage stats ───────────────────────────────────────────────────────
   int? _gamesPlayed;
   int? _focusMinutes;
-  int? _booksExplored;
+  int? _snippetsExplored;
 
   // ── AI history state ───────────────────────────────────────────────────────
   List<_SnippetHistoryItem> _aiHistory = [];
@@ -157,15 +157,15 @@ class _ProfilePageState extends State<ProfilePage>
     if (token == null) return;
     try {
       final resp = await http.get(
-        Uri.parse('${AuthService.baseUrl}/user/stats'),
+        Uri.parse('${AuthService.baseUrl}/user/stats/today'),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200 && mounted) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         setState(() {
-          _gamesPlayed   = (data['gamesPlayed']   as num?)?.toInt() ?? 0;
-          _focusMinutes  = (data['focusMinutes']  as num?)?.toInt() ?? 0;
-          _booksExplored = (data['booksExplored'] as num?)?.toInt() ?? 0;
+          _gamesPlayed      = (data['gamesPlayed']      as num?)?.toInt() ?? 0;
+          _focusMinutes     = (data['focusMinutes']     as num?)?.toInt() ?? 0;
+          _snippetsExplored = (data['snippetsExplored'] as num?)?.toInt() ?? 0;
         });
       }
     } catch (_) {}
@@ -173,7 +173,8 @@ class _ProfilePageState extends State<ProfilePage>
 
   Future<void> _loadLogs() async {
     final logs = await ActivityLogService.fetchLogs();
-    if (mounted) setState(() { _logs = logs; _logsLoading = false; });
+    if (!mounted) return;
+    setState(() { _logs = logs; _logsLoading = false; });
   }
 
   Future<void> _loadAiHistory() async {
@@ -461,10 +462,10 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           const SizedBox(height: 12),
           _StatCard(
-            icon: Icons.menu_book_outlined,
+            icon: Icons.auto_stories_outlined,
             iconColor: AppColors.secondary,
-            value: _booksExplored?.toString() ?? '…',
-            label: 'BOOKS EXPLORED',
+            value: _snippetsExplored?.toString() ?? '…',
+            label: 'SNIPPETS EXPLORED',
           ),
         ],
       ),
