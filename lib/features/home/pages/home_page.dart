@@ -2,7 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
@@ -70,9 +71,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadDistractingMinutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() => _distractingMinutes = prefs.getInt('distracting_minutes') ?? 0);
+    try {
+      final token = await AuthService.getToken() ?? '';
+      final res = await http.get(
+        Uri.parse('${AuthService.baseUrl}/user/stats'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        setState(() =>
+            _distractingMinutes = (data['distractingMinutes'] as num?)?.toInt() ?? 0);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadActiveSession() async {
@@ -181,49 +192,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
   }
 
-  void _editUsage() {
-    showDialog<int>(
-      context: context,
-      builder: (_) {
-        final ctl = TextEditingController(text: '$_distractingMinutes');
-        return AlertDialog(
-          backgroundColor: AppColors.surfaceContainerLowest,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Distracted Minutes',
-              style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: ctl,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: AppColors.onSurface),
-            decoration: InputDecoration(
-              hintText: 'Minutes on distracting apps',
-              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
-              filled: true, fillColor: AppColors.surfaceContainerLow,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.outlineVariant)),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              onPressed: () => Navigator.pop(context, int.tryParse(ctl.text) ?? 0),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    ).then((v) async {
-      if (v != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('distracting_minutes', v);
-        if (mounted) setState(() => _distractingMinutes = v);
-      }
-    });
-  }
 
   // ── Challenge helpers (unchanged logic) ───────────────────────────────────
 
@@ -631,11 +599,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     _ScoreStat(emoji: '⚡',
                         value: '$_todaySessions', label: 'sessions'),
                     const SizedBox(height: 14),
-                    GestureDetector(
-                      onTap: _editUsage,
-                      child: _ScoreStat(emoji: '🚫',
-                          value: '${_distractingMinutes}m', label: 'dist.'),
-                    ),
+                    _ScoreStat(emoji: '🚫',
+                        value: '${_distractingMinutes}m', label: 'dist.'),
                   ],
                 ),
               ],
