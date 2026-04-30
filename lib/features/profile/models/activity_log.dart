@@ -16,7 +16,9 @@ class ActivityLog {
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
     DateTime date;
     try {
-      date = DateTime.parse((json['activityDate'] ?? '').toString());
+      final raw = (json['activityDate'] ?? '').toString();
+      // Backend stores LocalDateTime in UTC — append Z so Dart treats it correctly
+      date = DateTime.parse(raw.endsWith('Z') ? raw : '${raw}Z').toLocal();
     } catch (_) {
       date = DateTime.now();
     }

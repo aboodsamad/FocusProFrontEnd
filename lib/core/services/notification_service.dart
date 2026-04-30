@@ -1,39 +1,106 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 import 'auth_service.dart';
 import 'browser_notification.dart';
 
-/// Handles smart notifications for LockedIn.
-///
-/// On Android  : uses flutter_local_notifications (shows system tray notifications)
-/// On Web      : uses VAPID Web Push + polling fallback
+const _kChannelId   = 'lockedin_main';
+const _kChannelName = 'LockedIn Reminders';
+const _kChannelDesc = 'Focus session and habit reminders';
+const _kBackendBase = 'https://LockedInbackend.onrender.com';
+const _kBgTaskName  = 'notificationPoll';
+const _kBgTaskId    = 'lockedin-notification-poll';
+
+// ── Background isolate entry-point ────────────────────────────────────────────
+// Must be a top-level function annotated with vm:entry-point.
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      // Each WorkManager run is a fresh isolate — init everything from scratch.
+      final localNotifs = FlutterLocalNotificationsPlugin();
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await localNotifs.initialize(
+          const InitializationSettings(android: androidSettings));
+
+      const channel = AndroidNotificationChannel(
+        _kChannelId, _kChannelName,
+        description: _kChannelDesc,
+        importance: Importance.high,
+      );
+      await localNotifs
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null || token.isEmpty) return true;
+
+      final resp = await http.get(
+        Uri.parse('$_kBackendBase/notifications/pending'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+
+      if (resp.statusCode != 200) return true;
+
+      final list = jsonDecode(resp.body) as List<dynamic>;
+      for (final n in list) {
+        final id    = (n['id'] as num?)?.toInt();
+        final title = (n['title']   as String?) ?? 'LockedIn';
+        final body  = (n['message'] as String?) ?? '';
+
+        await localNotifs.show(
+          (id ?? 0) & 0x7FFFFFFF,
+          title, body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              _kChannelId, _kChannelName,
+              channelDescription: _kChannelDesc,
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@mipmap/ic_launcher',
+            ),
+          ),
+        );
+
+        if (id != null) {
+          await http.post(
+            Uri.parse('$_kBackendBase/notifications/$id/acknowledge'),
+            headers: {'Authorization': 'Bearer $token'},
+          ).timeout(const Duration(seconds: 5));
+        }
+      }
+    } catch (e) {
+      debugPrint('BG notification error: $e');
+    }
+    return true;
+  });
+}
+
+// ── Foreground notification service ──────────────────────────────────────────
 class NotificationService {
   static Timer? _pollTimer;
   static bool _initialized = false;
   static bool _pushSubscribed = false;
 
-  // ── Android local notifications ──────────────────────────────────────────
   static final FlutterLocalNotificationsPlugin _localNotifs =
       FlutterLocalNotificationsPlugin();
   static bool _localNotifsReady = false;
 
-  static const String _channelId   = 'lockedin_main';
-  static const String _channelName = 'LockedIn Reminders';
-  static const String _channelDesc = 'Focus session and habit reminders';
-
   /// Call once after login / on app start when already logged in.
   static Future<void> init() async {
     if (_initialized) return;
-    _initialized = true;
 
     if (!kIsWeb) {
       await _initLocalNotifications();
+      // Register WorkManager periodic task for background delivery.
+      await _registerBackgroundTask();
     } else {
-      // Web: ask for browser notification permission
       await BrowserNotification.requestPermission();
       if (BrowserNotification.permissionStatus != 'granted') {
         debugPrint('Notification permission not granted — skipping push setup.');
@@ -42,37 +109,55 @@ class NotificationService {
       await _setupWebPush();
     }
 
+    // Mark initialized only after setup succeeded, so a retry is possible.
+    _initialized = true;
     _startPolling();
   }
 
-  // ── Android init ──────────────────────────────────────────────────────────
+  // ── Android foreground init ───────────────────────────────────────────────
 
   static Future<void> _initLocalNotifications() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
-    await _localNotifs.initialize(initSettings);
+    try {
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await _localNotifs.initialize(
+          const InitializationSettings(android: androidSettings));
 
-    // Create notification channel (Android 8+)
-    const channel = AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      description: _channelDesc,
-      importance: Importance.high,
-    );
-    await _localNotifs
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+      const channel = AndroidNotificationChannel(
+        _kChannelId, _kChannelName,
+        description: _kChannelDesc,
+        importance: Importance.high,
+      );
+      final androidPlugin = _localNotifs
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(channel);
+      await androidPlugin?.requestNotificationsPermission();
 
-    // Request POST_NOTIFICATIONS permission (Android 13+)
-    await _localNotifs
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+      _localNotifsReady = true;
+      debugPrint('Android local notifications ready.');
+    } catch (e) {
+      debugPrint('Local notifications init error: $e');
+    }
+  }
 
-    _localNotifsReady = true;
-    debugPrint('Android local notifications ready.');
+  // ── WorkManager background task registration ──────────────────────────────
+
+  static Future<void> _registerBackgroundTask() async {
+    try {
+      await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+      await Workmanager().registerPeriodicTask(
+        _kBgTaskId,
+        _kBgTaskName,
+        frequency: const Duration(minutes: 15),
+        constraints: Constraints(networkType: NetworkType.connected),
+        existingWorkPolicy: ExistingWorkPolicy.keep,
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(minutes: 5),
+      );
+      debugPrint('WorkManager background task registered.');
+    } catch (e) {
+      debugPrint('WorkManager registration error: $e');
+    }
   }
 
   // ── Web Push ──────────────────────────────────────────────────────────────
@@ -118,7 +203,7 @@ class NotificationService {
     }
   }
 
-  // ── Polling (both platforms) ──────────────────────────────────────────────
+  // ── Foreground polling ────────────────────────────────────────────────────
 
   static void _startPolling() {
     _pollTimer?.cancel();
@@ -134,7 +219,6 @@ class NotificationService {
   }
 
   static Future<void> _checkForNotifications() async {
-    // On web, require browser permission; on Android always proceed.
     if (kIsWeb) {
       if (!BrowserNotification.isSupported) return;
       if (BrowserNotification.permissionStatus != 'granted') return;
@@ -154,9 +238,9 @@ class NotificationService {
 
       final notifications = jsonDecode(resp.body) as List<dynamic>;
       for (final n in notifications) {
-        final id    = n['id'] as int?;
-        final title = n['title'] as String? ?? 'LockedIn';
-        final msg   = n['message'] as String? ?? '';
+        final id    = (n['id']      as num?)?.toInt();
+        final title = (n['title']   as String?) ?? 'LockedIn';
+        final msg   = (n['message'] as String?) ?? '';
 
         await _showNotification(id ?? 0, title, msg);
         if (id != null) _acknowledge(id, token);
@@ -171,14 +255,12 @@ class NotificationService {
       BrowserNotification.show(title, body);
     } else if (_localNotifsReady) {
       await _localNotifs.show(
-        id & 0x7FFFFFFF, // keep within Android int range
-        title,
-        body,
+        id & 0x7FFFFFFF,
+        title, body,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            _channelId,
-            _channelName,
-            channelDescription: _channelDesc,
+            _kChannelId, _kChannelName,
+            channelDescription: _kChannelDesc,
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
@@ -199,12 +281,14 @@ class NotificationService {
     } catch (_) {}
   }
 
-  /// Call on logout to stop polling and reset state.
+  /// Call on logout to stop foreground polling and reset state.
   static void stop() {
     _pollTimer?.cancel();
     _pollTimer = null;
     _initialized = false;
     _pushSubscribed = false;
     _localNotifsReady = false;
+    // Note: WorkManager periodic task persists across logout by design —
+    // it checks for a valid token before doing anything.
   }
 }
