@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "502341540123",
+    "project_id": "landprojectauth",
+    "storage_bucket": "landprojectauth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502341540123:android:1676e3b5c10db80db91bbe",
+        "android_client_info": {
+          "package_name": "com.example.LockedIn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "502341540123-j5rasmf2a1bccvno2cng2i6vakj89nb0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.LockedIn",
+            "certificate_hash": "10cfb2f8068172a45f206290842853e7a4c4223a"
+          }
+        },
+        {
+          "client_id": "502341540123-k6guhiqni3bv3e6hkmun62cn0qtnd9o8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZ6MxUwknOK4n_xALItMykNGElvZ_p9lo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "502341540123-k6guhiqni3bv3e6hkmun62cn0qtnd9o8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
