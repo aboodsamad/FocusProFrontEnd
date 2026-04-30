@@ -18,7 +18,6 @@ class DailyScoreSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Section header ──────────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -27,11 +26,8 @@ class DailyScoreSection extends StatelessWidget {
                   color: AppColors.secondary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.flash_on_rounded,
-                  color: AppColors.secondary,
-                  size: 16,
-                ),
+                child: const Icon(Icons.flash_on_rounded,
+                    color: AppColors.secondary, size: 16),
               ),
               const SizedBox(width: 10),
               const Text(
@@ -45,12 +41,8 @@ class DailyScoreSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
-          // ── Today's score card ──────────────────────────────────────────────
           _TodayScoreCard(score: todayScore),
           const SizedBox(height: 16),
-
-          // ── Weekly chart card ───────────────────────────────────────────────
           _WeeklyChartCard(entries: weekly),
         ],
       ),
@@ -91,7 +83,6 @@ class _TodayScoreCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Icon ────────────────────────────────────────────────────────────
           Container(
             width: 56,
             height: 56,
@@ -108,8 +99,6 @@ class _TodayScoreCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-
-          // ── Score info ───────────────────────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,30 +126,21 @@ class _TodayScoreCard extends StatelessWidget {
                     height: 1.1,
                   ),
                 ),
-                if (hasScore) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Keep it up  play a game or read a snippet!',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 11,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  hasScore
+                      ? 'Keep it up — play a game or read a snippet!'
+                      : 'Play a game or read a book snippet',
+                  style: TextStyle(
+                    color: hasScore
+                        ? Colors.white.withOpacity(0.6)
+                        : AppColors.onSurfaceVariant,
+                    fontSize: 11,
                   ),
-                ] else ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Play a game or read a book snippet',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
-
-          // ── Flame streak indicator ────────────────────────────────────────────
           if (hasScore)
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -192,19 +172,20 @@ class _WeeklyChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxScore = entries.fold(0.0, (m, e) => math.max(m, e.score));
-    final weekTotal = entries.fold(0.0, (s, e) => s + e.score);
+    final maxScore   = entries.fold(0.0, (m, e) => math.max(m, e.score));
+    final weekTotal  = entries.fold(0.0, (s, e) => s + e.score);
     final activeDays = entries.where((e) => e.score > 0).length;
+    final avgScore   = activeDays > 0 ? weekTotal / activeDays : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 16,
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
@@ -212,39 +193,44 @@ class _WeeklyChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row
+          // ── Header ──────────────────────────────────────────────────────────
           Row(
             children: [
-              const Text(
-                'This Week',
-                style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This Week',
+                    style: TextStyle(
+                      color: AppColors.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    weekTotal > 0
+                        ? '+${weekTotal.toStringAsFixed(0)} pts  ·  avg ${avgScore.toStringAsFixed(0)}/day'
+                        : 'No activity this week yet',
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
               const Spacer(),
               _StatPill(
-                label: '$activeDays / 7 days active',
+                label: '$activeDays / 7',
                 icon: Icons.calendar_today_rounded,
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            weekTotal > 0
-                ? '+${weekTotal.toStringAsFixed(1)} pts total this week'
-                : 'No activity this week yet',
-            style: const TextStyle(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
 
-          // ── Bar chart ──────────────────────────────────────────────────────
+          // ── Chart ────────────────────────────────────────────────────────────
           SizedBox(
-            height: 120,
+            height: 160,
             child: _BarChart(entries: entries, maxScore: maxScore),
           ),
         ],
@@ -262,7 +248,7 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.secondary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
@@ -271,14 +257,14 @@ class _StatPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: AppColors.secondary, size: 12),
+            Icon(icon, color: AppColors.secondary, size: 11),
             const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
                 color: AppColors.secondary,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -291,7 +277,6 @@ class _StatPill extends StatelessWidget {
 class _BarChart extends StatefulWidget {
   final List<DailyScoreEntry> entries;
   final double maxScore;
-
   const _BarChart({required this.entries, required this.maxScore});
 
   @override
@@ -299,7 +284,7 @@ class _BarChart extends StatefulWidget {
 }
 
 class _BarChartState extends State<_BarChart> {
-  int? _selectedIdx;
+  int? _tappedIdx;
 
   static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -307,172 +292,203 @@ class _BarChartState extends State<_BarChart> {
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalWidth = constraints.maxWidth;
-        final barAreaWidth = totalWidth / widget.entries.length;
-        final barWidth = barAreaWidth * 0.45;
-        final chartHeight = constraints.maxHeight - 26;
+    return LayoutBuilder(builder: (context, constraints) {
+      final totalWidth  = constraints.maxWidth;
+      final slotWidth   = totalWidth / widget.entries.length;
+      final barWidth    = slotWidth * 0.52;
+      // Layout zones inside the 160 px total height:
+      //   20 px  — score pill row
+      //    4 px  — gap
+      //  108 px  — bar drawing area
+      //    6 px  — gap
+      //   14 px  — day label
+      //    8 px  — today dot (shared with padding)
+      const scorePillH = 20.0;
+      const gapAbove   = 4.0;
+      const barAreaH   = 106.0;
+      const gapBelow   = 6.0;
+      const dayLabelH  = 14.0;
+      // total = 20+4+106+6+14 = 150 — fits inside 160 with margin
 
-        return Stack(
-          children: [
-            // ── Horizontal guide lines ─────────────────────────────────────
-            CustomPaint(
-              size: Size(totalWidth, chartHeight),
-              painter: _GuideLinePainter(),
-            ),
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(widget.entries.length, (i) {
+          final entry    = widget.entries[i];
+          final today    = _isToday(entry.date);
+          final tapped   = _tappedIdx == i;
+          final hasScore = entry.score > 0;
+          final ratio    = widget.maxScore > 0
+              ? (entry.score / widget.maxScore).clamp(0.0, 1.0)
+              : 0.0;
+          final barH     = hasScore ? math.max(ratio * barAreaH, 8.0) : 4.0;
 
-            // ── Bars ────────────────────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(widget.entries.length, (i) {
-                final entry = widget.entries[i];
-                final today = _isToday(entry.date);
-                final selected = _selectedIdx == i;
-                final ratio = widget.maxScore > 0
-                    ? (entry.score / widget.maxScore).clamp(0.0, 1.0)
-                    : 0.0;
-                final barH = ratio * chartHeight;
-                final hasScore = entry.score > 0;
+          // Colors
+          final barGradient = today
+              ? const LinearGradient(
+                  colors: [Color(0xFF6EE7B7), Color(0xFF059669)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : hasScore
+                  ? LinearGradient(
+                      colors: [
+                        AppColors.secondary.withOpacity(tapped ? 0.9 : 0.65),
+                        AppColors.secondary.withOpacity(tapped ? 0.65 : 0.35),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    )
+                  : null;
 
-                return Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() {
-                      _selectedIdx = selected ? null : i;
-                    }),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // Score bubble — only shown on tap
-                        SizedBox(
-                          height: chartHeight - (hasScore ? barH : 0),
-                          child: selected && hasScore
-                              ? Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: today
-                                            ? AppColors.secondary
-                                            : AppColors.surfaceContainerHigh,
-                                        borderRadius: BorderRadius.circular(6),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.15),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        entry.score.toStringAsFixed(0),
-                                        style: TextStyle(
-                                          color: today
-                                              ? Colors.white
-                                              : AppColors.onSurface,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => setState(() => _tappedIdx = i),
+              onTapUp: (_) =>
+                  Future.delayed(const Duration(milliseconds: 180),
+                      () { if (mounted) setState(() => _tappedIdx = null); }),
+              onTapCancel: () => setState(() => _tappedIdx = null),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Score pill (always visible) ──────────────────────────
+                  SizedBox(
+                    height: scorePillH,
+                    child: hasScore
+                        ? Center(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: today
+                                    ? AppColors.secondary.withOpacity(
+                                        tapped ? 0.25 : 0.15)
+                                    : tapped
+                                        ? AppColors.surfaceContainerHigh
+                                        : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: today
+                                      ? AppColors.secondary.withOpacity(0.45)
+                                      : AppColors.outlineVariant
+                                          .withOpacity(0.6),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                entry.score.toStringAsFixed(0),
+                                style: TextStyle(
+                                  color: today
+                                      ? AppColors.secondary
+                                      : AppColors.onSurfaceVariant,
+                                  fontSize: 10,
+                                  fontWeight: today
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
 
-                        // Bar itself
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          width: selected ? barWidth * 1.15 : barWidth,
-                          height: hasScore ? barH : 4,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6),
-                            gradient: today
-                                ? const LinearGradient(
-                                    colors: [Color(0xFF34D399), Color(0xFF0E6C4A)],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  )
-                                : hasScore
-                                    ? LinearGradient(
-                                        colors: [
-                                          AppColors.secondary
-                                              .withOpacity(selected ? 0.85 : 0.55),
-                                          AppColors.secondary
-                                              .withOpacity(selected ? 0.6 : 0.3),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      )
-                                    : null,
-                            color: (!hasScore && !today)
-                                ? AppColors.surfaceContainerHigh
-                                : null,
-                            boxShadow: (today || selected) && hasScore
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.secondary.withOpacity(0.4),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
+                  const SizedBox(height: gapAbove),
+
+                  // ── Bar ────────────────────────────────────────────────────
+                  SizedBox(
+                    height: barAreaH,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        width: tapped ? barWidth * 1.12 : barWidth,
+                        height: barH,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(hasScore ? 7 : 4),
+                            topRight: Radius.circular(hasScore ? 7 : 4),
+                            bottomLeft: const Radius.circular(4),
+                            bottomRight: const Radius.circular(4),
                           ),
+                          gradient: barGradient,
+                          color: barGradient == null
+                              ? AppColors.surfaceContainerHigh
+                              : null,
+                          boxShadow: today && hasScore
+                              ? [
+                                  BoxShadow(
+                                    color:
+                                        AppColors.secondary.withOpacity(0.45),
+                                    blurRadius: 12,
+                                    spreadRadius: 1,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : tapped && hasScore
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.secondary
+                                            .withOpacity(0.25),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
                         ),
+                      ),
+                    ),
+                  ),
 
-                        // Day label
-                        const SizedBox(height: 6),
+                  const SizedBox(height: gapBelow),
+
+                  // ── Day label ──────────────────────────────────────────────
+                  SizedBox(
+                    height: dayLabelH,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
                           _dayLabel(entry.date),
                           style: TextStyle(
-                            color: today || selected
+                            color: today
                                 ? AppColors.secondary
                                 : AppColors.onSurfaceVariant,
                             fontSize: 10,
-                            fontWeight: today || selected
-                                ? FontWeight.bold
+                            fontWeight: today
+                                ? FontWeight.w800
                                 : FontWeight.w400,
                           ),
                         ),
+                        if (today) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                );
-              }),
+                ],
+              ),
             ),
-          ],
-        );
-      },
-    );
+          );
+        }),
+      );
+    });
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _GuideLinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.outlineVariant.withOpacity(0.4)
-      ..strokeWidth = 0.8;
-
-    final lines = 3;
-    for (int i = 0; i <= lines; i++) {
-      final y = size.height * (1 - i / lines);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_GuideLinePainter old) => false;
 }
