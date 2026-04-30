@@ -281,7 +281,7 @@ class _NumberStreamPageState extends State<NumberStreamPage> with TickerProvider
 
   Future<void> _submitResult() async {
     final secs = _startTime != null ? DateTime.now().difference(_startTime!).inSeconds : 0;
-    // Normalized score 0-1000: level contribution + accuracy
+    final provider = mounted ? context.read<DailyScoreProvider>() : null;
     final result = await GameService.submitResult(
       gameType: 'number_stream',
       timePlayedSeconds: secs,
@@ -289,9 +289,9 @@ class _NumberStreamPageState extends State<NumberStreamPage> with TickerProvider
       levelReached: _game.level,
       mistakes: _game.mistakes,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Number Stream');
+    if (result != null) {
+      provider?.addPoints(result.focusScoreGained);
+      if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Number Stream');
     }
   }
 

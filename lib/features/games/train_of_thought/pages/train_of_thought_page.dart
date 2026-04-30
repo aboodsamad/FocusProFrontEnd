@@ -101,6 +101,7 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
   late AnimationController _idleAnim;
 
   int _startEpoch = 0;
+  bool _resultSubmitted = false;
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
@@ -142,6 +143,7 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
     _stationFlash.clear();
     _forkFlash.clear();
     _prevTime = null;
+    _resultSubmitted = false;
 
     setState(() {});
   }
@@ -191,7 +193,10 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
       _ticker.stop();
       _phase = _Phase.gameOver;
       _winAnim.forward(from: 0);
-      _submitResult(completed: false);
+      if (!_resultSubmitted) {
+        _resultSubmitted = true;
+        _submitResult(completed: false);
+      }
       setState(() {});
       return;
     }
@@ -203,7 +208,10 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
       _ticker.stop();
       _phase = _Phase.complete;
       _winAnim.forward(from: 0);
-      _submitResult(completed: true);
+      if (!_resultSubmitted) {
+        _resultSubmitted = true;
+        _submitResult(completed: true);
+      }
     }
 
     setState(() {});
@@ -293,23 +301,27 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _submitResult({required bool completed}) async {
+    // Capture level NOW before any async work — _loadLevel can change _level
+    final int level = _level;
     final elapsed = (DateTime.now().millisecondsSinceEpoch - _startEpoch) ~/ 1000;
+    // Capture provider before async gap so addPoints works even if user backs out
+    final provider = mounted ? context.read<DailyScoreProvider>() : null;
     // Completing a level unlocks the next one; failing keeps the current level unlocked.
-    final unlockLevel = completed ? _level + 1 : _level;
+    final unlockLevel = completed ? level + 1 : level;
     await GameProgressService.unlockUpToLevel('train_of_thought', unlockLevel);
     final int total = _correct + _wrong;
     final result = await GameService.submitResult(
       gameType: 'train_of_thought',
       timePlayedSeconds: elapsed,
       completed: completed,
-      levelReached: _level,
+      levelReached: completed ? level + 1 : level,
       mistakes: _wrong,
       correct: _correct,
       total: total,
     );
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Train of Thought');
+    if (result != null) {
+      provider?.addPoints(result.focusScoreGained);
+      if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Train of Thought');
     }
   }
 
@@ -323,9 +335,10 @@ class _TOTState extends State<TrainOfThoughtPage> with TickerProviderStateMixin 
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (_phase == _Phase.playing) {
+        if (_phase == _Phase.playing && !_resultSubmitted) {
           _ticker.stop();
           _phase = _Phase.idle; // prevent further tick processing
+          _resultSubmitted = true;
           await _submitResult(completed: false);
         }
         if (mounted) Navigator.of(context).pop();

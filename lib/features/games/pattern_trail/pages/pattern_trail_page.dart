@@ -354,17 +354,21 @@ class _PatternTrailPageState extends State<PatternTrailPage> with TickerProvider
 
   Future<void> _submitResult({required bool completed}) async {
     final timePlayed = _gameStartTime != null ? DateTime.now().difference(_gameStartTime!).inSeconds : 0;
+    // Capture provider before async gap so addPoints works even if user backs out
+    final provider = mounted ? context.read<DailyScoreProvider>() : null;
     final result = await GameService.submitResult(
       gameType: 'pattern_trail',
       timePlayedSeconds: timePlayed,
       completed: completed,
       levelReached: completed ? _game.level + 1 : _game.level,
       mistakes: _game.mistakes,
+      correct: completed ? _game.sequenceLength : 0,
+      total: _game.sequenceLength,
     );
 
-    if (result != null && mounted) {
-      context.read<DailyScoreProvider>().addPoints(result.focusScoreGained);
-      ScoreGainToast.show(context, result.focusScoreGained, source: 'Pattern Trail');
+    if (result != null) {
+      provider?.addPoints(result.focusScoreGained);
+      if (mounted) ScoreGainToast.show(context, result.focusScoreGained, source: 'Pattern Trail');
     }
   }
 

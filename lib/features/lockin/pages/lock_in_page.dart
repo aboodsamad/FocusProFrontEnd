@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../coaching/pages/coaching_page.dart';
@@ -59,8 +60,27 @@ class _LockInPageState extends State<LockInPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadDefaultSettings();
     _checkPermissions();
     _checkForActiveSession();
+  }
+
+  Future<void> _loadDefaultSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    const durationOptions = [30, 60, 90, 120];
+    const prepOptions = [5, 10, 15];
+    final savedDuration = prefs.getInt('default_duration') ?? 60;
+    final savedPrep = prefs.getInt('default_break') ?? 5;
+    // Snap to the nearest valid button option
+    final duration = durationOptions.reduce((a, b) =>
+        (a - savedDuration).abs() <= (b - savedDuration).abs() ? a : b);
+    final prep = prepOptions.reduce((a, b) =>
+        (a - savedPrep).abs() <= (b - savedPrep).abs() ? a : b);
+    setState(() {
+      _durationMinutes = duration;
+      _prepMinutes = prep;
+    });
   }
 
   Future<void> _checkPermissions() async {

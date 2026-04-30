@@ -262,7 +262,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final page = GameRegistry.pageFor(gameType);
         if (page == null) return;
         await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-        try { await DailyChallengeService.completeChallenge(challenge.id); } catch (_) {}
+        // Backend auto-completes when 2 levels are done; just refresh
+        if (!mounted) return;
         await _loadChallenge();
         break;
       case 'BOOK':
@@ -277,6 +278,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         } else {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const BooksPage()));
         }
+        // Backend auto-completes when 2 snippets are read; just refresh
+        if (!mounted) return;
+        await _loadChallenge();
         break;
       default:
         try { await DailyChallengeService.completeChallenge(challenge.id); } catch (_) {}
@@ -769,6 +773,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 style: const TextStyle(fontSize: 12, color: AppColors.outline,
                     height: 1.45),
                 maxLines: 3, overflow: TextOverflow.ellipsis),
+            if (!challenge.isCompleted && !challenge.isExpired &&
+                (challenge.challengeType == 'GAME' || challenge.challengeType == 'BOOK')) ...[
+              const SizedBox(height: 10),
+              _buildProgressRow(challenge),
+            ],
             const SizedBox(height: 14),
             Row(children: [
               Expanded(flex: 2, child: _buildChallengeActionButton(challenge, areaColor)),
@@ -780,6 +789,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ]),
         ),
       ]),
+    );
+  }
+
+  Widget _buildProgressRow(DailyChallengeModel challenge) {
+    final isGame = challenge.challengeType == 'GAME';
+    final label  = isGame ? 'Complete 2 levels' : 'Read 2 snippets';
+    final done   = challenge.progress.clamp(0, 2);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ...List.generate(2, (i) => Container(
+          width: 8, height: 8,
+          margin: const EdgeInsets.only(right: 4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: i < done ? AppColors.secondary : AppColors.surfaceContainerLow,
+            border: Border.all(
+              color: i < done ? AppColors.secondary : AppColors.outlineVariant,
+            ),
+          ),
+        )),
+        const SizedBox(width: 6),
+        Text('$label  ·  $done/2',
+            style: const TextStyle(
+                fontSize: 11, color: AppColors.outline,
+                fontWeight: FontWeight.w500)),
+      ],
     );
   }
 
