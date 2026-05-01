@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
@@ -116,18 +118,50 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
     }
   }
 
-  // ── Sign up logic ──────────────────────────────────────────────────────────
+  // ── Sign up — step 1: send OTP, show sheet ─────────────────────────────────
 
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select your date of birth'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select your date of birth'), backgroundColor: Colors.red),
+      );
       return;
     }
 
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.sendOtp(_emailController.text.trim());
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      final verified = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        isDismissible: false,
+        enableDrag: false,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _OtpSheet(email: _emailController.text.trim()),
+      );
+
+      if (verified == true) await _doRegister();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ── Sign up — step 2: register after OTP verified ──────────────────────────
+
+  Future<void> _doRegister() async {
     setState(() => _isLoading = true);
 
     final signupData = {
@@ -143,31 +177,33 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       final result = await AuthService.signup(signupData);
       setState(() => _isLoading = false);
 
-      // Backend returns raw JWT string wrapped as {'token': '...'}
       final token = result['token']?.toString() ?? '';
       if (token.isNotEmpty) {
         await AuthService.saveToken(token);
-        // Start notification polling + ask browser for permission
         NotificationService.init();
-        // Load the user's profile into UserProvider so the home page
-        // shows the real name/username instead of the 'User' fallback.
-        if (mounted) {
-          await context.read<UserProvider>().reloadAfterLogin();
-        }
+        if (mounted) await context.read<UserProvider>().reloadAfterLogin();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Welcome! Let\'s set up your focus profile.'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Welcome! Let\'s set up your focus profile.'),
+            backgroundColor: Colors.green,
+          ),
         );
-        // Navigate to diagnostic  this sets the initial focus score
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => DiagnosticPage(token: token)),
+        );
       } else {
         throw Exception('Signup failed: No token received');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -319,12 +355,8 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   label: 'Username',
                                   hint: 'Choose a username',
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Please enter a username';
-                                    }
-                                    if (v.length < 3) {
-                                      return 'Username must be at least 3 characters';
-                                    }
+                                    if (v == null || v.isEmpty) return 'Please enter a username';
+                                    if (v.length < 3) return 'Username must be at least 3 characters';
                                     return null;
                                   },
                                 ),
@@ -337,9 +369,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   hint: 'your@email.com',
                                   keyboardType: TextInputType.emailAddress,
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
+                                    if (v == null || v.isEmpty) return 'Please enter your email';
                                     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
                                       return 'Please enter a valid email';
                                     }
@@ -380,12 +410,8 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Please enter a password';
-                                    }
-                                    if (v.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
+                                    if (v == null || v.isEmpty) return 'Please enter a password';
+                                    if (v.length < 6) return 'Password must be at least 6 characters';
                                     return null;
                                   },
                                 ),
@@ -405,15 +431,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                       color: AppColors.outline,
                                       size: 20,
                                     ),
-                                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                    onPressed: () =>
+                                        setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                                   ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Please confirm your password';
-                                    }
-                                    if (v != _passwordController.text) {
-                                      return 'Passwords do not match';
-                                    }
+                                    if (v == null || v.isEmpty) return 'Please confirm your password';
+                                    if (v != _passwordController.text) return 'Passwords do not match';
                                     return null;
                                   },
                                 ),
@@ -558,9 +581,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                         style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
                                       ),
                                       GestureDetector(
-                                        onTap: () => Navigator.of(
-                                          context,
-                                        ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())),
+                                        onTap: () => Navigator.of(context).pushReplacement(
+                                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                                        ),
                                         child: const Text(
                                           'Log in',
                                           style: TextStyle(
@@ -584,6 +607,248 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── OTP bottom sheet ───────────────────────────────────────────────────────────
+
+class _OtpSheet extends StatefulWidget {
+  final String email;
+  const _OtpSheet({required this.email});
+
+  @override
+  State<_OtpSheet> createState() => _OtpSheetState();
+}
+
+class _OtpSheetState extends State<_OtpSheet> {
+  final List<TextEditingController> _controllers =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+
+  int _secondsLeft = 60;
+  Timer? _timer;
+  bool _isVerifying = false;
+  bool _isSending = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNodes[0].requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    for (final c in _controllers) c.dispose();
+    for (final f in _focusNodes) f.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      if (_secondsLeft == 0) {
+        t.cancel();
+      } else {
+        setState(() => _secondsLeft--);
+      }
+    });
+  }
+
+  Future<void> _verify() async {
+    final otp = _controllers.map((c) => c.text).join();
+    if (otp.length < 6) {
+      setState(() => _error = 'Please enter all 6 digits');
+      return;
+    }
+    setState(() { _isVerifying = true; _error = null; });
+    try {
+      await AuthService.verifyOtp(widget.email, otp);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isVerifying = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+      for (final c in _controllers) c.clear();
+      _focusNodes[0].requestFocus();
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() { _isSending = true; _error = null; });
+    try {
+      await AuthService.sendOtp(widget.email);
+      if (!mounted) return;
+      for (final c in _controllers) c.clear();
+      setState(() { _isSending = false; _secondsLeft = 60; });
+      _startTimer();
+      _focusNodes[0].requestFocus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+        _error = 'Failed to resend. Please try again.';
+      });
+    }
+  }
+
+  Widget _buildDigitBox(int index) {
+    return SizedBox(
+      width: 44,
+      height: 56,
+      child: TextField(
+        controller: _controllers[index],
+        focusNode: _focusNodes[index],
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 1,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: AppColors.onSurface,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: AppColors.surfaceContainerHigh,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+          ),
+        ),
+        onChanged: (value) {
+          if (value.isNotEmpty) {
+            if (index < 5) {
+              _focusNodes[index + 1].requestFocus();
+            } else {
+              _focusNodes[index].unfocus();
+            }
+          } else if (index > 0) {
+            _focusNodes[index - 1].requestFocus();
+          }
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 32),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // close button
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: AppColors.outline),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+            ),
+            const Text(
+              'Verify your email',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enter the 6-digit code sent to\n${widget.email}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant, height: 1.4),
+            ),
+            const SizedBox(height: 28),
+            // digit boxes
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(6, _buildDigitBox),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(fontSize: 13, color: AppColors.error)),
+            ],
+            const SizedBox(height: 24),
+            // verify button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isVerifying ? null : _verify,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                ),
+                child: _isVerifying
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                        ),
+                      )
+                    : const Text('Verify', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // countdown / resend
+            _secondsLeft > 0
+                ? Text(
+                    'Resend code in $_secondsLeft s',
+                    style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+                  )
+                : TextButton(
+                    onPressed: _isSending ? null : _resend,
+                    child: _isSending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary),
+                          )
+                        : const Text(
+                            'Resend code',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondary,
+                            ),
+                          ),
+                  ),
+          ],
         ),
       ),
     );

@@ -94,6 +94,39 @@ class AuthService {
     }
   }
 
+  // ── OTP ───────────────────────────────────────────────────────────────────
+  static Future<void> sendOtp(String email) async {
+    final url = Uri.parse('$baseUrl/user/send-otp');
+    try {
+      final resp = await http
+          .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'email': email}))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) return;
+      throw Exception(_readError(resp));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Failed to send OTP: $e');
+    }
+  }
+
+  static Future<void> verifyOtp(String email, String otp) async {
+    final url = Uri.parse('$baseUrl/user/verify-otp');
+    try {
+      final resp = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'otp': otp}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) return;
+      throw Exception(_readError(resp));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Failed to verify OTP: $e');
+    }
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   static Map<String, dynamic> _extractToken(String body) {
     final raw = body.trim();
@@ -137,7 +170,11 @@ class AuthService {
     if (lower.contains('timeout') || lower.contains('timed out')) {
       return 'The server took too long to respond. Please check your connection.';
     }
-    if (resp.statusCode == 401 || resp.statusCode == 403) {
+    if (resp.statusCode == 401) {
+      return 'Your session has expired. Please log in again.';
+    }
+    if (resp.statusCode == 403) {
+      if (lower.contains('not verified')) return raw;
       return 'Your session has expired. Please log in again.';
     }
     if (resp.statusCode >= 500) {
