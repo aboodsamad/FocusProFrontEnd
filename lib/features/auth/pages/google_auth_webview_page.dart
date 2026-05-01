@@ -19,14 +19,16 @@ import '../widgets/complete_profile_dialog.dart';
 ///
 /// Flow:
 ///   1. Load  `<backend>/oauth2/authorization/google`  in the WebView.
+///      A custom User-Agent ("LockedInApp") tells the backend this is mobile.
 ///   2. The WebView follows every redirect (Google sign-in pages, backend
 ///      callback, etc.) automatically.
-///   3. When the backend has finished processing it redirects to the frontend
-///      URL with a one-time `code=` query / hash parameter.  We intercept that
-///      navigation, extract the code, and prevent the WebView from loading the
-///      (web-only) frontend page.
-///   4. Exchange the code for a JWT via  `GET /user/oauth/token?code=<code>`.
-///   5. Save the token and navigate to [DiagnosticPage] (new user) or
+///   3. The backend detects the mobile User-Agent and redirects to
+///      `https://lockedin-mobile-callback.app/oauth-callback?code=<code>`
+///      instead of the web frontend URL.
+///   4. We intercept that navigation, extract the code, and prevent the
+///      WebView from actually loading the (non-existent) domain.
+///   5. Exchange the code for a JWT via  `GET /user/oauth/token?code=<code>`.
+///   6. Save the token and navigate to [DiagnosticPage] (new user) or
 ///      [HomeScreen] (returning user), exactly like [OAuthCallbackPage] does.
 class GoogleAuthWebviewPage extends StatefulWidget {
   const GoogleAuthWebviewPage({super.key});
@@ -42,6 +44,8 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
 
   // ── Domains we must NOT intercept ─────────────────────────────────────────
   // These are part of the normal OAuth redirect chain and should be followed.
+  // The mobile callback domain (lockedin-mobile-callback.app) is intentionally
+  // NOT in this list so the WebView intercepts it and extracts the code.
   static const _passthroughDomains = [
     'accounts.google.com',
     'focusprobackend.onrender.com',
@@ -55,6 +59,10 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // Custom User-Agent so the backend knows this is the mobile app and
+      // sends the redirect to lockedin-mobile-callback.app instead of the
+      // web frontend URL.
+      ..setUserAgent('Mozilla/5.0 LockedInApp/1.0')
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
@@ -86,9 +94,10 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
     final isPassthrough = _passthroughDomains.any((d) => url.contains(d));
     if (!isPassthrough && url.contains('code=')) {
       _hasHandled = true;
+      debugPrint('[GoogleAuthWebview] Intercepted callback URL: $url');
       // Run async work off the navigator callback.
       Future.microtask(() => _handleCallbackUrl(url));
-      return NavigationDecision.prevent; // don't actually load the web page
+      return NavigationDecision.prevent; // don't actually load the fake domain
     }
 
     return NavigationDecision.navigate;
@@ -104,6 +113,8 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
         return;
       }
 
+      debugPrint('[GoogleAuthWebview] Exchanging code for token...');
+
       // Exchange one-time code for JWT.
       final tokenUrl = Uri.parse('${AuthService.baseUrl}/user/oauth/token?code=$code');
       final resp = await http.get(tokenUrl);
@@ -115,6 +126,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
 
       final token = resp.body.trim();
       await AuthService.saveToken(token);
+      debugPrint('[GoogleAuthWebview] Token saved.');
 
       // Fetch the user profile to decide where to route.
       await UserService.fetchAndSaveProfile(token);
@@ -132,6 +144,7 @@ class _GoogleAuthWebviewPageState extends State<GoogleAuthWebviewPage> {
 
       final isNewUser = focusScore == null || focusScore == 0.0;
       final hasConsented = profile?['consentUsage'] == true;
+      debugPrint('[GoogleAuthWebview] isNewUser: $isNewUser, hasConsented: $hasConsented');
 
       if (!mounted) return;
 

@@ -20,7 +20,7 @@ class BrowserNotification {
     if (html.Notification.permission == 'granted') {
       html.Notification(title, body: body, icon: '/icons/Icon-192.png');
     }
-  }
+  } 
 
   /// Subscribe to VAPID Web Push.
   /// The actual subscription is done by JS in index.html (_LockedIn_subscribePush)
