@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'auth_service.dart';
 import 'browser_notification.dart';
 
@@ -15,7 +16,16 @@ const _kBackendBase = 'https://LockedInbackend.onrender.com';
 const _kBgTaskName  = 'notificationPoll';
 const _kBgTaskId    = 'lockedin-notification-poll';
 
-// ── Background isolate entry-point ────────────────────────────────────────────
+// ── FCM background message handler ────────────────────────────────────────────
+// Must be a top-level function. Called when the app is terminated/background
+// and a data-only FCM message arrives. Notification-payload messages are shown
+// automatically by the OS — nothing extra needed here.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // The OS displays the notification automatically via the FCM notification payload.
+}
+
+// ── WorkManager background isolate entry-point ────────────────────────────────
 // Must be a top-level function annotated with vm:entry-point.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -100,6 +110,9 @@ class NotificationService {
       await _initLocalNotifications();
       // Register WorkManager periodic task for background delivery.
       await _registerBackgroundTask();
+      // Register FCM token and listen for foreground messages.
+      await _registerFcmToken();
+      _setupFcmListeners();
     } else {
       await BrowserNotification.requestPermission();
       if (BrowserNotification.permissionStatus != 'granted') {
@@ -279,6 +292,50 @@ class NotificationService {
           )
           .timeout(const Duration(seconds: 5));
     } catch (_) {}
+  }
+
+  // ── FCM token registration ────────────────────────────────────────────────
+
+  static Future<void> _registerFcmToken() async {
+    try {
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true, badge: true, sound: true,
+      );
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _saveFcmToken(token);
+      // Re-register whenever Firebase rotates the token.
+      FirebaseMessaging.instance.onTokenRefresh.listen(_saveFcmToken);
+    } catch (e) {
+      debugPrint('FCM token registration error: $e');
+    }
+  }
+
+  static Future<void> _saveFcmToken(String token) async {
+    final authToken = await AuthService.getToken();
+    if (authToken == null) return;
+    try {
+      await http.post(
+        Uri.parse('$_kBackendBase/notifications/fcm-token'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'token': token}),
+      ).timeout(const Duration(seconds: 10));
+      debugPrint('FCM token registered with backend.');
+    } catch (e) {
+      debugPrint('FCM token save error: $e');
+    }
+  }
+
+  static void _setupFcmListeners() {
+    // When the app is in the foreground, FCM does NOT auto-display notifications.
+    // We intercept them here and show via flutter_local_notifications.
+    FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
+      final title = msg.notification?.title ?? (msg.data['title'] as String?) ?? 'LockedIn';
+      final body  = msg.notification?.body  ?? (msg.data['body']  as String?) ?? '';
+      _showNotification(msg.hashCode & 0x7FFFFFFF, title, body);
+    });
   }
 
   /// Call on logout to stop foreground polling and reset state.

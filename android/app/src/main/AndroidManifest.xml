@@ -73,6 +73,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- FCM: route background notifications to the correct channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="lockedin_main"/>
     </application>
 
     <queries>

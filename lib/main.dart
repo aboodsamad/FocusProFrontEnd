@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:LockedIn/core/utils/url_helper.dart';
 import 'core/services/notification_service.dart';
@@ -22,6 +25,11 @@ import 'features/lockin/services/android_lockin_helper.dart' show AndroidLockInH
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   final userProvider = UserProvider();
   await userProvider.init();
