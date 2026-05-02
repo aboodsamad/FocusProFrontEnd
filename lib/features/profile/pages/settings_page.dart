@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/widgets/password_strength_indicator.dart';
 import '../../home/providers/user_provider.dart';
 import '../../home/services/user_service.dart';
 
@@ -212,6 +215,7 @@ class _SettingsPageState extends State<SettingsPage> {
     bool obscureCurrent = true;
     bool obscureNew     = true;
     bool obscureConfirm = true;
+    String newPassText  = '';
 
     await showModalBottomSheet(
       context: context,
@@ -261,11 +265,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 _InputField(
                   controller: newCtrl,
                   label: 'New Password',
-                  hint: 'At least 8 characters',
+                  hint: 'Min 8 chars + uppercase, number, symbol',
                   icon: Icons.lock_reset_rounded,
                   obscure: obscureNew,
                   onToggleObscure: () => setModal(() => obscureNew = !obscureNew),
+                  onChanged: (v) => setModal(() => newPassText = v),
                 ),
+                PasswordStrengthIndicator(password: newPassText),
                 const SizedBox(height: 12),
                 _InputField(
                   controller: confirmCtrl,
@@ -293,8 +299,8 @@ class _SettingsPageState extends State<SettingsPage> {
                               setModal(() => error = 'All fields are required');
                               return;
                             }
-                            if (newPass.length < 8) {
-                              setModal(() => error = 'New password must be at least 8 characters');
+                            if (!passwordIsAllowed(newPass)) {
+                              setModal(() => error = 'Password too weak — add uppercase, a number, or special character');
                               return;
                             }
                             if (newPass != confirm) {
@@ -405,37 +411,17 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // ── Delete account ─────────────────────────────────────────────────────────
+  // ── Delete account — OTP-confirmed flow ───────────────────────────────────
   Future<void> _confirmDelete() async {
-    final ok = await _confirmDialog(
-      icon: Icons.delete_forever_rounded,
-      iconColor: AppColors.error,
-      iconBg: AppColors.error.withOpacity(0.12),
-      title: 'Delete Account',
-      body: 'All your progress, habits, and data will be permanently deleted. This cannot be undone.',
-      confirmLabel: 'Delete',
-      confirmColor: AppColors.error,
+    final user = context.read<UserProvider>();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DeleteAccountSheet(expectedEmail: user.email),
     );
-    if (ok != true || !mounted) return;
-
-    setState(() => _deleting = true);
-    try {
-      final token = await AuthService.getToken();
-      if (token != null) {
-        await http
-            .delete(
-              Uri.parse('${AuthService.baseUrl}/user/account'),
-              headers: {'Authorization': 'Bearer $token'},
-            )
-            .timeout(const Duration(seconds: 10));
-      }
-    } catch (_) {}
-    final p = await SharedPreferences.getInstance();
-    await p.clear();
-    NotificationService.stop();
-    if (mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
-    }
   }
 
   // ── Generic confirm dialog ─────────────────────────────────────────────────
@@ -1108,6 +1094,7 @@ class _InputField extends StatelessWidget {
   final IconData icon;
   final bool obscure;
   final VoidCallback? onToggleObscure;
+  final ValueChanged<String>? onChanged;
 
   const _InputField({
     required this.controller,
@@ -1116,6 +1103,7 @@ class _InputField extends StatelessWidget {
     required this.icon,
     this.obscure = false,
     this.onToggleObscure,
+    this.onChanged,
   });
 
   @override
@@ -1135,6 +1123,7 @@ class _InputField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: obscure,
+          onChanged: onChanged,
           style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
@@ -1169,5 +1158,531 @@ class _InputField extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+// ── Delete Account bottom sheet (email → OTP → success) ───────────────────────
+class _DeleteAccountSheet extends StatefulWidget {
+  final String expectedEmail;
+  const _DeleteAccountSheet({required this.expectedEmail});
+
+  @override
+  State<_DeleteAccountSheet> createState() => _DeleteAccountSheetState();
+}
+
+class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
+  // 0 = email entry, 1 = OTP, 2 = success
+  int _step = 0;
+  final _emailCtrl = TextEditingController();
+  final List<TextEditingController> _otpCtrl =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _otpFocus = List.generate(6, (_) => FocusNode());
+  String? _error;
+  bool _loading = false;
+  int _secondsLeft = 60;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _emailCtrl.dispose();
+    for (final c in _otpCtrl) {
+      c.dispose();
+    }
+    for (final f in _otpFocus) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_secondsLeft == 0) {
+        t.cancel();
+      } else {
+        setState(() => _secondsLeft--);
+      }
+    });
+  }
+
+  Future<void> _sendOtp() async {
+    final email = _emailCtrl.text.trim().toLowerCase();
+    if (email.isEmpty) {
+      setState(() => _error = 'Please enter your email');
+      return;
+    }
+    if (email != widget.expectedEmail.toLowerCase()) {
+      setState(() => _error = 'This email does not match your account');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await AuthService.sendOtp(email);
+      setState(() {
+        _loading = false;
+        _step = 1;
+        _secondsLeft = 60;
+      });
+      _startTimer();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _otpFocus.isNotEmpty) _otpFocus[0].requestFocus();
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _verifyAndDelete() async {
+    final otp = _otpCtrl.map((c) => c.text).join();
+    if (otp.length < 6) {
+      setState(() => _error = 'Please enter all 6 digits');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await AuthService.verifyOtp(_emailCtrl.text.trim(), otp);
+      final token = await AuthService.getToken();
+      if (token != null) {
+        await http
+            .delete(
+              Uri.parse('${AuthService.baseUrl}/user/account'),
+              headers: {'Authorization': 'Bearer $token'},
+            )
+            .timeout(const Duration(seconds: 10));
+      }
+      final p = await SharedPreferences.getInstance();
+      await p.clear();
+      NotificationService.stop();
+      if (mounted) setState(() { _loading = false; _step = 2; });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+      for (final c in _otpCtrl) {
+        c.clear();
+      }
+      if (_otpFocus.isNotEmpty) _otpFocus[0].requestFocus();
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await AuthService.sendOtp(_emailCtrl.text.trim());
+      for (final c in _otpCtrl) {
+        c.clear();
+      }
+      setState(() {
+        _loading = false;
+        _secondsLeft = 60;
+      });
+      _startTimer();
+      if (_otpFocus.isNotEmpty) _otpFocus[0].requestFocus();
+    } catch (_) {
+      setState(() {
+        _loading = false;
+        _error = 'Failed to resend. Please try again.';
+      });
+    }
+  }
+
+  Widget _buildOtpDigit(int index) {
+    return SizedBox(
+      width: 44,
+      height: 56,
+      child: TextField(
+        controller: _otpCtrl[index],
+        focusNode: _otpFocus[index],
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 1,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: AppColors.onSurface,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: AppColors.surfaceContainerHigh,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.error, width: 2),
+          ),
+        ),
+        onChanged: (value) {
+          if (value.isNotEmpty) {
+            if (index < 5) {
+              _otpFocus[index + 1].requestFocus();
+            } else {
+              _otpFocus[index].unfocus();
+            }
+          } else if (index > 0) {
+            _otpFocus[index - 1].requestFocus();
+          }
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 20, 24, bottomInset + 32),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_step < 2) ...[
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.delete_forever_rounded,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+              if (_step == 0) ..._buildEmailStep(),
+              if (_step == 1) ..._buildOtpStep(),
+              if (_step == 2) ..._buildSuccessStep(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildEmailStep() {
+    return [
+      const Text(
+        'This action is permanent and cannot be undone. All your progress, habits, and data will be deleted forever.',
+        style: TextStyle(
+          color: AppColors.onSurfaceVariant,
+          fontSize: 13,
+          height: 1.5,
+        ),
+      ),
+      const SizedBox(height: 20),
+      const Text(
+        'Enter your account email to confirm:',
+        style: TextStyle(
+          color: AppColors.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 10),
+      TextField(
+        controller: _emailCtrl,
+        keyboardType: TextInputType.emailAddress,
+        style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'your@email.com',
+          hintStyle:
+              const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+          prefixIcon: const Icon(
+            Icons.email_outlined,
+            color: AppColors.onSurfaceVariant,
+            size: 18,
+          ),
+          filled: true,
+          fillColor: AppColors.surfaceContainerLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.error.withOpacity(0.5)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.error.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          _error!,
+          style: const TextStyle(color: AppColors.error, fontSize: 13),
+        ),
+      ],
+      const SizedBox(height: 20),
+      SizedBox(
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: _loading ? null : _sendOtp,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: _loading
+                  ? AppColors.error.withOpacity(0.6)
+                  : AppColors.error,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Send Verification Code',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: const Center(
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildOtpStep() {
+    return [
+      Text(
+        'Enter the 6-digit code sent to ${_emailCtrl.text.trim()}',
+        style: const TextStyle(
+          color: AppColors.onSurfaceVariant,
+          fontSize: 13,
+          height: 1.5,
+        ),
+      ),
+      const SizedBox(height: 24),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(6, _buildOtpDigit),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 12),
+        Text(
+          _error!,
+          style: const TextStyle(fontSize: 13, color: AppColors.error),
+        ),
+      ],
+      const SizedBox(height: 24),
+      SizedBox(
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: _loading ? null : _verifyAndDelete,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: _loading
+                  ? AppColors.error.withOpacity(0.6)
+                  : AppColors.error,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Confirm Deletion',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Center(
+        child: _secondsLeft > 0
+            ? Text(
+                'Resend code in $_secondsLeft s',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.onSurfaceVariant),
+              )
+            : TextButton(
+                onPressed: _loading ? null : _resend,
+                child: const Text(
+                  'Resend code',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildSuccessStep() {
+    return [
+      Center(
+        child: Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: const Color(0xFF43A047).withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFF43A047),
+            size: 40,
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+      const Center(
+        child: Text(
+          'Account Deleted',
+          style: TextStyle(
+            color: AppColors.onSurface,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      const Center(
+        child: Text(
+          'Your account and all associated data have been permanently deleted.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.onSurfaceVariant,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ),
+      const SizedBox(height: 28),
+      SizedBox(
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: () {
+            Navigator.of(context, rootNavigator: true)
+                .pushNamedAndRemoveUntil('/', (_) => false);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Text(
+                'Back to Login',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
   }
 }
