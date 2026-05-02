@@ -25,10 +25,10 @@ class _SettingsPageState extends State<SettingsPage> {
   // duration: [30, 60, 90, 120]   break/prep: [5, 10, 15]
   // Notifications
   bool _notifySchedule = true;
-  bool _notifyHabits   = true;
+  bool _notifyHabits = true;
 
-  bool _saving     = false;
-  bool _deleting   = false;
+  bool _saving = false;
+  bool _deleting = false;
   bool _signingOut = false;
 
   @override
@@ -40,8 +40,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     setState(() {
-      _notifySchedule  = p.getBool('notify_schedule') ?? true;
-      _notifyHabits    = p.getBool('notify_habits')   ?? true;
+      _notifySchedule = p.getBool('notify_schedule') ?? true;
+      _notifyHabits = p.getBool('notify_habits') ?? true;
     });
   }
 
@@ -49,7 +49,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _saving = true);
     final p = await SharedPreferences.getInstance();
     await p.setBool('notify_schedule', _notifySchedule);
-    await p.setBool('notify_habits',   _notifyHabits);
+    await p.setBool('notify_habits', _notifyHabits);
 
     // Wire notification service: stop when both disabled, restart when either enabled
     if (!_notifySchedule && !_notifyHabits) {
@@ -101,21 +101,15 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.outlineVariant, borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
                   'Edit Profile',
-                  style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 _InputField(
@@ -140,18 +134,20 @@ class _SettingsPageState extends State<SettingsPage> {
                               setModal(() => error = 'Name cannot be empty');
                               return;
                             }
-                            setModal(() { saving = true; error = null; });
+                            setModal(() {
+                              saving = true;
+                              error = null;
+                            });
                             try {
                               final token = await AuthService.getToken();
                               if (token == null) throw Exception('Not logged in');
-                              final resp = await http.put(
-                                Uri.parse('${AuthService.baseUrl}/user/update-profile'),
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': 'Bearer $token',
-                                },
-                                body: jsonEncode({'name': name}),
-                              ).timeout(const Duration(seconds: 10));
+                              final resp = await http
+                                  .put(
+                                    Uri.parse('${AuthService.baseUrl}/user/update-profile'),
+                                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+                                    body: jsonEncode({'name': name}),
+                                  )
+                                  .timeout(const Duration(seconds: 10));
 
                               if (resp.statusCode == 200) {
                                 await UserService.fetchAndSaveProfile(token);
@@ -181,17 +177,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: Center(
                         child: saving
                             ? const SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                               )
                             : const Text(
                                 'Save Changes',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                               ),
                       ),
                     ),
@@ -209,14 +201,14 @@ class _SettingsPageState extends State<SettingsPage> {
   // ── Change password ────────────────────────────────────────────────────────
   Future<void> _changePassword() async {
     final currentCtrl = TextEditingController();
-    final newCtrl     = TextEditingController();
+    final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
     bool saving = false;
     String? error;
     bool obscureCurrent = true;
-    bool obscureNew     = true;
+    bool obscureNew = true;
     bool obscureConfirm = true;
-    String newPassText  = '';
+    String newPassText = '';
 
     await showModalBottomSheet(
       context: context,
@@ -237,21 +229,15 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.outlineVariant, borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
                   'Change Password',
-                  style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 _InputField(
@@ -301,28 +287,29 @@ class _SettingsPageState extends State<SettingsPage> {
                               return;
                             }
                             if (!passwordIsAllowed(newPass)) {
-                              setModal(() => error = 'Password too weak — add uppercase, a number, or special character');
+                              setModal(
+                                () => error = 'Password too weak — add uppercase, a number, or special character',
+                              );
                               return;
                             }
                             if (newPass != confirm) {
                               setModal(() => error = 'Passwords do not match');
                               return;
                             }
-                            setModal(() { saving = true; error = null; });
+                            setModal(() {
+                              saving = true;
+                              error = null;
+                            });
                             try {
                               final token = await AuthService.getToken();
                               if (token == null) throw Exception('Not logged in');
-                              final resp = await http.put(
-                                Uri.parse('${AuthService.baseUrl}/user/change-password'),
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': 'Bearer $token',
-                                },
-                                body: jsonEncode({
-                                  'currentPassword': current,
-                                  'newPassword': newPass,
-                                }),
-                              ).timeout(const Duration(seconds: 10));
+                              final resp = await http
+                                  .put(
+                                    Uri.parse('${AuthService.baseUrl}/user/change-password'),
+                                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+                                    body: jsonEncode({'currentPassword': current, 'newPassword': newPass}),
+                                  )
+                                  .timeout(const Duration(seconds: 10));
 
                               if (resp.statusCode == 200) {
                                 if (ctx.mounted) {
@@ -345,7 +332,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                   final body = jsonDecode(resp.body) as Map<String, dynamic>;
                                   if (body['message'] != null) msg = body['message'] as String;
                                 } catch (_) {}
-                                setModal(() { saving = false; error = msg; });
+                                setModal(() {
+                                  saving = false;
+                                  error = msg;
+                                });
                               }
                             } catch (_) {
                               setModal(() {
@@ -363,17 +353,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: Center(
                         child: saving
                             ? const SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                               )
                             : const Text(
                                 'Update Password',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                               ),
                       ),
                     ),
@@ -408,7 +394,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await AuthService.logout();
     if (mounted) {
       await context.read<UserProvider>().logout();
-      Navigator.of(context).pushNamedAndRemoveUntil(LoginPage() as String, (_) => false);
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LoginPage()), (_) => false);
     }
   }
 
@@ -446,22 +432,21 @@ class _SettingsPageState extends State<SettingsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56, height: 56,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
                 child: Icon(icon, color: iconColor, size: 28),
               ),
               const SizedBox(height: 16),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: AppColors.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               Text(
                 body,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.onSurfaceVariant, fontSize: 14, height: 1.5),
+                style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 24),
               Row(
@@ -477,9 +462,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           border: Border.all(color: AppColors.outlineVariant),
                         ),
                         child: const Center(
-                          child: Text('Cancel',
-                            style: TextStyle(
-                              color: AppColors.onSurface, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ),
@@ -490,15 +476,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       onTap: () => Navigator.pop(ctx, true),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: confirmColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        decoration: BoxDecoration(color: confirmColor, borderRadius: BorderRadius.circular(12)),
                         child: Center(
                           child: Text(
                             confirmLabel,
-                            style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -555,41 +537,36 @@ class _SettingsPageState extends State<SettingsPage> {
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: Container(
-              width: 40, height: 40,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.outlineVariant),
               ),
-              child: const Icon(Icons.arrow_back_ios_rounded,
-                  color: AppColors.onSurface, size: 18),
+              child: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.onSurface, size: 18),
             ),
           ),
           const SizedBox(width: 16),
           const Text(
             'Settings',
-            style: TextStyle(
-              color: AppColors.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: AppColors.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           GestureDetector(
             onTap: _saving ? null : _save,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
               child: _saving
                   ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
                   : const Text(
                       'Save',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
             ),
           ),
@@ -657,11 +634,9 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Row(
               children: [
                 Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(14)),
                   child: Center(
                     child: Text(
                       initial,
@@ -680,27 +655,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       Text(
                         user.name,
-                        style: const TextStyle(
-                          color: AppColors.onSurface,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '@${user.username}',
-                        style: const TextStyle(
-                          color: AppColors.secondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(color: AppColors.secondary, fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        user.email,
-                        style: const TextStyle(
-                          color: AppColors.onSurfaceVariant, fontSize: 12),
-                      ),
+                      Text(user.email, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -708,17 +671,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 GestureDetector(
                   onTap: _editProfile,
                   child: Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: AppColors.secondary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.secondary.withOpacity(0.25)),
                     ),
-                    child: const Icon(
-                      Icons.edit_rounded,
-                      color: AppColors.secondary,
-                      size: 17,
-                    ),
+                    child: const Icon(Icons.edit_rounded, color: AppColors.secondary, size: 17),
                   ),
                 ),
               ],
@@ -801,39 +761,35 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Row(
           children: [
             Container(
-              width: 44, height: 44,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.primaryContainer.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.logout_rounded,
-                  color: AppColors.primary, size: 22),
+              child: const Icon(Icons.logout_rounded, color: AppColors.primary, size: 22),
             ),
             const SizedBox(width: 14),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Sign Out',
-                    style: TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    )),
+                  Text(
+                    'Sign Out',
+                    style: TextStyle(color: AppColors.onSurface, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
                   SizedBox(height: 3),
-                  Text('Log out of your account',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant, fontSize: 12)),
+                  Text('Log out of your account', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
             ),
             _signingOut
                 ? const SizedBox(
-                    width: 18, height: 18,
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2))
-                : const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.onSurfaceVariant, size: 20),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
           ],
         ),
       ),
@@ -858,42 +814,38 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Row(
               children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.error.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.delete_forever_rounded,
-                      color: AppColors.error, size: 22),
+                  child: const Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 22),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Delete My Account',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        )),
+                      Text(
+                        'Delete My Account',
+                        style: TextStyle(color: AppColors.error, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
                       SizedBox(height: 3),
-                      Text('Permanently remove all your data',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                        )),
+                      Text(
+                        'Permanently remove all your data',
+                        style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w400),
+                      ),
                     ],
                   ),
                 ),
                 _deleting
                     ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(
-                            color: AppColors.error, strokeWidth: 2))
-                    : const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.error, size: 20),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: AppColors.error, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right_rounded, color: AppColors.error, size: 20),
               ],
             ),
           ),
@@ -916,7 +868,8 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Row(
           children: [
             Container(
-              width: 38, height: 38,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppColors.secondary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
@@ -928,21 +881,16 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                    style: const TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    )),
+                  Text(
+                    label,
+                    style: const TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle,
-                    style: const TextStyle(
-                      color: AppColors.onSurfaceVariant, fontSize: 12)),
+                  Text(subtitle, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.onSurfaceVariant, size: 20),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
           ],
         ),
       ),
@@ -962,7 +910,8 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         children: [
           Container(
-            width: 38, height: 38,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: AppColors.secondary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
@@ -974,16 +923,12 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                  style: const TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  )),
+                Text(
+                  label,
+                  style: const TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceVariant, fontSize: 12)),
+                Text(subtitle, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
               ],
             ),
           ),
@@ -1017,7 +962,8 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         children: [
           Container(
-            width: 38, height: 38,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: AppColors.secondary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
@@ -1029,16 +975,12 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                  style: const TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  )),
+                Text(
+                  label,
+                  style: const TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceVariant, fontSize: 12)),
+                Text(subtitle, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
               ],
             ),
           ),
@@ -1046,7 +988,8 @@ class _SettingsPageState extends State<SettingsPage> {
           GestureDetector(
             onTap: () => onChanged((value - step).clamp(min, max)),
             child: Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
@@ -1061,18 +1004,15 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Text(
               '$value $unit',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.secondary,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: AppColors.secondary, fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
             onTap: () => onChanged((value + step).clamp(min, max)),
             child: Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: AppColors.secondary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
@@ -1114,11 +1054,7 @@ class _InputField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.onSurfaceVariant,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -1175,8 +1111,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
   // 0 = email entry, 1 = OTP, 2 = success
   int _step = 0;
   final _emailCtrl = TextEditingController();
-  final List<TextEditingController> _otpCtrl =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpCtrl = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _otpFocus = List.generate(6, (_) => FocusNode());
   String? _error;
   bool _loading = false;
@@ -1259,16 +1194,17 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
       final token = await AuthService.getToken();
       if (token != null) {
         await http
-            .delete(
-              Uri.parse('${AuthService.baseUrl}/user/account'),
-              headers: {'Authorization': 'Bearer $token'},
-            )
+            .delete(Uri.parse('${AuthService.baseUrl}/user/account'), headers: {'Authorization': 'Bearer $token'})
             .timeout(const Duration(seconds: 10));
       }
       final p = await SharedPreferences.getInstance();
       await p.clear();
       NotificationService.stop();
-      if (mounted) setState(() { _loading = false; _step = 2; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _step = 2;
+        });
     } catch (e) {
       setState(() {
         _loading = false;
@@ -1316,23 +1252,13 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         keyboardType: TextInputType.number,
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          color: AppColors.onSurface,
-        ),
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.onSurface),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
           fillColor: AppColors.surfaceContainerHigh,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.error, width: 2),
@@ -1373,10 +1299,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.outlineVariant, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -1390,21 +1313,13 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                         color: AppColors.error.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.delete_forever_rounded,
-                        color: AppColors.error,
-                        size: 22,
-                      ),
+                      child: const Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 22),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
                         'Delete Account',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: AppColors.error, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -1425,20 +1340,12 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
     return [
       const Text(
         'This action is permanent and cannot be undone. All your progress, habits, and data will be deleted forever.',
-        style: TextStyle(
-          color: AppColors.onSurfaceVariant,
-          fontSize: 13,
-          height: 1.5,
-        ),
+        style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5),
       ),
       const SizedBox(height: 20),
       const Text(
         'Enter your account email to confirm:',
-        style: TextStyle(
-          color: AppColors.onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 10),
       TextField(
@@ -1447,13 +1354,8 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         style: const TextStyle(color: AppColors.onSurface, fontSize: 14),
         decoration: InputDecoration(
           hintText: 'your@email.com',
-          hintStyle:
-              const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
-          prefixIcon: const Icon(
-            Icons.email_outlined,
-            color: AppColors.onSurfaceVariant,
-            size: 18,
-          ),
+          hintStyle: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.onSurfaceVariant, size: 18),
           filled: true,
           fillColor: AppColors.surfaceContainerLow,
           border: OutlineInputBorder(
@@ -1468,16 +1370,12 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.error, width: 1.5),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         ),
       ),
       if (_error != null) ...[
         const SizedBox(height: 8),
-        Text(
-          _error!,
-          style: const TextStyle(color: AppColors.error, fontSize: 13),
-        ),
+        Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
       ],
       const SizedBox(height: 20),
       SizedBox(
@@ -1487,9 +1385,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
-              color: _loading
-                  ? AppColors.error.withOpacity(0.6)
-                  : AppColors.error,
+              color: _loading ? AppColors.error.withOpacity(0.6) : AppColors.error,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -1497,16 +1393,11 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : const Text(
                       'Send Verification Code',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
             ),
           ),
@@ -1527,10 +1418,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
             child: const Center(
               child: Text(
                 'Cancel',
-                style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -1543,23 +1431,13 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
     return [
       Text(
         'Enter the 6-digit code sent to ${_emailCtrl.text.trim()}',
-        style: const TextStyle(
-          color: AppColors.onSurfaceVariant,
-          fontSize: 13,
-          height: 1.5,
-        ),
+        style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5),
       ),
       const SizedBox(height: 24),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(6, _buildOtpDigit),
-      ),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(6, _buildOtpDigit)),
       if (_error != null) ...[
         const SizedBox(height: 12),
-        Text(
-          _error!,
-          style: const TextStyle(fontSize: 13, color: AppColors.error),
-        ),
+        Text(_error!, style: const TextStyle(fontSize: 13, color: AppColors.error)),
       ],
       const SizedBox(height: 24),
       SizedBox(
@@ -1569,9 +1447,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
-              color: _loading
-                  ? AppColors.error.withOpacity(0.6)
-                  : AppColors.error,
+              color: _loading ? AppColors.error.withOpacity(0.6) : AppColors.error,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -1579,16 +1455,11 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : const Text(
                       'Confirm Deletion',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
             ),
           ),
@@ -1599,18 +1470,13 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         child: _secondsLeft > 0
             ? Text(
                 'Resend code in $_secondsLeft s',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.onSurfaceVariant),
+                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
               )
             : TextButton(
                 onPressed: _loading ? null : _resend,
                 child: const Text(
                   'Resend code',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.secondary,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.secondary),
                 ),
               ),
       ),
@@ -1623,26 +1489,15 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         child: Container(
           width: 72,
           height: 72,
-          decoration: BoxDecoration(
-            color: const Color(0xFF43A047).withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.check_circle_rounded,
-            color: Color(0xFF43A047),
-            size: 40,
-          ),
+          decoration: BoxDecoration(color: const Color(0xFF43A047).withOpacity(0.12), shape: BoxShape.circle),
+          child: const Icon(Icons.check_circle_rounded, color: Color(0xFF43A047), size: 40),
         ),
       ),
       const SizedBox(height: 20),
       const Center(
         child: Text(
           'Account Deleted',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: AppColors.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
       const SizedBox(height: 8),
@@ -1650,11 +1505,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         child: Text(
           'Your account and all associated data have been permanently deleted.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.onSurfaceVariant,
-            fontSize: 13,
-            height: 1.5,
-          ),
+          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13, height: 1.5),
         ),
       ),
       const SizedBox(height: 28),
@@ -1662,23 +1513,15 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         width: double.infinity,
         child: GestureDetector(
           onTap: () {
-            Navigator.of(context, rootNavigator: true)
-                .pushNamedAndRemoveUntil('/', (_) => false);
+            Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil('/', (_) => false);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
             child: const Center(
               child: Text(
                 'Back to Login',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
           ),
