@@ -133,6 +133,12 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
 
     try {
+      // Validate username & email against backend before spending an OTP send.
+      await AuthService.validateSignup(
+        _usernameController.text.trim(),
+        _emailController.text.trim(),
+      );
+
       await AuthService.sendOtp(_emailController.text.trim());
       setState(() => _isLoading = false);
       if (!mounted) return;

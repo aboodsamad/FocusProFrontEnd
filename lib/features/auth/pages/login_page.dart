@@ -14,6 +14,7 @@ import '../../lockin/services/screen_event_syncer.dart';
 import '../../lockin/services/android_lockin_helper.dart';
 import './signup_page.dart';
 import './google_auth_webview_page.dart';
+import './forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -235,11 +236,8 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Forgot Password clicked!'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
                                   );
                                 },
                                 child: const Text(

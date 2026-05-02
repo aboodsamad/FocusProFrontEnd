@@ -96,6 +96,58 @@ class AuthService {
     }
   }
 
+  // ── Sign-up pre-validation ─────────────────────────────────────────────────
+  static Future<void> validateSignup(String username, String email) async {
+    final url = Uri.parse('$baseUrl/user/validate-signup');
+    try {
+      final resp = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username, 'email': email}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200) return;
+      throw Exception(_readError(resp));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('$e');
+    }
+  }
+
+  // ── Forgot Password ────────────────────────────────────────────────────────
+  static Future<void> forgotPasswordSendOtp(String email) async {
+    final url = Uri.parse('$baseUrl/user/forgot-password');
+    try {
+      final resp = await http
+          .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'email': email}))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) return;
+      throw Exception(_readError(resp));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('$e');
+    }
+  }
+
+  static Future<void> resetPassword(String email, String newPassword) async {
+    final url = Uri.parse('$baseUrl/user/reset-password');
+    try {
+      final resp = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'newPassword': newPassword}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) return;
+      throw Exception(_readError(resp));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('$e');
+    }
+  }
+
   // ── OTP ───────────────────────────────────────────────────────────────────
   static Future<void> sendOtp(String email) async {
     final url = Uri.parse('$baseUrl/user/send-otp');
