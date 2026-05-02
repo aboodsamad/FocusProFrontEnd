@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:LockedIn/features/auth/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -407,7 +408,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await AuthService.logout();
     if (mounted) {
       await context.read<UserProvider>().logout();
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(LoginPage() as String, (_) => false);
     }
   }
 
