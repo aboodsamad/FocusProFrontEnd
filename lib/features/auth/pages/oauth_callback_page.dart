@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -41,9 +42,19 @@ class _OAuthCallbackPageState extends State<OAuthCallbackPage> {
 
   /// Exchange a one-time code for the real JWT by calling the backend.
   Future<String?> _exchangeCodeForToken(String code) async {
-    final url = Uri.parse('${AuthService.baseUrl}/user/oauth/token?code=$code');
-    final resp = await http.get(url);
+    final url = Uri.parse('${AuthService.baseUrl}/user/oauth/token');
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'code': code}),
+    );
     if (resp.statusCode == 200 && resp.body.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(resp.body);
+        if (decoded is Map && decoded.containsKey('token')) {
+          return decoded['token']?.toString();
+        }
+      } catch (_) {}
       return resp.body.trim();
     }
     print('[OAuth] Code exchange failed: ${resp.statusCode} ${resp.body}');
