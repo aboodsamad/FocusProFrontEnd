@@ -119,7 +119,7 @@ class _MyAppState extends State<MyApp> {
         }
 
         switch (settings.name) {
-          case '/diagnostic':
+          case '/':
           case '/home':
             return authGate(() => const HomeScreen());
           case '/coaching':
@@ -137,7 +137,7 @@ class _MyAppState extends State<MyApp> {
           case '/diagnostic':
             return authGate(() => const DiagnosticPage());
           default:
-            return authGate(() => const HomeScreen());
+            return authGate(() => const DiagnosticPage());
         }
       },
     );
