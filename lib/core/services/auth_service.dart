@@ -72,7 +72,8 @@ class AuthService {
       }
       throw Exception(_readError(resp));
     } catch (e) {
-      throw Exception('Login error: $e');
+      if (e is Exception) rethrow;
+      throw Exception('$e');
     }
   }
 
@@ -90,7 +91,8 @@ class AuthService {
       }
       throw Exception(_readError(resp));
     } catch (e) {
-      throw Exception('Signup error: $e');
+      if (e is Exception) rethrow;
+      throw Exception('$e');
     }
   }
 
@@ -156,30 +158,8 @@ class AuthService {
       }
     } catch (_) {}
 
-    // Map backend constraint/error phrases to user-friendly messages
-    final lower = raw.toLowerCase();
-    if (lower.contains('duplicate') || lower.contains('already exists') || lower.contains('unique constraint')) {
-      return 'This email or username is already taken. Please try a different one.';
-    }
-    if (lower.contains('bad credentials') || lower.contains('invalid password') || lower.contains('wrong password')) {
-      return 'Incorrect username or password. Please try again.';
-    }
-    if (lower.contains('user not found') || lower.contains('not found')) {
-      return 'No account found with that username or email.';
-    }
-    if (lower.contains('timeout') || lower.contains('timed out')) {
-      return 'The server took too long to respond. Please check your connection.';
-    }
-    if (resp.statusCode == 401) {
-      return 'Your session has expired. Please log in again.';
-    }
-    if (resp.statusCode == 403) {
-      if (lower.contains('not verified')) return raw;
-      return 'Your session has expired. Please log in again.';
-    }
-    if (resp.statusCode >= 500) {
-      return 'Something went wrong on our end. Please try again later.';
-    }
-    return raw;
+    if (raw.isNotEmpty) return raw;
+    if (resp.statusCode >= 500) return 'Something went wrong on our end. Please try again later.';
+    return 'Request failed (${resp.statusCode})';
   }
 }
