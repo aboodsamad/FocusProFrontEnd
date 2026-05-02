@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/utils/url_helper.dart';
+import '../../../core/widgets/password_strength_indicator.dart';
 import './login_page.dart';
 import '../../diagnostic/pages/diagnostic_page.dart';
 import '../../home/providers/user_provider.dart';
@@ -63,6 +64,9 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       end: 1.0,
     ).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeOut));
 
+    _passwordController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _startAnimations();
   }
 
@@ -405,7 +409,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                 _buildInputField(
                                   controller: _passwordController,
                                   label: 'Password',
-                                  hint: 'At least 6 characters',
+                                  hint: 'Min 8 chars + uppercase, number, symbol',
                                   obscure: _obscurePassword,
                                   suffixIcon: IconButton(
                                     icon: Icon(
@@ -417,10 +421,11 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
                                   ),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) return 'Please enter a password';
-                                    if (v.length < 6) return 'Password must be at least 6 characters';
+                                    if (!passwordIsAllowed(v)) return 'Password too weak — add uppercase, a number, or special character';
                                     return null;
                                   },
                                 ),
+                                PasswordStrengthIndicator(password: _passwordController.text),
                                 const SizedBox(height: 14),
 
                                 // ── Confirm Password ──────────────────────

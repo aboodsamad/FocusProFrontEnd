@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/password_strength_indicator.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -37,6 +38,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   bool _isLoading = false;
   String _email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _newPasswordController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -130,6 +139,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   Future<void> _resetPassword() async {
     if (!_passwordFormKey.currentState!.validate()) return;
+    if (!passwordIsAllowed(_newPasswordController.text)) {
+      _showError('Password too weak — add uppercase, a number, or special character');
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       await AuthService.resetPassword(_email, _newPasswordController.text.trim());
@@ -503,7 +516,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           _buildField(
             controller: _newPasswordController,
             label: 'New Password',
-            hint: 'At least 8 characters',
+            hint: 'Min 8 chars + uppercase, number, symbol',
             obscure: _obscureNew,
             suffixIcon: IconButton(
               icon: Icon(
@@ -515,10 +528,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Please enter a new password';
-              if (v.length < 8) return 'Password must be at least 8 characters';
+              if (!passwordIsAllowed(v)) return 'Password too weak — add uppercase, a number, or special character';
               return null;
             },
           ),
+          PasswordStrengthIndicator(password: _newPasswordController.text),
           const SizedBox(height: 16),
           _buildField(
             controller: _confirmPasswordController,
