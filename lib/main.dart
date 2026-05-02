@@ -137,7 +137,7 @@ class _MyAppState extends State<MyApp> {
           case '/diagnostic':
             return authGate(() => const DiagnosticPage());
           default:
-            return authGate(() => const DiagnosticPage());
+            return authGate(() => const HomeScreen());
         }
       },
     );
