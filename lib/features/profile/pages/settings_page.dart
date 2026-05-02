@@ -1194,17 +1194,25 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
       final token = await AuthService.getToken();
       if (token != null) {
         await http
-            .delete(Uri.parse('${AuthService.baseUrl}/user/account'), headers: {'Authorization': 'Bearer $token'})
+            .delete(
+              Uri.parse('${AuthService.baseUrl}/user/account'),
+              headers: {'Authorization': 'Bearer $token'},
+            )
             .timeout(const Duration(seconds: 10));
       }
       final p = await SharedPreferences.getInstance();
       await p.clear();
       NotificationService.stop();
-      if (mounted)
+      // Clear in-memory auth state so authGate routes to LoginPage, not HomeScreen.
+      if (mounted) {
+        await Provider.of<UserProvider>(context, listen: false).logout();
+      }
+      if (mounted) {
         setState(() {
           _loading = false;
           _step = 2;
         });
+      }
     } catch (e) {
       setState(() {
         _loading = false;
