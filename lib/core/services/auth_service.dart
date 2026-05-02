@@ -116,11 +116,15 @@ class AuthService {
   }
 
   // ── Forgot Password ────────────────────────────────────────────────────────
-  static Future<void> forgotPasswordSendOtp(String email) async {
+  static Future<void> forgotPasswordSendOtp(String username, String email) async {
     final url = Uri.parse('$baseUrl/user/forgot-password');
     try {
       final resp = await http
-          .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'email': email}))
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username, 'email': email}),
+          )
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) return;
       throw Exception(_readError(resp));

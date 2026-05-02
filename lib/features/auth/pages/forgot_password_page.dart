@@ -16,6 +16,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   int _step = 0;
 
   // Step 0
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _emailFormKey = GlobalKey<FormState>();
 
@@ -40,6 +41,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _usernameController.dispose();
     _emailController.dispose();
     for (final c in _otpControllers) { c.dispose(); }
     for (final f in _otpFocusNodes) { f.dispose(); }
@@ -55,7 +57,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
     try {
       _email = _emailController.text.trim();
-      await AuthService.forgotPasswordSendOtp(_email);
+      await AuthService.forgotPasswordSendOtp(
+        _usernameController.text.trim(),
+        _email,
+      );
       setState(() {
         _isLoading = false;
         _step = 1;
@@ -108,7 +113,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _resendOtp() async {
     setState(() { _isLoading = true; _otpError = null; });
     try {
-      await AuthService.forgotPasswordSendOtp(_email);
+      await AuthService.forgotPasswordSendOtp(_usernameController.text.trim(), _email);
       for (final c in _otpControllers) { c.clear(); }
       setState(() { _isLoading = false; _secondsLeft = 60; });
       _startTimer();
@@ -354,10 +359,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Enter the email address linked to your account and we\'ll send you a reset code.',
+            'Enter your username and the email linked to it. We\'ll verify they match before sending a reset code.',
             style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant, height: 1.5),
           ),
           const SizedBox(height: 28),
+          _buildField(
+            controller: _usernameController,
+            label: 'Username',
+            hint: 'Your username',
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Please enter your username';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
           _buildField(
             controller: _emailController,
             label: 'Email address',
