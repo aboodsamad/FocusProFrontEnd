@@ -409,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Column(children: [
                       _buildCoachingCard(),
                       const SizedBox(height: 8),
-                      _buildHabitsCard(),
+                      _buildBooksLibraryCard(),
                     ]),
                   ),
 
@@ -1181,201 +1181,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Habits card ────────────────────────────────────────────────────────────────────────
-  Widget _buildHabitsCard() {
-    return Consumer<HabitProvider>(
-      builder: (context, provider, _) {
-        final habits   = provider.habits;
-        final done     = provider.doneCount;
-        final total    = provider.totalCount;
-        final allDone  = total > 0 && done == total;
-        final progress = total > 0 ? done / total : 0.0;
-
-        return GestureDetector(
-          onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
-          child: Container(
+  // ── Books Library card ────────────────────────────────────────────────────
+  Widget _buildBooksLibraryCard() {
+    return GestureDetector(
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/books'); },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant),
+          boxShadow: [BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: allDone
-                    ? AppColors.secondary.withOpacity(0.4)
-                    : AppColors.outlineVariant,
-              ),
-              boxShadow: [BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8, offset: const Offset(0, 2))],
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: const Icon(Icons.library_books_rounded,
+                color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header row
-                Row(children: [
-                  Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: allDone
-                          ? AppColors.secondary.withOpacity(0.15)
-                          : AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      allDone ? Icons.celebration_rounded : Icons.checklist_rounded,
-                      color: allDone ? AppColors.secondary : AppColors.primary,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Daily Habits',
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface)),
-                        if (!provider.isLoading && total > 0)
-                          Text(
-                            allDone ? 'All done — great work! 🎉' : '$done of $total completed',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: allDone ? AppColors.secondary : AppColors.onSurfaceVariant,
-                                fontWeight: allDone ? FontWeight.w600 : FontWeight.normal),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (!provider.isLoading && total > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: allDone
-                            ? AppColors.secondary.withOpacity(0.12)
-                            : AppColors.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: allDone
-                              ? AppColors.secondary.withOpacity(0.3)
-                              : AppColors.outlineVariant,
-                        ),
-                      ),
-                      child: Text(
-                        '$done/$total',
-                        style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.bold,
-                            color: allDone ? AppColors.secondary : AppColors.onSurfaceVariant),
-                      ),
-                    ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.outlineVariant, size: 18),
-                ]),
-
-                // Progress bar
-                if (!provider.isLoading && total > 0) ...[
-                  const SizedBox(height: 12),
-                  LayoutBuilder(builder: (ctx, box) {
-                    return Stack(children: [
-                      Container(
-                        width: box.maxWidth, height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeOutCubic,
-                        width: box.maxWidth * progress,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: allDone ? AppColors.secondary : AppColors.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ]);
-                  }),
-                  const SizedBox(height: 12),
-                ],
-
-                // Individual habits (first 4)
-                if (!provider.isLoading && total > 0)
-                  ...habits.take(4).map((h) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(children: [
-                      Container(
-                        width: 28, height: 28,
-                        decoration: BoxDecoration(
-                          color: h.doneToday
-                              ? AppColors.secondary.withOpacity(0.12)
-                              : AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: h.doneToday
-                                ? AppColors.secondary.withOpacity(0.35)
-                                : AppColors.outlineVariant,
-                          ),
-                        ),
-                        child: Icon(
-                          h.doneToday ? Icons.check_rounded : h.icon,
-                          size: 14,
-                          color: h.doneToday ? AppColors.secondary : AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          h.title,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: h.doneToday ? AppColors.onSurfaceVariant : AppColors.onSurface,
-                            decoration: h.doneToday ? TextDecoration.lineThrough : null,
-                            decorationColor: AppColors.onSurfaceVariant,
-                            fontWeight: h.doneToday ? FontWeight.normal : FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (h.streak > 1)
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Text('🔥', style: TextStyle(fontSize: 11)),
-                          const SizedBox(width: 2),
-                          Text('${h.streak}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600)),
-                        ]),
-                    ]),
-                  )),
-
-                // "+X more" footer
-                if (!provider.isLoading && total > 4)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      '+${total - 4} more habits',
-                      style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
-                    ),
-                  ),
-
-                // Empty state
-                if (!provider.isLoading && total == 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10, bottom: 4),
-                    child: Row(children: [
-                      const Icon(Icons.add_circle_outline_rounded,
-                          color: AppColors.primary, size: 16),
-                      const SizedBox(width: 8),
-                      const Text('Tap to add your first habit',
-                          style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                    ]),
-                  ),
+                const Text('Books Library',
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface)),
+                const Text('Explore books · TTS reading',
+                    style: TextStyle(
+                        fontSize: 11, color: AppColors.onSurfaceVariant)),
               ],
             ),
           ),
-        );
-      },
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColors.outlineVariant, size: 18),
+        ]),
+      ),
     );
   }
 }
