@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-enum NavTab { home, games, rooms, coach, habits, profile }
+enum NavTab { home, games, rooms, coach, books, profile }
 
 class AppBottomNav extends StatelessWidget {
   final NavTab current;
@@ -18,8 +18,8 @@ class AppBottomNav extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/rooms');
       case NavTab.coach:
         Navigator.pushReplacementNamed(context, '/coaching');
-      case NavTab.habits:
-        Navigator.pushReplacementNamed(context, '/habits');
+      case NavTab.books:
+        Navigator.pushReplacementNamed(context, '/books');
       case NavTab.profile:
         Navigator.pushReplacementNamed(context, '/profile');
     }
@@ -49,7 +49,7 @@ class AppBottomNav extends StatelessWidget {
               _NavItem(icon: Icons.extension_outlined,     label: 'Games',   selected: current == NavTab.games,   onTap: () => _go(context, NavTab.games)),
               _NavItem(icon: Icons.groups_outlined,        label: 'Rooms',   selected: current == NavTab.rooms,   onTap: () => _go(context, NavTab.rooms)),
               _NavItem(icon: Icons.psychology_outlined,    label: 'Coach',   selected: current == NavTab.coach,   onTap: () => _go(context, NavTab.coach)),
-              _NavItem(icon: Icons.task_alt_outlined,      label: 'Habits',  selected: current == NavTab.habits,  onTap: () => _go(context, NavTab.habits)),
+              _NavItem(icon: Icons.book_outlined,      label: 'Habits',  selected: current == NavTab.books,  onTap: () => _go(context, NavTab.books)),
               _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', selected: current == NavTab.profile, onTap: () => _go(context, NavTab.profile)),
             ],
           ),
