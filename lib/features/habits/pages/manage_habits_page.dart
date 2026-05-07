@@ -97,7 +97,6 @@ class ManageHabitsPage extends StatelessWidget {
       ),
       child: Scaffold(
       backgroundColor: AppColors.surface,
-      bottomNavigationBar: const AppBottomNav(current: NavTab.habits),
       body: Consumer<HabitProvider>(
         builder: (context, provider, _) {
           // Loading
