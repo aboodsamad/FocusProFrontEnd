@@ -93,7 +93,9 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
   // slide animation for question transitions
   late AnimationController _slideCtrl;
   late Animation<Offset> _slideAnim;
+  late Animation<Offset> _slideAnimBack;
   late Animation<double> _fadeAnim;
+  bool _slideForward = true;
 
   // pulse for intro orb
   late AnimationController _pulseCtrl;
@@ -111,6 +113,10 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
     _slideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
     _slideAnim = Tween<Offset>(
       begin: const Offset(0.08, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
+    _slideAnimBack = Tween<Offset>(
+      begin: const Offset(-0.08, 0),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
     _fadeAnim = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeIn));
@@ -163,6 +169,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
   void _onAnswered(DiagnosticAnswer answer) {
     _answers.add(answer);
     if (_currentIndex < _questions.length - 1) {
+      _slideForward = true;
       _slideCtrl.reverse().then((_) {
         if (!mounted) return;
         setState(() => _currentIndex++);
@@ -173,6 +180,20 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
     } else {
       _submitSession();
     }
+  }
+
+  void _onGoBack() {
+    if (_currentIndex == 0 || _answers.isEmpty) return;
+    _slideForward = false;
+    _slideCtrl.reverse().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _answers.removeLast();
+        _currentIndex--;
+      });
+      _animateBg(_themes[_questions[_currentIndex].dimension]!.bg);
+      _slideCtrl.forward();
+    });
   }
 
   Future<void> _submitSession() async {
@@ -297,7 +318,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
               border: Border.all(color: Colors.white.withOpacity(0.12)),
             ),
             child: const Text(
-              'SCIENCE-BACKED · 15 QUESTIONS',
+              'SCIENCE-BACKED · 14 QUESTIONS',
               style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2),
             ),
           ),
@@ -438,10 +459,11 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
 
   // ── QUESTION VIEW ─────────────────────────────────────────────────────────
   Widget _buildQuestion() {
-    if (_questions.isEmpty)
+    if (_questions.isEmpty) {
       return const Center(
         child: Text('Could not load questions.', style: TextStyle(color: Colors.white)),
       );
+    }
 
     final q = _questions[_currentIndex];
     final theme = _themes[q.dimension]!;
@@ -453,6 +475,22 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
           child: Row(
             children: [
+              // Back button
+              if (_currentIndex > 0) ...[
+                GestureDetector(
+                  onTap: _onGoBack,
+                  child: _glassBox(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withOpacity(0.08),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               // Dimension chip
               _glassBox(
                 borderRadius: BorderRadius.circular(30),
@@ -543,7 +581,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
           child: FadeTransition(
             opacity: _fadeAnim,
             child: SlideTransition(
-              position: _slideAnim,
+              position: _slideForward ? _slideAnim : _slideAnimBack,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
                 child: Column(
