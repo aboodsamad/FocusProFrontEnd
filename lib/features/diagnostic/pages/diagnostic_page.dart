@@ -182,8 +182,15 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
     }
   }
 
+  bool get _canGoBack {
+    if (_currentIndex == 0 || _answers.isEmpty) return false;
+    // Block going back to the merged passage task once it has been completed
+    if (_questions.isNotEmpty && _questions[_currentIndex - 1].id == 5) return false;
+    return true;
+  }
+
   void _onGoBack() {
-    if (_currentIndex == 0 || _answers.isEmpty) return;
+    if (!_canGoBack) return;
     _slideForward = false;
     _slideCtrl.reverse().then((_) {
       if (!mounted) return;
@@ -475,8 +482,8 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
           child: Row(
             children: [
-              // Back button
-              if (_currentIndex > 0) ...[
+              // Back button (hidden once the completed passage task is behind us)
+              if (_canGoBack) ...[
                 GestureDetector(
                   onTap: _onGoBack,
                   child: _glassBox(
