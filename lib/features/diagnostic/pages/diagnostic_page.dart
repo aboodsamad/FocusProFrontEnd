@@ -83,7 +83,9 @@ class DiagnosticPage extends StatefulWidget {
 
 class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStateMixin {
   List<DiagnosticQuestion> _questions = [];
-  final List<DiagnosticAnswer> _answers = [];
+  // Keyed by questionId so individual answers can be removed without
+  // disturbing the locked Q5 (merged passage task) entry.
+  final Map<int, DiagnosticAnswer> _answersMap = {};
   int _currentIndex = 0;
   bool _loading = true;
   bool _submitting = false;
@@ -167,14 +169,23 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
   }
 
   void _onAnswered(DiagnosticAnswer answer) {
-    _answers.add(answer);
-    if (_currentIndex < _questions.length - 1) {
+    _answersMap[answer.questionId] = answer;
+
+    // Find the next question to show; skip Q5 if it was already answered
+    // (this happens when the user went back past Q5 and is re-answering Q4).
+    int next = _currentIndex + 1;
+    while (next < _questions.length &&
+        _questions[next].id == 5 &&
+        _answersMap.containsKey(5)) {
+      next++;
+    }
+
+    if (next < _questions.length) {
       _slideForward = true;
       _slideCtrl.reverse().then((_) {
         if (!mounted) return;
-        setState(() => _currentIndex++);
-        final nextDim = _questions[_currentIndex].dimension;
-        _animateBg(_themes[nextDim]!.bg);
+        setState(() => _currentIndex = next);
+        _animateBg(_themes[_questions[_currentIndex].dimension]!.bg);
         _slideCtrl.forward();
       });
     } else {
@@ -182,22 +193,37 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
     }
   }
 
+  // The index we'd land on when pressing back. Skips Q5 when it has
+  // already been answered so the user can reach Q1-Q4 without retaking it.
+  int get _backTarget {
+    for (int i = _currentIndex - 1; i >= 0; i--) {
+      if (_questions[i].id == 5 && _answersMap.containsKey(5)) continue;
+      return i;
+    }
+    return -1;
+  }
+
   bool get _canGoBack {
-    if (_currentIndex == 0 || _answers.isEmpty) return false;
-    // Block going back to the merged passage task once it has been completed
-    if (_questions.isNotEmpty && _questions[_currentIndex - 1].id == 5) return false;
-    return true;
+    if (_currentIndex == 0) return false;
+    return _backTarget >= 0;
   }
 
   void _onGoBack() {
     if (!_canGoBack) return;
+    final target = _backTarget;
+    if (target < 0) return;
+
+    // Remove answers for every question between target and currentIndex,
+    // but leave Q5's answer untouched — it is permanently locked.
+    for (int i = target; i < _currentIndex; i++) {
+      final q = _questions[i];
+      if (q.id != 5) _answersMap.remove(q.id);
+    }
+
     _slideForward = false;
     _slideCtrl.reverse().then((_) {
       if (!mounted) return;
-      setState(() {
-        _answers.removeLast();
-        _currentIndex--;
-      });
+      setState(() => _currentIndex = target);
       _animateBg(_themes[_questions[_currentIndex].dimension]!.bg);
       _slideCtrl.forward();
     });
@@ -205,7 +231,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> with TickerProviderStat
 
   Future<void> _submitSession() async {
     setState(() => _submitting = true);
-    final score = await DiagnosticService.submitSession(_answers, _questions, _cachedToken!);
+    final score = await DiagnosticService.submitSession(_answersMap.values.toList(), _questions, _cachedToken!);
     if (!mounted) return;
     setState(() => _submitting = false);
     _showResultDialog(score ?? 70.0);

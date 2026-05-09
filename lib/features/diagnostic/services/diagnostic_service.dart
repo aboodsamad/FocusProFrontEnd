@@ -167,8 +167,7 @@ class DiagnosticService {
       // ── ATTENTION (ASRS-v1.1 / CFQ) ─────────────────────────────────────
       {
         'id': 5,
-        'question_text':
-            'Combined reading and working memory assessment — read the passage carefully, tap each time you re-read a sentence, then answer the 3 questions that follow.',
+        'question_text': 'Reading Comprehension Task',
         'option_a': 'Excellent comprehension and minimal re-reads',
         'option_b': 'Good comprehension with some re-reads',
         'option_c': 'Fair comprehension with several re-reads',
