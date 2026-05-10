@@ -151,10 +151,11 @@ class _GamesHubPageState extends State<GamesHubPage>
 
   Widget _buildStatsBar() {
     final stats = [
-      _StatItem('Games',  '${GameRegistry.hubGames.length}',                               Icons.sports_esports_outlined,  AppColors.primary),
-      _StatItem('Memory', '${GameRegistry.byCategory(GameCategory.memory).length}',        Icons.psychology_outlined,       AppColors.secondary),
-      _StatItem('Logic',  '${GameRegistry.byCategory(GameCategory.logic).length}',         Icons.lightbulb_outline,         const Color(0xFF7C3AED)),
-      _StatItem('Speed',  '${GameRegistry.byCategory(GameCategory.speed).length}',         Icons.bolt_outlined,             const Color(0xFFF59E0B)),
+      _StatItem('Games',     '${GameRegistry.hubGames.length}',                                  Icons.sports_esports_outlined,    AppColors.primary),
+      _StatItem('Memory',    '${GameRegistry.byCategory(GameCategory.memory).length}',           Icons.psychology_outlined,         AppColors.secondary),
+      _StatItem('Logic',     '${GameRegistry.byCategory(GameCategory.logic).length}',            Icons.lightbulb_outline,           const Color(0xFF7C3AED)),
+      _StatItem('Speed',     '${GameRegistry.byCategory(GameCategory.speed).length}',            Icons.bolt_outlined,               const Color(0xFFF59E0B)),
+      _StatItem('Attention', '${GameRegistry.byCategory(GameCategory.attention).length}',        Icons.remove_red_eye_outlined,     const Color(0xFF10B981)),
     ];
 
     return Padding(

@@ -167,25 +167,13 @@ class DiagnosticService {
       // ── ATTENTION (ASRS-v1.1 / CFQ) ─────────────────────────────────────
       {
         'id': 5,
-        'question_text':
-            'Reading comprehension task  read the passage and answer the questions that follow.',
-        'option_a': 'Answered all questions correctly',
-        'option_b': 'Answered most questions correctly',
-        'option_c': 'Answered some questions correctly',
-        'option_d': 'Struggled to recall the passage',
-        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
+        'question_text': 'Reading Comprehension Task',
+        'option_a': 'Excellent comprehension and minimal re-reads',
+        'option_b': 'Good comprehension with some re-reads',
+        'option_c': 'Fair comprehension with several re-reads',
+        'option_d': 'Poor comprehension and frequent re-reads',
+        'points_a': 10, 'points_b': 6, 'points_c': 2, 'points_d': 0,
         'dimension': 'attention', 'display_order': 5,
-      },
-      {
-        'id': 6,
-        'question_text':
-            'Working memory task  read the passage and tap each time you re-read a sentence.',
-        'option_a': 'Read it once with no re-reads',
-        'option_b': 'Re-read 1–2 sentences',
-        'option_c': 'Re-read 3–4 sentences',
-        'option_d': 'Re-read 5 or more sentences',
-        'points_a': 5, 'points_b': 3, 'points_c': 1, 'points_d': 0,
-        'dimension': 'attention', 'display_order': 6,
       },
       {
         'id': 7,
