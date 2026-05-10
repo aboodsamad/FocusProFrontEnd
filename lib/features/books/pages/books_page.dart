@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 import '../models/book_model.dart';
 import '../services/book_service.dart';
 import 'book_detail_page.dart';
@@ -114,6 +115,7 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.books),
       body: SafeArea(
         child: Column(
           children: [
@@ -144,29 +146,9 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Container(
       color: const Color(0xFFF0FBF5),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
-        bottom: 12,
-        left: 16,
-        right: 16,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.outlineVariant),
-              ),
-              child: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.onSurfaceVariant, size: 16),
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Library',
