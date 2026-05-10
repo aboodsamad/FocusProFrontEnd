@@ -97,7 +97,6 @@ class ManageHabitsPage extends StatelessWidget {
       ),
       child: Scaffold(
       backgroundColor: AppColors.surface,
-      bottomNavigationBar: const AppBottomNav(current: NavTab.home),
       body: Consumer<HabitProvider>(
         builder: (context, provider, _) {
           // Loading
@@ -227,14 +226,33 @@ class _HabitsAppBar extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    height: 1.15,
-                  ),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.outlineVariant),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded,
+                            color: AppColors.primary, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
