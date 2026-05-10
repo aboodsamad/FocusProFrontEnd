@@ -17,6 +17,7 @@ import '../models/book_model.dart';
 import '../models/book_snippet_model.dart';
 import '../services/book_service.dart';
 import '../../ai_flutter/widgets/snippet_check_sheet.dart';
+import '../../../core/widgets/app_bottom_nav.dart';
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
@@ -695,6 +696,7 @@ class _BookDetailPageState extends State<BookDetailPage> with TickerProviderStat
     if (_readingMode && _snippets.isNotEmpty) return _buildReaderMode();
     return Scaffold(
       backgroundColor: AppColors.surface,
+      bottomNavigationBar: const AppBottomNav(current: NavTab.books),
       body: SafeArea(
         child: _loading
             ? _buildLoader()
