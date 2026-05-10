@@ -49,7 +49,7 @@ class AppBottomNav extends StatelessWidget {
               _NavItem(icon: Icons.extension_outlined,     label: 'Games',   selected: current == NavTab.games,   onTap: () => _go(context, NavTab.games)),
               _NavItem(icon: Icons.groups_outlined,        label: 'Rooms',   selected: current == NavTab.rooms,   onTap: () => _go(context, NavTab.rooms)),
               _NavItem(icon: Icons.psychology_outlined,    label: 'Coach',   selected: current == NavTab.coach,   onTap: () => _go(context, NavTab.coach)),
-              _NavItem(icon: Icons.book_outlined,      label: 'Habits',  selected: current == NavTab.books,  onTap: () => _go(context, NavTab.books)),
+              _NavItem(icon: Icons.book_outlined,      label: 'Books',  selected: current == NavTab.books,  onTap: () => _go(context, NavTab.books)),
               _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', selected: current == NavTab.profile, onTap: () => _go(context, NavTab.profile)),
             ],
           ),
