@@ -1181,10 +1181,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Books Library card ────────────────────────────────────────────────────
+  // ── Daily Habits card ─────────────────────────────────────────────────────
   Widget _buildBooksLibraryCard() {
     return GestureDetector(
-      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/books'); },
+      onTap: () { HapticFeedback.lightImpact(); Navigator.pushNamed(context, '/habits'); },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
@@ -1199,22 +1199,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.secondary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.library_books_rounded,
-                color: AppColors.primary, size: 18),
+            child: const Icon(Icons.checklist_rounded,
+                color: AppColors.secondary, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Books Library',
+                const Text('Daily Habits',
                     style: TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: AppColors.onSurface)),
-                const Text('Explore books · TTS reading',
+                const Text('Track · Build · Stay consistent',
                     style: TextStyle(
                         fontSize: 11, color: AppColors.onSurfaceVariant)),
               ],
