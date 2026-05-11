@@ -11866,19 +11866,19 @@ BV:function BV(a,b,c){this.c=a
 this.d=b
 this.a=c},
 b6v(a){switch(a){case"menu_book":return B.q0
-case"videogame":return B.Va
-case"phone_off":return B.V2
+case"videogame":return B.Vb
+case"phone_off":return B.V3
 case"fitness":return B.x8
 case"water":return B.xA
 case"meditation":return B.xa
 case"sleep":return B.x4
 case"run":return B.x6
-case"music":return B.V_
+case"music":return B.V0
 case"journal":return B.xz
 case"timer":return B.hZ
 case"brain":return B.eM
-case"no_phone":return B.V3
-case"food":return B.V6
+case"no_phone":return B.V4
+case"food":return B.V7
 case"walk":return B.UU
 case"sun":return B.xb
 case"heart":return B.x_
@@ -52602,7 +52602,7 @@ case 5:s=t.X
 A.VN(a,"/profile",s,s)
 break}},
 v(a){var s=this,r=null,q=A.a([new A.aE(0,B.E,A.i(15,B.t.h()>>>16&255,B.t.h()>>>8&255,B.t.h()&255),B.DN,16)],t.V),p=s.c
-return A.p(r,A.cP(!0,new A.W(B.Sw,A.R(A.a([new A.p2(B.Vz,"Home",p===B.qU,new A.acO(s,a),r),new A.p2(B.x7,"Games",p===B.qV,new A.acP(s,a),r),new A.p2(B.UX,"Rooms",p===B.qW,new A.acQ(s,a),r),new A.p2(B.eM,"Coach",p===B.qX,new A.acR(s,a),r),new A.p2(B.UQ,"Books",p===B.qY,new A.acS(s,a),r),new A.p2(B.qa,"Profile",p===B.qZ,new A.acT(s,a),r)],t.p),B.j,B.mE,B.i,0,r),r),B.a3,!1),B.e,r,r,new A.m(B.b,r,r,r,q,r,B.k),r,r,r,r,r,r,r)}}
+return A.p(r,A.cP(!0,new A.W(B.Sw,A.R(A.a([new A.p2(B.UY,"Home",p===B.qU,new A.acO(s,a),r),new A.p2(B.x7,"Games",p===B.qV,new A.acP(s,a),r),new A.p2(B.UX,"Rooms",p===B.qW,new A.acQ(s,a),r),new A.p2(B.eM,"Coach",p===B.qX,new A.acR(s,a),r),new A.p2(B.UQ,"Books",p===B.qY,new A.acS(s,a),r),new A.p2(B.qa,"Profile",p===B.qZ,new A.acT(s,a),r)],t.p),B.j,B.mE,B.i,0,r),r),B.a3,!1),B.e,r,r,new A.m(B.b,r,r,r,q,r,B.k),r,r,r,r,r,r,r)}}
 A.acN.prototype={
 $1(a){return!1},
 $S:86}
@@ -54648,7 +54648,7 @@ else q=A.b1(o.CW?B.VI:B.xr,B.o,n,44)
 s=A.af(n,A.cf(q,B.e,n,B.I,new A.m(B.u,n,n,n,r,n,B.L),B.a1,n,80,n,n,80),B.q,!1,n,n,n,n,n,n,n,n,n,n,n,n,n,n,n,n,s,n,n,n,n,n,n)
 r=m?B.cl:B.hD
 q=m?new A.aAJ(o):n
-return A.R(A.a([new A.vJ(B.VU,28,k,l,n),new A.vJ(B.VM,26,B.cl,new A.aAK(o),n),s,new A.vJ(B.Vw,26,B.cl,new A.aAL(o),n),new A.vJ(B.VT,28,r,q,n)],t.p),B.j,B.k1,B.i,0,n)},
+return A.R(A.a([new A.vJ(B.VU,28,k,l,n),new A.vJ(B.VM,26,B.cl,new A.aAK(o),n),s,new A.vJ(B.Vx,26,B.cl,new A.aAL(o),n),new A.vJ(B.VT,28,r,q,n)],t.p),B.j,B.k1,B.i,0,n)},
 agI(){var s=this,r=null,q=t.p
 q=A.a([A.R(A.a([B.akz,B.aA,A.l(""+s.dy.a+" OF "+J.b6(s.d)+" COMPLETED",r,r,r,r,r,A.a5(r,r,A.i(204,B.u.h()>>>16&255,B.u.h()>>>8&255,B.u.h()&255),r,r,r,r,r,r,r,r,10,r,r,B.X,r,r,!0,r,1,r,r,r,r,r,r),r,r,r)],q),B.j,B.f,B.i,0,r),B.O],q)
 B.c.K(q,A.ff(J.b6(s.d),new A.aAE(s),!0,t.l))
@@ -54661,7 +54661,7 @@ return A.p(r,A.R(A.a([A.af(r,A.p(r,B.qg,B.e,r,r,new A.m(A.i(B.d.M(25.5),B.b.h()>
 ahT(){var s=null,r=A.o(16),q=A.a([new A.aE(-5,B.E,A.i(B.d.M(76.5),B.o.h()>>>16&255,B.o.h()>>>8&255,B.o.h()&255),B.r,30)],t.V),p=t.p
 q=A.af(s,A.p(s,A.av(A.R(A.a([B.WW,B.aH,A.l(this.r<J.b6(this.d)-1?"Done & Next":"Complete Book",s,s,s,s,s,B.JS,s,s,s)],p),B.j,B.f,B.B,0,s),s,s),B.e,s,s,new A.m(B.M,s,s,r,q,s,B.k),s,s,s,B.jw,s,s,1/0),B.q,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,this.gasL(),s,s,s,s,s,s)
 r=A.i(20,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255)
-return A.p(s,A.I(A.a([new A.W(B.dF,q,s),A.p(s,A.R(A.a([new A.w6(B.eP,!0,new A.aAZ(),s),new A.w6(B.Vv,!1,new A.aB_(),s),new A.w6(B.Vi,!1,new A.aB0(),s),new A.w6(B.xu,!1,new A.aB1(),s)],p),B.j,B.mE,B.i,0,s),B.e,s,s,new A.m(s,s,new A.dp(new A.aS(r,1,B.H,-1),B.x,B.x,B.x),s,s,s,B.k),s,s,B.Sz,B.SO,s,s,s)],p),B.j,B.f,B.i,0,B.m),B.e,B.o,s,s,s,s,s,s,s,s,s)}}
+return A.p(s,A.I(A.a([new A.W(B.dF,q,s),A.p(s,A.R(A.a([new A.w6(B.eP,!0,new A.aAZ(),s),new A.w6(B.Vw,!1,new A.aB_(),s),new A.w6(B.Vj,!1,new A.aB0(),s),new A.w6(B.xu,!1,new A.aB1(),s)],p),B.j,B.mE,B.i,0,s),B.e,s,s,new A.m(s,s,new A.dp(new A.aS(r,1,B.H,-1),B.x,B.x,B.x),s,s,s,B.k),s,s,B.Sz,B.SO,s,s,s)],p),B.j,B.f,B.i,0,B.m),B.e,B.o,s,s,s,s,s,s,s,s,s)}}
 A.aBs.prototype={
 $0(){return this.a.CW=!1},
 $S:0}
@@ -56120,7 +56120,7 @@ q=A.i(18,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255)
 p=A.o(30)
 p=A.p(m,B.amo,B.e,m,m,new A.m(q,m,A.ab(A.i(31,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255),1),p,m,m,B.k),m,m,m,B.wg,m,m,m)
 q=A.l("We measure your attention, screen habits,\nsleep and learning using validated\npsychological scales  not guesswork.",m,m,m,m,m,A.a5(m,m,A.i(102,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255),m,m,m,m,m,m,m,m,14,m,m,m,m,1.7,!0,m,m,m,m,m,m,m,m),B.as,m,m)
-o=A.R(A.a([l.Mc(A.w(J.fJ(l.d)?"\u2013":J.b6(l.d)),"Questions",B.V5),B.aH,l.Mc("~3","Minutes",B.hZ),B.aH,l.Mc("4","Dimensions",B.UZ)],k),B.j,B.f,B.i,0,m)
+o=A.R(A.a([l.Mc(A.w(J.fJ(l.d)?"\u2013":J.b6(l.d)),"Questions",B.V6),B.aH,l.Mc("~3","Minutes",B.hZ),B.aH,l.Mc("4","Dimensions",B.V_)],k),B.j,B.f,B.i,0,m)
 n=A.oT(B.dt,A.a([l.BY("\ud83d\udcf1  Screen Habits",B.v3),l.BY("\ud83e\udde0  Attention",B.on),l.BY("\ud83c\udf3f  Lifestyle",B.b3),l.BY("\u2728  Learning",B.lg)],k),8,8)
 l=J.fJ(l.d)?m:l.gayY()
 k=A.dT(A.I(A.a([i,B.ae,p,B.d2,B.al8,B.aa,q,B.kv,o,B.ag,n,B.kw,A.af(m,A.p(m,B.O6,B.e,m,m,new A.m(A.i(235,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255),m,m,A.o(22),A.a([new A.aE(0,B.E,A.i(64,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255),B.DK,40)],r),m,B.k),m,62,m,m,m,m,1/0),B.q,!1,m,m,m,m,m,m,m,m,m,m,m,m,m,m,m,m,l,m,m,m,m,m,m),B.bs,A.l("\ud83d\udd10  Your results are private and never shared",m,m,m,m,m,A.a5(m,m,A.i(51,B.b.h()>>>16&255,B.b.h()>>>8&255,B.b.h()&255),m,m,m,m,m,m,m,m,11,m,m,m,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],k),B.j,B.f,B.i,0,B.m),m,B.q,B.Tz,m,m,B.a2)
@@ -56767,7 +56767,7 @@ case 8:case 3:return A.t(null,r)
 case 1:return A.r(p.at(-1),r)}})
 return A.u($async$wB,r)},
 agR(){var s=this,r=null,q=s.fy,p=q?0:s.dy
-return A.p(r,A.cP(!0,A.R(A.a([new A.Oc(B.xh,"Chat",q,p,new A.aHv(s),r),new A.Oc(B.Vx,"Members",!q,0,new A.aHw(s),r)],t.p),B.j,B.f,B.i,0,r),B.a3,!1),B.e,B.b,r,r,r,r,r,r,r,r,r)},
+return A.p(r,A.cP(!0,A.R(A.a([new A.Oc(B.xh,"Chat",q,p,new A.aHv(s),r),new A.Oc(B.Vy,"Members",!q,0,new A.aHw(s),r)],t.p),B.j,B.f,B.i,0,r),B.a3,!1),B.e,B.b,r,r,r,r,r,r,r,r,r)},
 ahB(a){var s,r,q=this,p=null,o=A.o(16),n=t.p
 o=A.p(p,A.I(A.a([B.akL,B.S,A.l(q.as,p,p,p,p,p,B.aeB,p,p,p),B.aS,A.l(""+q.d.length+" active minds in flow state",p,p,p,p,p,B.iz,p,p,p)],n),B.j,B.f,B.i,0,B.m),B.e,p,p,new A.m(B.T,p,p,o,p,p,B.k),p,p,p,B.fA,p,p,1/0)
 s=A.o(20)
@@ -58800,7 +58800,7 @@ n=l.gW1().length
 m=n===1?"":"s"
 return A.kU(A.d8(k,B.aU,A.I(A.a([j,A.aq(new A.co(q,!1,A.SG(B.dx,A.a([new A.f_(r,k),new A.f_(p,k),new A.f_(o,k),new A.f_(new A.W(B.SW,A.R(A.a([B.ar5,B.aA,A.l(""+n+" game"+m,k,k,k,k,k,B.cW,k,k,k)],s),B.j,B.f,B.i,0,k),k),k),l.amm(),B.aa7],s)),k),1)],s),B.j,B.f,B.i,0,B.m),B.Ln,k),B.h8,t.lu)},
 ai5(){var s=t.CF
-s=A.a8(new A.a9(A.a([new A.lJ("Games",""+A.F6().length,B.V9,B.o),new A.lJ("Memory",""+A.aj8(B.jF).length,B.eM,B.p),new A.lJ("Logic",""+A.aj8(B.pV).length,B.x0,B.PK),new A.lJ("Speed",""+A.aj8(B.m9).length,B.q_,B.ea),new A.lJ("Attention",""+A.aj8(B.hW).length,B.x9,B.ap)],t.Wy),new A.aKh(),s),s.j("au.E"))
+s=A.a8(new A.a9(A.a([new A.lJ("Games",""+A.F6().length,B.Va,B.o),new A.lJ("Memory",""+A.aj8(B.jF).length,B.eM,B.p),new A.lJ("Logic",""+A.aj8(B.pV).length,B.x0,B.PK),new A.lJ("Speed",""+A.aj8(B.m9).length,B.q_,B.ea),new A.lJ("Attention",""+A.aj8(B.hW).length,B.x9,B.ap)],t.Wy),new A.aKh(),s),s.j("au.E"))
 return new A.W(B.SV,A.R(s,B.j,B.f,B.i,0,null),null)},
 ahd(){var s=A.F6().length!==0?B.c.ga7(A.F6()):null
 if(s==null)return B.az
@@ -60674,7 +60674,7 @@ if(p>0)i.push(new A.a7A(p,q,r,j))
 i.push(B.S)
 o=J.cO(3,t.l)
 for(n=this.d,m=0;m<3;++m){l=m<n.r
-k=l?B.Vr:B.Vq
+k=l?B.Vs:B.Vr
 o[m]=new A.W(B.TJ,A.b1(k,l?B.F:B.w,j,18),j)}i.push(A.R(o,B.j,B.ab,B.i,0,j))
 i.push(B.aa)
 i.push(A.aq(A.av(new A.W(B.lQ,new A.rN(1,this.ahb(s),j),j),j,j),1))
@@ -65139,7 +65139,7 @@ o=B.d.M(25.5)
 n=A.i(o,B.p.h()>>>16&255,B.p.h()>>>8&255,B.p.h()&255)
 m=A.o(10)
 m=A.I(A.a([r,j.Jh(A.a([new A.W(B.bP,A.R(A.a([q,B.c7,e,A.af(i,A.p(i,B.Xb,B.e,i,i,new A.m(n,i,A.ab(A.i(64,B.p.h()>>>16&255,B.p.h()>>>8&255,B.p.h()&255),1),m,i,i,B.k),i,36,i,i,i,i,36),B.q,!1,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,j.galb(),i,i,i,i,i,i)],p),B.j,B.f,B.i,0,i),i)],p))],p),B.A,B.f,B.i,0,B.m)
-n=j.Dm("Security",B.V7)
+n=j.Dm("Security",B.V8)
 o=A.i(o,B.p.h()>>>16&255,B.p.h()>>>8&255,B.p.h()&255)
 e=A.o(10)
 e=A.I(A.a([n,j.Jh(A.a([A.af(i,new A.W(B.c0,A.R(A.a([A.p(i,A.b1(B.q9,B.p,i,19),B.e,i,i,new A.m(o,i,i,e,i,i,B.k),i,38,i,i,i,i,38),B.c7,A.aq(A.I(A.a([A.l("Change Password",i,i,i,i,i,B.iu,i,i,i),B.bH,A.l("Update your account password",i,i,i,i,i,B.cW,i,i,i)],p),B.A,B.f,B.i,0,B.m),1),B.qf],p),B.j,B.f,B.i,0,i),i),B.q,!1,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,j.gaiG(),i,i,i,i,i,i)],p))],p),B.A,B.f,B.i,0,B.m)
@@ -65169,7 +65169,7 @@ for(s=0;s<a.length;++s){r=A.a([a[s]],n)
 if(s<a.length-1)r.push(A.p(q,q,B.e,A.i(B.d.M(127.5),B.w.h()>>>16&255,B.w.h()>>>8&255,B.w.h()&255),q,q,q,1,B.cp,q,q,q,q))
 B.c.K(m,r)}return A.p(q,A.I(m,B.j,B.f,B.i,0,B.m),B.e,q,q,new A.m(B.b,q,o,p,q,q,B.k),q,q,q,q,q,q,q)},
 ahG(){var s=this,r=t.p
-return A.I(A.a([s.Dm("Notifications",B.V1),s.Jh(A.a([s.a0r(B.VN,"Session reminders",new A.aTz(s),"Remind me before a focus session starts",s.d),s.a0r(B.q3,"Habit reminders",new A.aTA(s),"Daily nudge for habits not yet completed",s.e)],r))],r),B.A,B.f,B.i,0,B.m)},
+return A.I(A.a([s.Dm("Notifications",B.V2),s.Jh(A.a([s.a0r(B.VN,"Session reminders",new A.aTz(s),"Remind me before a focus session starts",s.d),s.a0r(B.q3,"Habit reminders",new A.aTA(s),"Daily nudge for habits not yet completed",s.e)],r))],r),B.A,B.f,B.i,0,B.m)},
 a0r(a,b,c,d,e){var s=null,r=A.i(B.d.M(25.5),B.p.h()>>>16&255,B.p.h()>>>8&255,B.p.h()&255),q=A.o(10),p=t.p
 return new A.W(B.c0,A.R(A.a([A.p(s,A.b1(a,B.p,s,19),B.e,s,s,new A.m(r,s,s,q,s,s,B.k),s,38,s,s,s,s,38),B.c7,A.aq(A.I(A.a([A.l(b,s,s,s,s,s,B.iu,s,s,s),B.bH,A.l(d,s,s,s,s,s,B.cW,s,s,s)],p),B.A,B.f,B.i,0,B.m),1),A.b8L(B.p,s,B.z,B.aW,B.Ds,c,e)],p),B.j,B.f,B.i,0,s),s)}}
 A.aU2.prototype={
@@ -65702,7 +65702,7 @@ v(a){var s,r,q=null,p=this.c,o=J.cH(p),n=o.oE(p,0,new A.aYF()),m=o.oE(p,0,new A.
 o=A.o(20)
 s=A.a([new A.aE(0,B.E,A.i(18,B.t.h()>>>16&255,B.t.h()>>>8&255,B.t.h()&255),B.eW,20)],t.V)
 r=t.p
-return A.p(q,A.I(A.a([A.R(A.a([A.I(A.a([B.amg,B.bH,A.l(m>0?"+"+B.d.ai(m,0)+" pts  \xb7  avg "+B.d.ai(k,0)+"/day":"No activity this week yet",q,q,q,q,q,B.dq,q,q,q)],r),B.A,B.f,B.i,0,B.m),B.aA,new A.a84(""+l+" / 7",B.Vk,q)],r),B.j,B.f,B.i,0,q),B.rM,A.b8(new A.JU(p,n,q),160,q)],r),B.A,B.f,B.i,0,B.m),B.e,q,q,new A.m(B.b,q,q,o,s,q,B.k),q,q,q,B.Tk,q,q,q)}}
+return A.p(q,A.I(A.a([A.R(A.a([A.I(A.a([B.amg,B.bH,A.l(m>0?"+"+B.d.ai(m,0)+" pts  \xb7  avg "+B.d.ai(k,0)+"/day":"No activity this week yet",q,q,q,q,q,B.dq,q,q,q)],r),B.A,B.f,B.i,0,B.m),B.aA,new A.a84(""+l+" / 7",B.Vl,q)],r),B.j,B.f,B.i,0,q),B.rM,A.b8(new A.JU(p,n,q),160,q)],r),B.A,B.f,B.i,0,B.m),B.e,q,q,new A.m(B.b,q,q,o,s,q,B.k),q,q,q,B.Tk,q,q,q)}}
 A.aYF.prototype={
 $2(a,b){return Math.max(a,b.b)},
 $S:184}
@@ -124786,22 +124786,23 @@ B.x7=new A.a7(61503,"MaterialIcons",!1)
 B.x8=new A.a7(61562,"MaterialIcons",!1)
 B.UW=new A.a7(61657,"MaterialIcons",!1)
 B.UX=new A.a7(61659,"MaterialIcons",!1)
-B.UZ=new A.a7(61783,"MaterialIcons",!1)
+B.UY=new A.a7(61703,"MaterialIcons",!1)
+B.V_=new A.a7(61783,"MaterialIcons",!1)
 B.q0=new A.a7(61890,"MaterialIcons",!1)
-B.V_=new A.a7(61947,"MaterialIcons",!1)
-B.V1=new A.a7(62007,"MaterialIcons",!1)
-B.V2=new A.a7(62086,"MaterialIcons",!1)
-B.V3=new A.a7(62094,"MaterialIcons",!1)
+B.V0=new A.a7(61947,"MaterialIcons",!1)
+B.V2=new A.a7(62007,"MaterialIcons",!1)
+B.V3=new A.a7(62086,"MaterialIcons",!1)
+B.V4=new A.a7(62094,"MaterialIcons",!1)
 B.eM=new A.a7(62162,"MaterialIcons",!1)
-B.V5=new A.a7(62178,"MaterialIcons",!1)
+B.V6=new A.a7(62178,"MaterialIcons",!1)
 B.x9=new A.a7(62207,"MaterialIcons",!1)
-B.V6=new A.a7(62230,"MaterialIcons",!1)
+B.V7=new A.a7(62230,"MaterialIcons",!1)
 B.q2=new A.a7(62269,"MaterialIcons",!1)
 B.xa=new A.a7(62290,"MaterialIcons",!1)
-B.V7=new A.a7(62329,"MaterialIcons",!1)
-B.V9=new A.a7(62410,"MaterialIcons",!1)
+B.V8=new A.a7(62329,"MaterialIcons",!1)
+B.Va=new A.a7(62410,"MaterialIcons",!1)
 B.hZ=new A.a7(62538,"MaterialIcons",!1)
-B.Va=new A.a7(62606,"MaterialIcons",!1)
+B.Vb=new A.a7(62606,"MaterialIcons",!1)
 B.i_=new A.a7(62624,"MaterialIcons",!1)
 B.i0=new A.a7(62625,"MaterialIcons",!1)
 B.xb=new A.a7(62652,"MaterialIcons",!1)
@@ -124812,8 +124813,8 @@ B.jG=new A.a7(62834,"MaterialIcons",!0)
 B.mg=new A.a7(62870,"MaterialIcons",!1)
 B.mh=new A.a7(62889,"MaterialIcons",!1)
 B.fH=new A.a7(62922,"MaterialIcons",!1)
-B.Vi=new A.a7(62929,"MaterialIcons",!1)
-B.Vk=new A.a7(62974,"MaterialIcons",!1)
+B.Vj=new A.a7(62929,"MaterialIcons",!1)
+B.Vl=new A.a7(62974,"MaterialIcons",!1)
 B.xh=new A.a7(63024,"MaterialIcons",!1)
 B.q3=new A.a7(63028,"MaterialIcons",!1)
 B.dG=new A.a7(63029,"MaterialIcons",!1)
@@ -124822,15 +124823,14 @@ B.eg=new A.a7(63047,"MaterialIcons",!1)
 B.mi=new A.a7(63069,"MaterialIcons",!1)
 B.fI=new A.a7(63126,"MaterialIcons",!1)
 B.q4=new A.a7(63250,"MaterialIcons",!1)
-B.Vq=new A.a7(63287,"MaterialIcons",!1)
-B.Vr=new A.a7(63288,"MaterialIcons",!1)
-B.Vv=new A.a7(63384,"MaterialIcons",!1)
-B.Vw=new A.a7(63390,"MaterialIcons",!1)
+B.Vr=new A.a7(63287,"MaterialIcons",!1)
+B.Vs=new A.a7(63288,"MaterialIcons",!1)
+B.Vw=new A.a7(63384,"MaterialIcons",!1)
+B.Vx=new A.a7(63390,"MaterialIcons",!1)
 B.q5=new A.a7(63427,"MaterialIcons",!1)
 B.xl=new A.a7(63428,"MaterialIcons",!1)
-B.Vx=new A.a7(63430,"MaterialIcons",!1)
+B.Vy=new A.a7(63430,"MaterialIcons",!1)
 B.q6=new A.a7(63432,"MaterialIcons",!1)
-B.Vz=new A.a7(63477,"MaterialIcons",!1)
 B.q7=new A.a7(63509,"MaterialIcons",!1)
 B.VB=new A.a7(63551,"MaterialIcons",!1)
 B.xo=new A.a7(63572,"MaterialIcons",!1)
@@ -124889,13 +124889,13 @@ B.xf=new A.a7(62876,"MaterialIcons",!1)
 B.Wc=new A.aA(B.xf,17,B.o,null,null)
 B.xi=new A.a7(63031,"MaterialIcons",!1)
 B.Wd=new A.aA(B.xi,36,B.o,null,null)
-B.Vd=new A.a7(62800,"MaterialIcons",!1)
-B.We=new A.aA(B.Vd,null,B.b,null,null)
-B.Vu=new A.a7(63382,"MaterialIcons",!1)
-B.Wf=new A.aA(B.Vu,28,B.hG,null,null)
+B.Ve=new A.a7(62800,"MaterialIcons",!1)
+B.We=new A.aA(B.Ve,null,B.b,null,null)
+B.Vv=new A.a7(63382,"MaterialIcons",!1)
+B.Wf=new A.aA(B.Vv,28,B.hG,null,null)
 B.Wg=new A.aA(B.dG,40,B.hI,null,null)
-B.V8=new A.a7(62376,"MaterialIcons",!1)
-B.xC=new A.aA(B.V8,16,B.b,null,null)
+B.V9=new A.a7(62376,"MaterialIcons",!1)
+B.xC=new A.aA(B.V9,16,B.b,null,null)
 B.qe=new A.aA(B.jJ,14,B.a4,null,null)
 B.qb=new A.a7(983160,"MaterialIcons",!1)
 B.Wh=new A.aA(B.qb,22,B.p,null,null)
@@ -124931,18 +124931,18 @@ B.WE=new A.aA(B.wZ,14,B.an,null,null)
 B.UV=new A.a7(61464,"MaterialIcons",!1)
 B.WF=new A.aA(B.UV,18,B.z,null,null)
 B.WG=new A.aA(B.mj,22,B.o,null,null)
-B.Vp=new A.a7(63249,"MaterialIcons",!1)
-B.WI=new A.aA(B.Vp,18,B.u,null,null)
+B.Vq=new A.a7(63249,"MaterialIcons",!1)
+B.WI=new A.aA(B.Vq,18,B.u,null,null)
 B.WJ=new A.aA(B.me,16,B.z,null,null)
-B.Vg=new A.a7(62836,"MaterialIcons",!1)
-B.WK=new A.aA(B.Vg,64,B.a4,null,null)
+B.Vh=new A.a7(62836,"MaterialIcons",!1)
+B.WK=new A.aA(B.Vh,64,B.a4,null,null)
 B.xE=new A.aA(B.fG,16,B.au,null,null)
 B.WL=new A.aA(B.xi,18,B.p,null,null)
 B.qd=new A.a7(983626,"MaterialIcons",!1)
 B.WM=new A.aA(B.qd,38,B.b,null,null)
 B.WN=new A.aA(B.xy,32,B.F,null,null)
-B.V0=new A.a7(61974,"MaterialIcons",!1)
-B.WO=new A.aA(B.V0,20,B.eD,null,null)
+B.V1=new A.a7(61974,"MaterialIcons",!1)
+B.WO=new A.aA(B.V1,20,B.eD,null,null)
 B.UD=new A.a7(57492,"MaterialIcons",!0)
 B.WP=new A.aA(B.UD,20,B.a_,null,null)
 B.W3=new A.a7(983708,"MaterialIcons",!1)
@@ -124963,22 +124963,22 @@ B.X1=new A.aA(B.i1,16,B.b,null,null)
 B.X2=new A.aA(B.ml,42,B.u,null,null)
 B.X3=new A.aA(B.pY,14,B.w,null,null)
 B.X4=new A.aA(B.pZ,null,B.bD,null,null)
-B.UY=new A.a7(61764,"MaterialIcons",!1)
-B.X5=new A.aA(B.UY,null,null,null,null)
+B.UZ=new A.a7(61764,"MaterialIcons",!1)
+B.X5=new A.aA(B.UZ,null,null,null,null)
 B.X6=new A.aA(B.mk,42,B.b,null,null)
 B.US=new A.a7(61201,"MaterialIcons",!1)
 B.X8=new A.aA(B.US,18,B.bD,null,null)
 B.X9=new A.aA(B.dG,18,B.u,null,null)
-B.Vo=new A.a7(63199,"MaterialIcons",!1)
-B.Xa=new A.aA(B.Vo,16,null,null,null)
+B.Vp=new A.a7(63199,"MaterialIcons",!1)
+B.Xa=new A.aA(B.Vp,16,null,null,null)
 B.xj=new A.a7(63227,"MaterialIcons",!1)
 B.Xb=new A.aA(B.xj,17,B.p,null,null)
 B.Xc=new A.aA(B.xt,18,B.b,null,null)
 B.mn=new A.aA(B.fG,16,B.b,null,null)
 B.Xe=new A.aA(B.fI,16,B.au,null,null)
 B.xG=new A.aA(B.i1,44,B.p,null,null)
-B.Vt=new A.a7(63341,"MaterialIcons",!1)
-B.Xf=new A.aA(B.Vt,16,B.p,null,null)
+B.Vu=new A.a7(63341,"MaterialIcons",!1)
+B.Xf=new A.aA(B.Vu,16,B.p,null,null)
 B.mo=new A.aA(B.fG,16,B.a_,null,null)
 B.Xg=new A.aA(B.mj,17,B.z,null,null)
 B.qf=new A.aA(B.jH,20,B.z,null,null)
@@ -124992,15 +124992,15 @@ B.Xl=new A.aA(B.xc,18,B.p,null,null)
 B.xn=new A.a7(63520,"MaterialIcons",!1)
 B.Xm=new A.aA(B.xn,16,B.o,null,null)
 B.Xn=new A.aA(B.xd,22,B.b,null,null)
-B.Vl=new A.a7(63084,"MaterialIcons",!1)
-B.Xo=new A.aA(B.Vl,18,B.b,null,null)
+B.Vm=new A.a7(63084,"MaterialIcons",!1)
+B.Xo=new A.aA(B.Vm,18,B.b,null,null)
 B.VA=new A.a7(63531,"MaterialIcons",!1)
 B.Xp=new A.aA(B.VA,18,B.dC,null,null)
 B.qg=new A.aA(B.jG,20,B.b,null,null)
 B.VQ=new A.a7(983357,"MaterialIcons",!1)
 B.Xq=new A.aA(B.VQ,20,B.z,null,null)
-B.Vh=new A.a7(62841,"MaterialIcons",!0)
-B.Xs=new A.aA(B.Vh,14,B.aq,null,null)
+B.Vi=new A.a7(62841,"MaterialIcons",!0)
+B.Xs=new A.aA(B.Vi,14,B.aq,null,null)
 B.UM=new A.a7(58519,"MaterialIcons",!1)
 B.Xt=new A.aA(B.UM,22,B.b,null,null)
 B.Xu=new A.aA(B.eP,18,B.cl,null,null)
@@ -125023,8 +125023,8 @@ B.Xz=new A.aA(B.jH,18,B.w,null,null)
 B.XA=new A.aA(B.i2,32,B.b,null,null)
 B.XB=new A.aA(B.xf,12,B.p,null,null)
 B.xH=new A.aA(B.i2,16,B.a4,null,null)
-B.Vm=new A.a7(63125,"MaterialIcons",!1)
-B.xI=new A.aA(B.Vm,22,B.F,null,null)
+B.Vn=new A.a7(63125,"MaterialIcons",!1)
+B.xI=new A.aA(B.Vn,22,B.F,null,null)
 B.XC=new A.aA(B.i2,36,B.b,null,null)
 B.XD=new A.aA(B.qb,36,B.w,null,null)
 B.XF=new A.aA(B.eO,16,B.b,null,null)
@@ -125039,14 +125039,14 @@ B.XO=new A.aA(B.fI,24,B.F,null,null)
 B.XP=new A.aA(B.dG,64,B.ap,null,null)
 B.XQ=new A.aA(B.pY,18,B.b,null,null)
 B.XR=new A.aA(B.q4,48,B.w,null,null)
-B.Vf=new A.a7(62833,"MaterialIcons",!0)
-B.XT=new A.aA(B.Vf,18,B.a_,null,null)
+B.Vg=new A.a7(62833,"MaterialIcons",!0)
+B.XT=new A.aA(B.Vg,18,B.a_,null,null)
 B.XV=new A.aA(B.xp,16,B.a4,null,null)
 B.UK=new A.a7(58173,"MaterialIcons",!1)
 B.vv=new A.y(1,0.8509803921568627,0.4666666666666667,0.023529411764705882,B.n)
 B.XX=new A.aA(B.UK,16,B.vv,null,null)
-B.V4=new A.a7(62160,"MaterialIcons",!1)
-B.XY=new A.aA(B.V4,32,B.b,null,null)
+B.V5=new A.a7(62160,"MaterialIcons",!1)
+B.XY=new A.aA(B.V5,32,B.b,null,null)
 B.Y8=new A.xY(0,"repeat")
 B.Y9=new A.xY(1,"repeatX")
 B.Ya=new A.xY(2,"repeatY")
@@ -125204,10 +125204,10 @@ B.Ye=new A.mm(B.Y6,!1,6,"bmp")
 B.XZ=new A.nX(B.ZM,B.Ye,5,"bmp")
 B.Zy=s([B.Y2,B.Y1,B.Y0,B.Y3,B.Y_,B.XZ],A.b_("M<nX>"))
 B.VR=new A.a7(983364,"MaterialIcons",!1)
-B.Vy=new A.a7(63470,"MaterialIcons",!1)
+B.Vz=new A.a7(63470,"MaterialIcons",!1)
 B.W4=new A.a7(983751,"MaterialIcons",!1)
-B.Vj=new A.a7(62960,"MaterialIcons",!1)
-B.ZC=s([B.eP,B.mk,B.xn,B.VR,B.Vy,B.fH,B.W4,B.Vj],A.b_("M<a7>"))
+B.Vk=new A.a7(62960,"MaterialIcons",!1)
+B.ZC=s([B.eP,B.mk,B.xn,B.VR,B.Vz,B.fH,B.W4,B.Vk],A.b_("M<a7>"))
 B.tP=new A.Nh(0,"named")
 B.L0=new A.Nh(1,"anonymous")
 B.ZI=s([B.tP,B.L0],A.b_("M<Nh>"))
@@ -125352,8 +125352,8 @@ B.a_E=s([B.Kb,B.amZ,B.amR,B.amS,B.amT,B.amU,B.amV,B.amW,B.amX,B.amY,B.an_,B.an0]
 B.J_=new A.II(0,"left")
 B.J0=new A.II(1,"right")
 B.a_G=s([B.J_,B.J0],A.b_("M<II>"))
-B.Ve=new A.a7(62812,"MaterialIcons",!1)
-B.apm=new A.kD("All",B.Ve,B.bh)
+B.Vf=new A.a7(62812,"MaterialIcons",!1)
+B.apm=new A.kD("All",B.Vf,B.bh)
 B.xv=new A.a7(983484,"MaterialIcons",!1)
 B.a_e=s(["GAME_PLAYED","DAILY_GAME_PLAYED"],t.s)
 B.apj=new A.kD("Games",B.xv,B.a_e)
@@ -126115,8 +126115,8 @@ B.aoU=new A.ed(B.dG,B.ap,"Quiz Passed")
 B.vD=new A.y(1,1,0.3215686274509804,0.4392156862745098,B.n)
 B.apd=new A.ed(B.xg,B.vD,"Quiz Failed")
 B.ap5=new A.ed(B.mg,B.j6,"Retention Test")
-B.Vc=new A.a7(62777,"MaterialIcons",!1)
-B.ap6=new A.ed(B.Vc,B.hA,"Habit Created")
+B.Vd=new A.a7(62777,"MaterialIcons",!1)
+B.ap6=new A.ed(B.Vd,B.hA,"Habit Created")
 B.W5=new A.a7(983823,"MaterialIcons",!1)
 B.ap8=new A.ed(B.W5,B.j6,"Habit Updated")
 B.ap3=new A.ed(B.fI,B.vD,"Habit Deleted")
@@ -126130,9 +126130,9 @@ B.ap2=new A.ed(B.VC,B.cY,"Lock-In Started")
 B.Qn=new A.y(1,0.39215686274509803,0.4549019607843137,0.5450980392156862,B.n)
 B.apa=new A.ed(B.q8,B.Qn,"Lock-In Ended")
 B.apf=new A.ed(B.i2,B.hB,"Challenge Done")
-B.Vs=new A.a7(63336,"MaterialIcons",!1)
+B.Vt=new A.a7(63336,"MaterialIcons",!1)
 B.Q9=new A.y(1,0.5803921568627451,0.6392156862745098,0.7215686274509804,B.n)
-B.aoX=new A.ed(B.Vs,B.Q9,"Challenge Set")
+B.aoX=new A.ed(B.Vt,B.Q9,"Challenge Set")
 B.a2Z=new A.be(B.a4l,[B.ap_,B.ap1,B.ap0,B.ap9,B.apb,B.ape,B.ap7,B.aoY,B.aoZ,B.ap4,B.aoU,B.apd,B.ap5,B.ap6,B.ap8,B.ap3,B.aoT,B.aoV,B.aoW,B.ap2,B.apa,B.apf,B.aoX],A.b_("be<x,ed>"))
 B.he=new A.oN(3,"left")
 B.Rk=new A.jg(B.he)
@@ -126871,8 +126871,8 @@ B.Jw=new A.j(!0,B.b,null,null,null,null,13,B.X,null,null,null,null,null,null,nul
 B.aiH=new A.F("Quick Check",null,B.Jw,null,null,null,null,null,null,null,null)
 B.a_z=s([B.Wi,B.br,B.aiH],t.p)
 B.a7n=new A.el(B.ao,B.f,B.i,B.j,null,B.m,null,0,B.a_z,null)
-B.Vb=new A.a7(62764,"MaterialIcons",!1)
-B.WH=new A.aA(B.Vb,22,B.o,null,null)
+B.Vc=new A.a7(62764,"MaterialIcons",!1)
+B.WH=new A.aA(B.Vc,22,B.o,null,null)
 B.acJ=new A.j(!0,B.o,null,null,null,null,15,B.X,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.ali=new A.F("New Habit",null,B.acJ,null,null,null,null,null,null,null,null)
 B.a_i=s([B.WH,B.a5,B.ali],t.p)
@@ -128298,8 +128298,8 @@ B.KJ=new A.B_(3,"recede")
 B.fc=new A.r9(0,"pressed")
 B.iP=new A.r9(1,"hover")
 B.KK=new A.r9(2,"focus")
-B.Vn=new A.a7(63158,"MaterialIcons",!1)
-B.apQ=new A.B4(B.Vn,"Trains leave one by one",null)
+B.Vo=new A.a7(63158,"MaterialIcons",!1)
+B.apQ=new A.B4(B.Vo,"Trains leave one by one",null)
 B.W0=new A.a7(983621,"MaterialIcons",!1)
 B.apR=new A.B4(B.W0,"Tap the circles to switch tracks",null)
 B.apS=new A.B4(B.mi,"Route each train to its matching station",null)

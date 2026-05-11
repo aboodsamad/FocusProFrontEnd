@@ -45,7 +45,7 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_rounded,           label: 'Home',    selected: current == NavTab.home,    onTap: () => _go(context, NavTab.home)),
+              _NavItem(icon: Icons.home_outlined,           label: 'Home',    selected: current == NavTab.home,    onTap: () => _go(context, NavTab.home)),
               _NavItem(icon: Icons.extension_outlined,     label: 'Games',   selected: current == NavTab.games,   onTap: () => _go(context, NavTab.games)),
               _NavItem(icon: Icons.groups_outlined,        label: 'Rooms',   selected: current == NavTab.rooms,   onTap: () => _go(context, NavTab.rooms)),
               _NavItem(icon: Icons.psychology_outlined,    label: 'Coach',   selected: current == NavTab.coach,   onTap: () => _go(context, NavTab.coach)),
