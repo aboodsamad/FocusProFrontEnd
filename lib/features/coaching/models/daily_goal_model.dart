@@ -13,11 +13,18 @@ class DailyGoalModel {
 
   factory DailyGoalModel.fromJson(Map<String, dynamic> json) {
     return DailyGoalModel(
-      id: (json['id'] as num).toInt(),
-      goalText: json['goalText'] as String? ?? '',
+      id: _parseInt(json['id'] ?? json['goalId'] ?? 0),
+      goalText: json['goalText'] as String? ?? json['goal_text'] as String? ?? '',
       status: json['status'] as String? ?? 'PENDING',
-      goalDate: json['goalDate'] as String? ?? '',
+      goalDate: json['goalDate'] as String? ?? json['goal_date'] as String? ?? '',
     );
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
   }
 
   DailyGoalModel copyWith({String? status}) {

@@ -163,15 +163,25 @@ class CoachingService {
           .timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(resp.body);
+        final dynamic decoded = jsonDecode(resp.body);
+        // Handle both a plain array [...] and a wrapped object {"goals": [...]}
+        List<dynamic> data;
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map) {
+          data = (decoded['goals'] ?? decoded['data'] ?? decoded['items'] ?? []) as List<dynamic>;
+        } else {
+          debugPrint('CoachingService.getTodayGoals: unexpected response shape: $decoded');
+          return [];
+        }
         return data
             .map((e) => DailyGoalModel.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-      debugPrint('CoachingService.getTodayGoals: status ${resp.statusCode}');
+      debugPrint('CoachingService.getTodayGoals: status ${resp.statusCode}  body: ${resp.body}');
       return [];
-    } catch (e) {
-      debugPrint('CoachingService.getTodayGoals error: $e');
+    } catch (e, st) {
+      debugPrint('CoachingService.getTodayGoals error: $e\n$st');
       return [];
     }
   }
